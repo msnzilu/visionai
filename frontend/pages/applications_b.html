@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Applications - CVision</title>
+    <script src="/assets/js/auth-guard.js"></script>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .spinner {
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <h1 class="text-xl font-bold text-gradient">CVision AI</h1>
+                <div class="flex items-center space-x-4">
+                    <a href="../dashboard.html" class="text-gray-600 hover:text-gray-900">Dashboard</a>
+                    <a href="jobs.html" class="text-gray-600 hover:text-gray-900">Search Jobs</a>
+                    <button onclick="CVision.logout()" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Stats Overview -->
+        <div id="statsOverview" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"></div>
+
+        <!-- Tabs -->
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8">
+                <button onclick="switchTab('applications')" id="tab-applications" class="tab-button border-b-2 border-primary-600 text-primary-600 py-4 px-1 text-sm font-medium">Applications</button>
+                <button onclick="switchTab('interviews')" id="tab-interviews" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Upcoming Interviews</button>
+                <button onclick="switchTab('followups')" id="tab-followups" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Follow-ups Needed</button>
+                <button onclick="switchTab('saved')" id="tab-saved" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Saved Jobs</button>
+            </nav>
+        </div>
+
+        <!-- Applications Tab -->
+        <div id="content-applications" class="tab-content">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="filter-status" onchange="loadApplications()" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="applied">Applied</option>
+                            <option value="screening">Screening</option>
+                            <option value="interview">Interview</option>
+                            <option value="offer">Offer</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="withdrawn">Withdrawn</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <select id="filter-priority" onchange="loadApplications()" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">All Priorities</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                        <input type="text" id="filter-company" onchange="loadApplications()" placeholder="Search company..." class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="clearFilters()" class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Clear Filters</button>
+                    </div>
+                </div>
+            </div>
+            <div id="applicationsList" class="space-y-4"></div>
+        </div>
+
+        <!-- Other Tabs -->
+        <div id="content-interviews" class="tab-content hidden">
+            <div id="interviewsList" class="space-y-4"></div>
+        </div>
+        <div id="content-followups" class="tab-content hidden">
+            <div id="followupsList" class="space-y-4"></div>
+        </div>
+        <div id="content-saved" class="tab-content hidden">
+            <div id="savedJobsList" class="space-y-4"></div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="applicationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6" id="applicationModalContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/main.js"></script>
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        let currentTab = 'applications';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!CVision.Utils.isAuthenticated()) {
+                window.location.href = 'login.html';
+                return;
+            }
+            loadStats();
+            loadApplications();
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('border-primary-600', 'text-primary-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById(`tab-${tab}`).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById(`tab-${tab}`).classList.add('border-primary-600', 'text-primary-600');
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+            
+            if (tab === 'applications') loadApplications();
+            else if (tab === 'interviews') loadUpcomingInterviews();
+            else if (tab === 'followups') loadFollowUps();
+            else if (tab === 'saved') loadSavedJobs();
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/applications/stats/overview`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+                if (!response.ok) throw new Error('Failed');
+                const stats = await response.json();
+                document.getElementById('statsOverview').innerHTML = `
+                    <div class="bg-white rounded-lg shadow-sm border p-6">
+                        <div class="text-sm text-gray-600 mb-1">Total Applications</div>
+                        <div class="text-3xl font-bold text-gray-900">${stats.total_applications || 0}</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm border p-6">
+                        <div class="text-sm text-gray-600 mb-1">Active</div>
+                        <div class="text-3xl font-bold text-blue-600">${stats.active_applications || 0}</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm border p-6">
+                        <div class="text-sm text-gray-600 mb-1">Interviews</div>
+                        <div class="text-3xl font-bold text-purple-600">${stats.interview_count || 0}</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm border p-6">
+                        <div class="text-sm text-gray-600 mb-1">Success Rate</div>
+                        <div class="text-3xl font-bold text-green-600">${stats.success_rate ? Math.round(stats.success_rate * 100) : 0}%</div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Stats error:', error);
+            }
+        }
+
+        async function loadApplications() {
+            const status = document.getElementById('filter-status')?.value || '';
+            const priority = document.getElementById('filter-priority')?.value || '';
+            const company = document.getElementById('filter-company')?.value || '';
+            let url = `${API_BASE_URL}/api/v1/applications/?page=1&size=50`;
+            if (status) url += `&status=${status}`;
+            if (priority) url += `&priority=${priority}`;
+            if (company) url += `&company=${encodeURIComponent(company)}`;
+            
+            try {
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+                if (!response.ok) throw new Error('Failed');
+                const data = await response.json();
+                displayApplications(data.applications || []);
+            } catch (error) {
+                console.error('Load error:', error);
+                document.getElementById('applicationsList').innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load applications</p></div>';
+            }
+        }
+
+        function displayApplications(applications) {
+            const container = document.getElementById('applicationsList');
+            if (!applications || applications.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-lg border p-12 text-center">
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No Applications Yet</h3>
+                        <p class="text-gray-600 mb-6">Start applying to jobs to track them here</p>
+                        <a href="jobs.html" class="btn-gradient text-white px-6 py-2 rounded-lg inline-block">Search for Jobs</a>
+                    </div>
+                `;
+                return;
+            }
+            container.innerHTML = applications.map(app => `
+                <div class="bg-white rounded-lg border p-6 hover:shadow-md transition">
+                    <div class="flex justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="flex items-start gap-3 mb-2">
+                                <h3 class="text-lg font-semibold">${app.job_title || 'Unknown'}</h3>
+                                ${getStatusBadge(app.status)}
+                            </div>
+                            <p class="text-gray-600">${app.company_name || 'Unknown'}</p>
+                            <p class="text-gray-500 text-sm mt-1">${app.location || 'Location not specified'}</p>
+                            <div class="flex gap-2 mt-3">
+                                ${getPriorityBadge(app.priority)}
+                                ${app.applied_date ? `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Applied: ${formatDate(app.applied_date)}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <button onclick="viewApplicationDetails('${app.id}')" class="px-4 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 rounded-lg">View Details</button>
+                            <button onclick="showStatusMenu('${app.id}')" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Update Status</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getStatusBadge(status) {
+            const colors = {
+                pending: 'bg-yellow-100 text-yellow-800',
+                applied: 'bg-blue-100 text-blue-800',
+                screening: 'bg-indigo-100 text-indigo-800',
+                interview: 'bg-purple-100 text-purple-800',
+                offer: 'bg-green-100 text-green-800',
+                accepted: 'bg-green-600 text-white',
+                rejected: 'bg-red-100 text-red-800',
+                withdrawn: 'bg-gray-100 text-gray-800'
+            };
+            return `<span class="status-badge ${colors[status] || colors.pending}">${formatEnumValue(status)}</span>`;
+        }
+
+        function getPriorityBadge(priority) {
+            const colors = { high: 'bg-red-100 text-red-700', medium: 'bg-yellow-100 text-yellow-700', low: 'bg-green-100 text-green-700' };
+            return `<span class="px-2 py-1 rounded text-xs font-medium ${colors[priority] || colors.medium}">${formatEnumValue(priority)} Priority</span>`;
+        }
+
+        async function viewApplicationDetails(appId) {
+            try {
+                const [appRes, timelineRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/api/v1/applications/${appId}`, { headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }}),
+                    fetch(`${API_BASE_URL}/api/v1/applications/${appId}/timeline`, { headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }})
+                ]);
+                if (!appRes.ok) throw new Error('Failed');
+                const app = await appRes.json();
+                const timeline = timelineRes.ok ? await timelineRes.json() : { timeline: [] };
+                displayApplicationModal(app, timeline.timeline);
+            } catch (error) {
+                console.error('Details error:', error);
+                CVision.Utils.showAlert('Failed to load details', 'error');
+            }
+        }
+
+        function displayApplicationModal(app, timeline) {
+            document.getElementById('applicationModalContent').innerHTML = `
+                <div class="flex justify-between mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold">${app.job_title}</h2>
+                        <p class="text-gray-600 mt-1">${app.company_name}</p>
+                    </div>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div><span class="text-sm text-gray-600">Status:</span> ${getStatusBadge(app.status)}</div>
+                    <div><span class="text-sm text-gray-600">Priority:</span> ${getPriorityBadge(app.priority)}</div>
+                </div>
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3">Quick Actions</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="updateStatus('${app.id}')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">Update Status</button>
+                        <button onclick="scheduleInterview('${app.id}')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200">Schedule Interview</button>
+                        <button onclick="setFollowUp('${app.id}')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">Set Follow-up</button>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-3">Timeline</h3>
+                    <div class="space-y-3 max-h-64 overflow-y-auto">
+                        ${timeline && timeline.length > 0 ? timeline.map(e => `
+                            <div class="border-l-2 border-gray-200 pl-4 py-2">
+                                <p class="text-sm font-medium">${e.description}</p>
+                                <p class="text-xs text-gray-500">${formatDateTime(e.timestamp)}</p>
+                            </div>
+                        `).join('') : '<p class="text-gray-500 text-sm">No timeline events</p>'}
+                    </div>
+                </div>
+            `;
+            document.getElementById('applicationModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('applicationModal').classList.add('hidden');
+        }
+
+        async function updateStatus(appId) {
+            const status = prompt('Enter status (pending/applied/screening/interview/offer/accepted/rejected/withdrawn):');
+            if (!status) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status, notes: '' })
+                });
+                if (!res.ok) throw new Error('Failed');
+                CVision.Utils.showAlert('Status updated', 'success');
+                closeModal();
+                loadApplications();
+                loadStats();
+            } catch (error) {
+                CVision.Utils.showAlert('Failed to update', 'error');
+            }
+        }
+
+        async function scheduleInterview(appId) {
+            const dateStr = prompt('Interview date/time (YYYY-MM-DD HH:MM):');
+            if (!dateStr) return;
+            const type = prompt('Type (phone/video/onsite):', 'phone');
+            const location = prompt('Location (optional):');
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/schedule-interview`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ interview_date: new Date(dateStr).toISOString(), interview_type: type || 'phone', location: location || null, notes: '' })
+                });
+                if (!res.ok) throw new Error('Failed');
+                CVision.Utils.showAlert('Interview scheduled', 'success');
+                closeModal();
+                loadApplications();
+            } catch (error) {
+                CVision.Utils.showAlert('Failed to schedule', 'error');
+            }
+        }
+
+        async function setFollowUp(appId) {
+            const dateStr = prompt('Follow-up date (YYYY-MM-DD):');
+            if (!dateStr) return;
+            const notes = prompt('Notes (optional):');
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/set-follow-up`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ follow_up_date: new Date(dateStr).toISOString(), notes: notes || '' })
+                });
+                if (!res.ok) throw new Error('Failed');
+                CVision.Utils.showAlert('Follow-up set', 'success');
+                closeModal();
+                loadApplications();
+            } catch (error) {
+                CVision.Utils.showAlert('Failed to set follow-up', 'error');
+            }
+        }
+
+        async function loadUpcomingInterviews() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/applications/upcoming-interviews?days_ahead=30`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+                if (!res.ok) throw new Error('Failed');
+                const data = await res.json();
+                const container = document.getElementById('interviewsList');
+                if (!data.interviews || data.interviews.length === 0) {
+                    container.innerHTML = '<div class="bg-white rounded-lg border p-12 text-center"><p class="text-gray-600">No upcoming interviews</p></div>';
+                    return;
+                }
+                container.innerHTML = data.interviews.map(i => `
+                    <div class="bg-white rounded-lg border p-6">
+                        <h3 class="text-lg font-semibold">${i.job_title}</h3>
+                        <p class="text-gray-600">${i.company_name}</p>
+                        <p class="text-sm text-gray-500 mt-2">${formatDateTime(i.interview_date)}</p>
+                        <p class="text-sm text-gray-500">${i.location || 'Location TBD'}</p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('interviewsList').innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+            }
+        }
+
+        async function loadFollowUps() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/applications/follow-ups/needed`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+                if (!res.ok) throw new Error('Failed');
+                const data = await res.json();
+                const container = document.getElementById('followupsList');
+                if (!data.applications || data.applications.length === 0) {
+                    container.innerHTML = '<div class="bg-white rounded-lg border p-12 text-center"><p class="text-gray-600">No follow-ups needed</p></div>';
+                    return;
+                }
+                container.innerHTML = data.applications.map(a => `
+                    <div class="bg-white rounded-lg border border-yellow-200 border-l-4 p-6">
+                        <h3 class="text-lg font-semibold">${a.job_title}</h3>
+                        <p class="text-gray-600">${a.company_name}</p>
+                        <p class="text-sm text-yellow-600 mt-2">Follow-up due: ${formatDate(a.next_follow_up)}</p>
+                        <button onclick="viewApplicationDetails('${a._id}')" class="mt-4 px-4 py-2 text-sm bg-primary-600 text-white rounded-lg">View Details</button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('followupsList').innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+            }
+        }
+
+        async function loadSavedJobs() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/jobs/saved/me?page=1&size=20`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+                if (!res.ok) throw new Error('Failed');
+                const jobs = await res.json();
+                const container = document.getElementById('savedJobsList');
+                if (!jobs || jobs.length === 0) {
+                    container.innerHTML = `
+                        <div class="bg-white rounded-lg border p-12 text-center">
+                            <h3 class="text-lg font-medium mb-2">No Saved Jobs</h3>
+                            <p class="text-gray-600 mb-6">Save jobs while searching</p>
+                            <a href="jobs.html" class="btn-gradient text-white px-6 py-2 rounded-lg inline-block">Search Jobs</a>
+                        </div>
+                    `;
+                    return;
+                }
+                container.innerHTML = jobs.map(j => `
+                    <div class="bg-white rounded-lg border p-6 hover:shadow-md transition">
+                        <div class="flex justify-between gap-4">
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold">${j.title}</h3>
+                                <p class="text-gray-600 mt-1">${j.company_name}</p>
+                                <p class="text-gray-500 text-sm mt-1">${j.location}</p>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <button onclick="window.location.href='jobs.html?job=${j.id}'" class="px-4 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 rounded-lg">View</button>
+                                <button onclick="unsaveJob('${j.id}')" class="px-4 py-2 text-sm text-red-600 bg-red-100 hover:bg-red-200 rounded-lg">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('savedJobsList').innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+            }
+        }
+
+        async function unsaveJob(jobId) {
+            if (!confirm('Remove this job?')) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/jobs/save/${jobId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+                if (!res.ok) throw new Error('Failed');
+                CVision.Utils.showAlert('Job removed', 'success');
+                loadSavedJobs();
+            } catch (error) {
+                CVision.Utils.showAlert('Failed to remove', 'error');
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-status').value = '';
+            document.getElementById('filter-priority').value = '';
+            document.getElementById('filter-company').value = '';
+            loadApplications();
+        }
+
+        function showStatusMenu(appId) {
+            updateStatus(appId);
+        }
+
+        function formatEnumValue(value) {
+            if (!value) return '';
+            return value.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function formatDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        document.getElementById('applicationModal').addEventListener('click', (e) => {
+            if (e.target.id === 'applicationModal') closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
+</body>
+</html>

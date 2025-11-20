@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Applications - CVision</title>
+    <script src="/assets/js/auth-guard.js"></script>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .spinner {
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Navbar Styles */
+        .notification-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .notification-dropdown, .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.5rem;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            z-index: 50;
+            display: none;
+        }
+
+        .notification-dropdown {
+            width: 380px;
+            max-width: 90vw;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .user-dropdown { width: 200px; }
+
+        .notification-dropdown.show, .user-dropdown.show {
+            display: block;
+            animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .notification-item { transition: background-color 0.2s; }
+        .notification-item:hover { background-color: #f9fafb; }
+        .notification-item.unread { background-color: #eff6ff; }
+        .notification-item.unread:hover { background-color: #dbeafe; }
+
+        .mobile-menu { display: none; }
+        .mobile-menu.show { display: block; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Updated Navbar -->
+    <div id="navbar-container"></div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Stats Overview -->
+        <div id="statsOverview" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"></div>
+
+        <!-- Tabs -->
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8">
+                <button onclick="switchTab('applications')" id="tab-applications" class="tab-button border-b-2 border-primary-600 text-primary-600 py-4 px-1 text-sm font-medium">Applications</button>
+                <button onclick="switchTab('interviews')" id="tab-interviews" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Upcoming Interviews</button>
+                <button onclick="switchTab('followups')" id="tab-followups" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Follow-ups Needed</button>
+                <button onclick="switchTab('saved')" id="tab-saved" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Saved Jobs</button>
+            </nav>
+        </div>
+
+        <!-- Applications Tab -->
+        <div id="content-applications" class="tab-content">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="filter-status" onchange="loadApplications()" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="applied">Applied</option>
+                            <option value="screening">Screening</option>
+                            <option value="interview">Interview</option>
+                            <option value="offer">Offer</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="withdrawn">Withdrawn</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <select id="filter-priority" onchange="loadApplications()" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">All Priorities</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                        <input type="text" id="filter-company" onchange="loadApplications()" placeholder="Search company..." class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="clearFilters()" class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Clear Filters</button>
+                    </div>
+                </div>
+            </div>
+            <div id="applicationsList" class="space-y-4"></div>
+        </div>
+
+        <!-- Other Tabs -->
+        <div id="content-interviews" class="tab-content hidden">
+            <div id="interviewsList" class="space-y-4"></div>
+        </div>
+        <div id="content-followups" class="tab-content hidden">
+            <div id="followupsList" class="space-y-4"></div>
+        </div>
+        <div id="content-saved" class="tab-content hidden">
+            <div id="savedJobsList" class="space-y-4"></div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="applicationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6" id="applicationModalContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/main.js" defer></script>
+    <script src="../assets/js/pages/applications.js" defer></script>
+    <script src="../assets/js/components/navbar.js" defer></script>
+    <script defer>
+        // Load navbar component
+        fetch('/components/navbar.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('navbar-container').innerHTML = html;
+                // Optionally set page title
+                CVisionNavbar.init('Applications');
+            });
+
+        // Your page-specific JavaScript
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!CVision.Utils.isAuthenticated()) {
+                window.location.href = '../login.html';
+                return;
+            }
+            
+            // Your page logic here
+            loadApplications();
+        });
+    </script>
+</body>
+</html>

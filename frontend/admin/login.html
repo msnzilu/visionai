@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - CVision</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../assets/css/global.css">
+</head>
+<body class="bg-gray-900">
+    <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-md w-full">
+            <!-- Logo & Title -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-white mb-2">CVision Admin</h1>
+                <p class="text-gray-400">Administrator Access Only</p>
+            </div>
+
+            <!-- Login Form -->
+            <div class="bg-white rounded-xl shadow-2xl p-8">
+                <form id="adminLoginForm" class="space-y-6">
+                    <!-- Error Message -->
+                    <div id="formError" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <span id="errorMessage"></span>
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Admin Email
+                        </label>
+                        <input type="email" id="email" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="admin@cvision.com">
+                        <p id="emailError" class="hidden text-red-600 text-sm mt-1"></p>
+                    </div>
+
+                    <!-- Password -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Password
+                        </label>
+                        <input type="password" id="password" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Enter admin password">
+                        <p id="passwordError" class="hidden text-red-600 text-sm mt-1"></p>
+                    </div>
+
+                    <!-- Login Button -->
+                    <button type="submit" id="loginButton"
+                        class="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="button-text">Sign In as Admin</span>
+                        <div class="loading-spinner hidden inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </button>
+                </form>
+
+                <!-- Back to Regular Login -->
+                <div class="mt-6 text-center">
+                    <a href="../login.html" class="text-sm text-gray-600 hover:text-gray-900">
+                        ← Back to User Login
+                    </a>
+                </div>
+            </div>
+
+            <!-- Warning -->
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-400">
+                    ⚠️ Unauthorized access is prohibited
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/main.js"></script>
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+
+        // Redirect if already logged in as admin
+        if (CVision.Utils.isAuthenticated()) {
+            const user = CVision.Utils.getUser();
+            if (user && user.role === 'admin') {
+                window.location.href = 'users.html';
+            }
+        }
+
+        document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await handleAdminLogin();
+        });
+
+        async function handleAdminLogin() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const loginButton = document.getElementById('loginButton');
+            const formError = document.getElementById('formError');
+
+            // Clear errors
+            formError.classList.add('hidden');
+            clearFieldErrors();
+
+            // Validate
+            if (!email || !password) {
+                showError('Please enter both email and password');
+                return;
+            }
+
+            try {
+                // Show loading
+                setButtonLoading(loginButton, true);
+
+                // Login request
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                console.log("Full login response:", data);
+                console.log("User object:", data.data?.user);
+                console.log("User role:", data.data?.user?.role);
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Login failed');
+                }
+
+                // Check if user is admin
+                if (data.data.user.role !== 'admin') {
+                    console.log("Role check failed. Expected 'admin', got:", data.data.user.role);
+                    throw new Error('Access denied. Admin credentials required.');
+                }
+
+                // Store credentials
+                CVision.Utils.setToken(data.data.access_token);
+                CVision.Utils.setUser(data.data.user);
+
+                // Success - redirect to admin panel
+                showSuccess('Admin login successful!');
+                setTimeout(() => {
+                    window.location.href = 'users.html';
+                }, 1000);
+
+            } catch (error) {
+                console.error('Admin login error:', error);
+                showError(error.message || 'Login failed. Please check your credentials.');
+            } finally {
+                setButtonLoading(loginButton, false);
+            }
+        }
+
+        function showError(message) {
+            const formError = document.getElementById('formError');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            formError.classList.remove('hidden');
+        }
+
+        function showSuccess(message) {
+            const formError = document.getElementById('formError');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            formError.className = 'bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded';
+            formError.classList.remove('hidden');
+        }
+
+        function clearFieldErrors() {
+            document.querySelectorAll('.text-red-600').forEach(el => {
+                el.classList.add('hidden');
+            });
+        }
+
+        function setButtonLoading(button, loading) {
+            const textElement = button.querySelector('.button-text');
+            const spinnerElement = button.querySelector('.loading-spinner');
+            
+            if (loading) {
+                button.disabled = true;
+                textElement.classList.add('hidden');
+                spinnerElement.classList.remove('hidden');
+            } else {
+                button.disabled = false;
+                textElement.classList.remove('hidden');
+                spinnerElement.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+# docker-compose.yml
+# CVision - AI Job Application Platform
+
+version: '3.8'
+
+services:
+  # CVision Backend API
+  cvision-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PROJECT_NAME=CVision
+      - DEBUG=true
+      - MONGODB_URL=mongodb://cvision-mongodb:27017
+      - DATABASE_NAME=cvision
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      - cvision-mongodb
+    restart: unless-stopped
+    networks:
+      - cvision-network
+
+  # CVision Frontend
+  cvision-frontend:
+    image: nginx:alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    restart: unless-stopped
+    networks:
+      - cvision-network
+
+  # CVision MongoDB Database
+  cvision-mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=cvision
+      - MONGO_INITDB_ROOT_PASSWORD=cvision123
+      - MONGO_INITDB_DATABASE=cvision
+    volumes:
+      - cvision_mongodb_data:/data/db
+    restart: unless-stopped
+    networks:
+      - cvision-network
+
+volumes:
+  cvision_mongodb_data:
+    driver: local
+
+networks:
+  cvision-network:
+    driver: bridge
+
+# CVision Environment Variables
+# Create a .env file in the root directory with:
+# OPENAI_API_KEY=your-openai-api-key-here

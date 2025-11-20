@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CVision</title>
+    
+    <script src="/assets/js/auth-guard.js"></script>
+    <link rel="stylesheet" href="assets/css/global.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            100: '#e0e7ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Header Navigation -->
+    <div id="navbar-container"></div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <!-- Alert Container -->
+        <div id="alerts" class="mb-4 sm:mb-6"></div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+            <!-- Searches Used -->
+            <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center">
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3 sm:ml-4 min-w-0">
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900 truncate" id="searchesUsed">0</p>
+                        <p class="text-xs sm:text-sm text-gray-500">Searches</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents -->
+            <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center">
+                    <div class="p-2 bg-purple-100 rounded-lg">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3 sm:ml-4 min-w-0">
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900 truncate" id="documentsCount">0</p>
+                        <p class="text-xs sm:text-sm text-gray-500">Documents</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Applications -->
+            <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center">
+                    <div class="p-2 bg-green-100 rounded-lg">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3 sm:ml-4 min-w-0">
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900 truncate" id="applicationsCount">0</p>
+                        <p class="text-xs sm:text-sm text-gray-500">Apps</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success Rate -->
+            <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center">
+                    <div class="p-2 bg-yellow-100 rounded-lg">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3 sm:ml-4 min-w-0">
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900 truncate" id="successRate">0%</p>
+                        <p class="text-xs sm:text-sm text-gray-500">Rate</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Grid -->
+        <div class="grid lg:grid-cols-3 gap-6 sm:gap-8 mb-6 sm:mb-8 min-w-0">
+            <!-- CV Upload Section -->
+            <div class="lg:col-span-1 min-w-0">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+                    <h2 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Upload Your CV</h2>
+                    
+                    <!-- File Upload Zone -->
+                    <div id="dropZone" class="file-upload-zone border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center hover:border-primary-500 hover:bg-primary-50 transition-all cursor-pointer">
+                        <div class="text-3xl sm:text-4xl mb-2 sm:mb-3">📄</div>
+                        <p class="text-sm sm:text-base text-gray-600 font-medium mb-1">Drop CV or click</p>
+                        <p class="text-xs sm:text-sm text-gray-500">PDF, DOCX, TXT (max 10MB)</p>
+                    </div>
+                    
+                    <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.doc,.txt">
+                    
+                    <!-- Upload Progress -->
+                    <div id="uploadLoading" class="hidden mt-4 text-center">
+                        <div class="inline-block w-6 h-6 spinner border-2 border-primary-200 border-t-primary-600 rounded-full mb-2"></div>
+                        <p class="text-xs sm:text-sm text-gray-600">Processing CV...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents List -->
+            <div class="lg:col-span-2 min-w-0">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 overflow-hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-base sm:text-lg font-semibold text-gray-900">Your Documents</h2>
+                        <span class="text-xs sm:text-sm text-gray-500 flex-shrink-0" id="documentsCountText">0 documents</span>
+                    </div>
+                    
+                    <!-- Fixed height with scroll -->
+                    <div id="documentsList" class="space-y-3 sm:space-y-4 overflow-y-auto overflow-x-hidden" style="max-height: 400px;">
+                        <!-- Documents will be loaded here -->
+                        <div class="text-center py-8 text-gray-500">
+                            <svg class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p class="text-sm sm:text-base">No documents yet</p>
+                            <p class="text-xs sm:text-sm mt-1">Upload your CV to start</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <button onclick="searchJobs()" class="btn-gradient text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-medium hover:shadow-lg transition-all flex items-center justify-center space-x-2 text-sm sm:text-base">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <span>Search</span>
+                </button>
+                
+                <button onclick="viewApplications()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span>Apps</span>
+                </button>
+                
+                <button onclick="upgradeAccount()" class="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                    </svg>
+                    <span>Upgrade</span>
+                </button>
+                
+                <button onclick="viewProfile()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                    <span>Profile</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Saved Jobs Preview -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 mt-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-900">Recently Saved Jobs</h2>
+                <a href="pages/applications.html" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                    View All →
+                </a>
+            </div>
+            
+            <div id="savedJobsList" class="space-y-3">
+                <!-- Will show 3 most recent saved jobs -->
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/main.js"></script>
+    <script src="/assets/js/pages/dashboard.js"></script>
+    <script src="/assets/js/components/navbar.js" defer></script>
+    <script defer>
+        // Load navbar component
+        fetch('/components/navbar.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('navbar-container').innerHTML = html;
+                // Optionally set page title
+                CVisionNavbar.init('Applications');
+            });
+
+        // Your page-specific JavaScript
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!CVision.Utils.isAuthenticated()) {
+                window.location.href = '../login.html';
+                return;
+            }
+            
+            // Your page logic here
+            initializeDashboard();
+        });
+    </script>
+</body>
+</html>

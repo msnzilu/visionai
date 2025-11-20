@@ -1,0 +1,143 @@
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: vision_ai_mongo
+    environment:
+      MONGO_INITDB_DATABASE: vision_ai
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - vision_ai_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/vision_ai
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vision_ai_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - vision_ai_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vision_ai_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    env_file:
+      - backend/.env
+    environment:
+      - DATABASE_URL=mongodb://mongo:27017/vision_ai
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - vision_ai_network
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vision_ai_worker
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    env_file:
+      - backend/.env
+    environment:
+      - DATABASE_URL=mongodb://mongo:27017/vision_ai
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - mongo
+      - redis
+      - backend
+    networks:
+      - vision_ai_network
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vision_ai_beat
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - backend/.env
+    environment:
+      - DATABASE_URL=mongodb://mongo:27017/vision_ai
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - vision_ai_network
+
+  automation:
+    build:
+      context: ./browser-automation
+      dockerfile: Dockerfile
+    container_name: vision_ai_automation
+    ports:
+      - "3000:3000"
+    env_file:
+      - browser-automation/.env
+    environment:
+      - NODE_ENV=development
+      - BACKEND_URL=http://backend:8000
+    volumes:
+      - ./browser-automation:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - vision_ai_network
+    cap_add:
+      - SYS_ADMIN
+
+  nginx:
+    image: nginx:alpine
+    container_name: vision_ai_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - vision_ai_network
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  vision_ai_network:
+    driver: bridge

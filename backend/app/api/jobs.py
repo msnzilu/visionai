@@ -1,0 +1,251 @@
+# backend/app/api/jobs.py
+"""
+Job-related API endpoints
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
+from typing import Optional, List
+from datetime import datetime
+
+from app.models.job import (
+    JobSearch, JobListResponse, JobResponse, 
+    JobCreate, JobUpdate, JobFilter
+)
+from app.models.user import User
+from app.services.job_service import get_job_service
+from app.services.matching_service import matching_service
+from app.api.deps import get_current_user, get_current_active_user, get_db_session as get_db
+from app.workers.job_scraper import scrape_jobs_task
+import logging
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+@router.post("/search", response_model=JobListResponse)
+async def search_jobs(
+    search_request: JobSearch,
+    db = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    """Search jobs with filters and pagination"""
+    
+    job_service = get_job_service(db)
+    
+    result = await job_service.search_jobs(
+        query=search_request.query,
+        location=search_request.location,
+        filters=search_request.filters,
+        page=search_request.page,
+        size=search_request.size,
+        user_id=str(current_user["_id"]) if current_user else None
+    )
+    
+    if current_user:
+        jobs = result.get("jobs", [])
+        scored_jobs = await matching_service.score_jobs(current_user, jobs)
+        result["jobs"] = scored_jobs
+    
+    return JobListResponse(**result)
+
+
+@router.get("/{job_id}", response_model=JobResponse)
+async def get_job(
+    job_id: str,
+    db = Depends(get_db)
+):
+    """Get job details by ID"""
+    
+    job_service = get_job_service(db)
+    job = await job_service.get_job_by_id(job_id)
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    await job_service.increment_view_count(job_id)
+    
+    return job
+
+
+@router.get("/matched/me", response_model=List[JobResponse])
+async def get_my_matched_jobs(
+    limit: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_active_user),
+    db = Depends(get_db)
+):
+    """Get personalized matched jobs for current user"""
+    
+    jobs = await matching_service.get_matched_jobs(
+        user=current_user,
+        db=db,
+        limit=limit
+    )
+    
+    return jobs
+
+
+@router.post("/save/{job_id}")
+async def save_job(
+    job_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db = Depends(get_db)
+):
+    """Save/bookmark a job"""
+    
+    await db.saved_jobs.insert_one({
+        "user_id": str(current_user["_id"]),
+        "job_id": job_id,
+        "saved_at": datetime.utcnow()
+    })
+    
+    return {"message": "Job saved successfully", "job_id": job_id}
+
+
+@router.delete("/save/{job_id}")
+async def unsave_job(
+    job_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db = Depends(get_db)
+):
+    """Remove job from saved jobs"""
+    
+    result = await db.saved_jobs.delete_one({
+        "user_id": str(current_user["_id"]),
+        "job_id": job_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Saved job not found")
+    
+    return {"message": "Job removed from saved"}
+
+
+@router.get("/saved/me", response_model=List[JobResponse])
+async def get_saved_jobs(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_active_user),
+    db = Depends(get_db)
+):
+    """Get user's saved jobs"""
+    
+    job_service = get_job_service(db)
+    
+    cursor = db.saved_jobs.find(
+        {"user_id": str(current_user["_id"])}
+    ).sort("saved_at", -1).skip((page - 1) * size).limit(size)
+    
+    saved_jobs = await cursor.to_list(length=size)
+    job_ids = [s["job_id"] for s in saved_jobs]
+    
+    jobs = []
+    for job_id in job_ids:
+        job = await job_service.get_job_by_id(job_id)
+        if job:
+            jobs.append(job)
+    
+    return jobs
+
+
+@router.post("/trigger-scrape")
+async def trigger_manual_scrape(
+    query: str,
+    location: str,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Trigger manual job scraping (authenticated users only)"""
+    
+    task = scrape_jobs_task.delay(query, location)
+    
+    return {
+        "message": "Scraping task started",
+        "task_id": task.id,
+        "query": query,
+        "location": location
+    }
+
+
+@router.post("/", response_model=JobResponse)
+async def create_job(
+    job_data: JobCreate,
+    current_user: User = Depends(get_current_active_user),
+    db = Depends(get_db)
+):
+    """Create a new job posting (admin/employer only)"""
+    
+    job_service = get_job_service(db)
+    
+    job_data.posted_by = str(current_user["_id"])
+    
+    job = await job_service.create_job(job_data)
+    
+    return job_service._doc_to_job_response(job.dict())
+
+
+@router.put("/{job_id}", response_model=JobResponse)
+async def update_job(
+    job_id: str,
+    updates: JobUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db = Depends(get_db)
+):
+    """Update job details"""
+    
+    job_service = get_job_service(db)
+    
+    job = await job_service.update_job(job_id, updates)
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    return job_service._doc_to_job_response(job.dict())
+
+
+@router.get("/stats/overview")
+async def get_job_stats(
+    db = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get job statistics and analytics"""
+    
+    from datetime import timedelta
+    
+    now = datetime.utcnow()
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+    
+    total = await db.jobs.count_documents({"status": "active"})
+    
+    week_count = await db.jobs.count_documents({
+        "status": "active",
+        "created_at": {"$gte": week_ago}
+    })
+    
+    month_count = await db.jobs.count_documents({
+        "status": "active",
+        "created_at": {"$gte": month_ago}
+    })
+    
+    top_companies = await db.jobs.aggregate([
+        {"$match": {"status": "active"}},
+        {"$group": {"_id": "$company_name", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]).to_list(10)
+    
+    top_locations = await db.jobs.aggregate([
+        {"$match": {"status": "active"}},
+        {"$group": {"_id": "$location", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]).to_list(10)
+    
+    return {
+        "total_jobs": total,
+        "jobs_this_week": week_count,
+        "jobs_this_month": month_count,
+        "top_companies": top_companies,
+        "top_locations": top_locations
+    }

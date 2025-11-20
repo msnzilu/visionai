@@ -1,0 +1,550 @@
+// frontend/assets/js/referrals.js - Referral Management System
+
+const API_BASE_URL = 'http://localhost:8000';
+let currentReferralPage = 1;
+let referralPageSize = 10;
+let currentStatusFilter = 'all';
+let userReferralCode = '';
+let referralStats = null;
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!CVision.isAuthenticated()) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    await Promise.all([
+        loadReferralCode(),
+        loadReferralStats(),
+        loadReferralList(),
+        loadRecentActivity()
+    ]);
+});
+
+/**
+ * Load user's referral code
+ */
+async function loadReferralCode() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/referral/code`, {
+            headers: {
+                'Authorization': `Bearer ${CVision.getToken()}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            userReferralCode = data.code;
+            
+            // Update all referral code displays
+            const codeElements = document.querySelectorAll('#referralCodeMain, #referralCodeDisplay');
+            codeElements.forEach(el => el.textContent = userReferralCode);
+            
+            // Update referral link
+            const referralLink = `${window.location.origin}/signup.html?ref=${userReferralCode}`;
+            const linkInput = document.getElementById('referralLinkInput');
+            if (linkInput) {
+                linkInput.value = referralLink;
+            }
+        } else {
+            throw new Error('Failed to load referral code');
+        }
+    } catch (error) {
+        console.error('Error loading referral code:', error);
+        CVision.showMessage('Failed to load referral code', 'error');
+    }
+}
+
+/**
+ * Load referral statistics
+ */
+async function loadReferralStats() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/referral/stats`, {
+            headers: {
+                'Authorization': `Bearer ${CVision.getToken()}`
+            }
+        });
+
+        if (response.ok) {
+            referralStats = await response.json();
+            updateStatsDisplay();
+        } else {
+            throw new Error('Failed to load referral stats');
+        }
+    } catch (error) {
+        console.error('Error loading referral stats:', error);
+        CVision.showMessage('Failed to load statistics', 'error');
+    }
+}
+
+/**
+ * Update statistics display
+ */
+function updateStatsDisplay() {
+    if (!referralStats) return;
+
+    document.getElementById('totalReferrals').textContent = referralStats.total_referrals || 0;
+    document.getElementById('activeReferrals').textContent = referralStats.active_referrals || 0;
+    document.getElementById('bonusSearches').textContent = referralStats.total_rewards_earned || 0;
+    document.getElementById('pendingRewards').textContent = referralStats.pending_rewards || 0;
+}
+
+/**
+ * Load referral list with pagination
+ */
+async function loadReferralList(page = 1) {
+    currentReferralPage = page;
+    const container = document.getElementById('referralListContainer');
+    
+    try {
+        // Show loading state
+        container.innerHTML = `
+            <div class="text-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p class="text-gray-500 mt-4">Loading referrals...</p>
+            </div>
+        `;
+
+        const params = new URLSearchParams({
+            page: page.toString(),
+            page_size: referralPageSize.toString()
+        });
+
+        if (currentStatusFilter !== 'all') {
+            params.append('status', currentStatusFilter);
+        }
+
+        const response = await fetch(
+            `${API_BASE_URL}/api/v1/subscriptions/referral/list?${params}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${CVision.getToken()}`
+                }
+            }
+        );
+
+        if (response.ok) {
+            const data = await response.json();
+            displayReferralList(data.referrals, data.total, data.pages);
+        } else {
+            throw new Error('Failed to load referrals');
+        }
+    } catch (error) {
+        console.error('Error loading referral list:', error);
+        container.innerHTML = `
+            <div class="text-center py-12">
+                <svg class="w-16 h-16 mx-auto mb-4 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p class="text-gray-500">Failed to load referrals</p>
+                <button onclick="loadReferralList()" class="mt-4 text-blue-600 hover:text-blue-700">Try Again</button>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Display referral list
+ */
+function displayReferralList(referrals, total, totalPages) {
+    const container = document.getElementById('referralListContainer');
+
+    if (!referrals || referrals.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12 text-gray-500">
+                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <p class="font-semibold mb-2">No referrals yet</p>
+                <p class="text-sm">Start sharing your referral code to earn rewards!</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = referrals.map(ref => `
+        <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="bg-gray-100 rounded-full p-2">
+                            <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-900">${ref.referee_email || 'User'}</p>
+                            <p class="text-sm text-gray-500">Referred on ${formatDate(ref.created_at)}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2 mt-3">
+                        ${getStatusBadge(ref.status)}
+                        ${ref.subscription_tier ? `
+                            <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+                                ${ref.subscription_tier.charAt(0).toUpperCase() + ref.subscription_tier.slice(1)} Plan
+                            </span>
+                        ` : ''}
+                        ${ref.reward_granted ? `
+                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                Reward Granted
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <div class="text-right">
+                    ${ref.reward_amount ? `
+                        <p class="text-2xl font-bold text-green-600">+${ref.reward_amount}</p>
+                        <p class="text-xs text-gray-500">searches</p>
+                    ` : `
+                        <p class="text-sm text-gray-500">No reward yet</p>
+                    `}
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Update pagination
+    updatePagination(totalPages);
+}
+
+/**
+ * Get status badge HTML
+ */
+function getStatusBadge(status) {
+    const badges = {
+        pending: '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">Pending</span>',
+        active: '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Active</span>',
+        expired: '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">Expired</span>',
+        cancelled: '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Cancelled</span>'
+    };
+    return badges[status] || badges.pending;
+}
+
+/**
+ * Update pagination controls
+ */
+function updatePagination(totalPages) {
+    const container = document.getElementById('referralPagination');
+    if (!container || totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let paginationHTML = '';
+
+    // Previous button
+    paginationHTML += `
+        <button 
+            onclick="loadReferralList(${currentReferralPage - 1})"
+            ${currentReferralPage === 1 ? 'disabled' : ''}
+            class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+            Previous
+        </button>
+    `;
+
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentReferralPage - 1 && i <= currentReferralPage + 1)) {
+            paginationHTML += `
+                <button 
+                    onclick="loadReferralList(${i})"
+                    class="px-3 py-1 border ${i === currentReferralPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-50'} rounded-lg"
+                >
+                    ${i}
+                </button>
+            `;
+        } else if (i === currentReferralPage - 2 || i === currentReferralPage + 2) {
+            paginationHTML += '<span class="px-2">...</span>';
+        }
+    }
+
+    // Next button
+    paginationHTML += `
+        <button 
+            onclick="loadReferralList(${currentReferralPage + 1})"
+            ${currentReferralPage === totalPages ? 'disabled' : ''}
+            class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+            Next
+        </button>
+    `;
+
+    container.innerHTML = paginationHTML;
+}
+
+/**
+ * Load recent activity
+ */
+async function loadRecentActivity() {
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/v1/subscriptions/referral/activity?limit=10`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${CVision.getToken()}`
+                }
+            }
+        );
+
+        if (response.ok) {
+            const activities = await response.json();
+            displayRecentActivity(activities);
+        }
+    } catch (error) {
+        console.error('Error loading recent activity:', error);
+    }
+}
+
+/**
+ * Display recent activity timeline
+ */
+function displayRecentActivity(activities) {
+    const container = document.getElementById('recentActivity');
+    
+    if (!activities || activities.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500 py-8">No recent activity</p>';
+        return;
+    }
+
+    container.innerHTML = activities.map(activity => `
+        <div class="flex gap-4 pb-4 border-b border-gray-200 last:border-0">
+            <div class="flex-shrink-0 mt-1">
+                ${getActivityIcon(activity.type)}
+            </div>
+            <div class="flex-1">
+                <p class="text-gray-900">${activity.description}</p>
+                <p class="text-sm text-gray-500 mt-1">${formatDate(activity.created_at)}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+/**
+ * Get activity icon based on type
+ */
+function getActivityIcon(type) {
+    const icons = {
+        signup: '<div class="bg-blue-100 rounded-full p-2"><svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z"/></svg></div>',
+        subscription: '<div class="bg-green-100 rounded-full p-2"><svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></div>',
+        reward: '<div class="bg-purple-100 rounded-full p-2"><svg class="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg></div>',
+        cancelled: '<div class="bg-red-100 rounded-full p-2"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg></div>'
+    };
+    return icons[type] || icons.signup;
+}
+
+/**
+ * Filter referrals by status
+ */
+function filterReferrals() {
+    const select = document.getElementById('statusFilter');
+    currentStatusFilter = select.value;
+    loadReferralList(1);
+}
+
+/**
+ * Copy referral code
+ */
+async function copyReferralCode() {
+    try {
+        await navigator.clipboard.writeText(userReferralCode);
+        CVision.showMessage('Referral code copied to clipboard!', 'success');
+    } catch (error) {
+        console.error('Failed to copy:', error);
+        CVision.showMessage('Failed to copy referral code', 'error');
+    }
+}
+
+/**
+ * Copy referral link
+ */
+async function copyReferralLink() {
+    const linkInput = document.getElementById('referralLinkInput');
+    try {
+        await navigator.clipboard.writeText(linkInput.value);
+        CVision.showMessage('Referral link copied to clipboard!', 'success');
+    } catch (error) {
+        console.error('Failed to copy:', error);
+        CVision.showMessage('Failed to copy referral link', 'error');
+    }
+}
+
+/**
+ * Share via email
+ */
+function shareViaEmail() {
+    const subject = encodeURIComponent('Join me on CVision AI - AI-Powered Job Applications');
+    const body = encodeURIComponent(
+        `Hey! I've been using CVision AI for my job search and it's amazing. It uses AI to automatically find and apply to jobs that match my profile.\n\n` +
+        `Use my referral code ${userReferralCode} when you sign up and we both get bonus searches!\n\n` +
+        `Sign up here: ${window.location.origin}/signup.html?ref=${userReferralCode}`
+    );
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+/**
+ * Share via Twitter
+ */
+function shareViaTwitter() {
+    const text = encodeURIComponent(
+        `I'm using CVision AI for automated job applications. Join me with code ${userReferralCode} and get bonus searches!`
+    );
+    const url = encodeURIComponent(`${window.location.origin}/signup.html?ref=${userReferralCode}`);
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+}
+
+/**
+ * Share via LinkedIn
+ */
+function shareViaLinkedIn() {
+    const url = encodeURIComponent(`${window.location.origin}/signup.html?ref=${userReferralCode}`);
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
+}
+
+/**
+ * Share via WhatsApp
+ */
+function shareViaWhatsApp() {
+    const text = encodeURIComponent(
+        `Hey! Check out CVision AI - it uses AI to automate job applications. Use my code ${userReferralCode} when signing up: ${window.location.origin}/signup.html?ref=${userReferralCode}`
+    );
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+
+/**
+ * Export referrals to CSV
+ */
+async function exportReferrals() {
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/v1/subscriptions/referral/export`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${CVision.getToken()}`
+                }
+            }
+        );
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `referrals_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            CVision.showMessage('Referrals exported successfully', 'success');
+        } else {
+            throw new Error('Export failed');
+        }
+    } catch (error) {
+        console.error('Error exporting referrals:', error);
+        CVision.showMessage('Failed to export referrals', 'error');
+    }
+}
+
+/**
+ * Show share modal
+ */
+function showShareModal() {
+    const modal = document.getElementById('shareModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+/**
+ * Close share modal
+ */
+function closeShareModal() {
+    const modal = document.getElementById('shareModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+/**
+ * Format date for display
+ */
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+        return 'Today';
+    } else if (diffDays === 1) {
+        return 'Yesterday';
+    } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+    } else if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+    } else if (diffDays < 365) {
+        const months = Math.floor(diffDays / 30);
+        return `${months} month${months > 1 ? 's' : ''} ago`;
+    } else {
+        return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
+}
+
+/**
+ * Format currency
+ */
+function formatCurrency(amount, currency = 'USD') {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency
+    }).format(amount);
+}
+
+/**
+ * Refresh all data
+ */
+async function refreshAllData() {
+    CVision.showMessage('Refreshing data...', 'info');
+    await Promise.all([
+        loadReferralCode(),
+        loadReferralStats(),
+        loadReferralList(currentReferralPage),
+        loadRecentActivity()
+    ]);
+    CVision.showMessage('Data refreshed successfully', 'success');
+}
+
+// Auto-refresh stats every 60 seconds
+setInterval(() => {
+    loadReferralStats();
+}, 60000);
+
+// Make functions globally available
+window.copyReferralCode = copyReferralCode;
+window.copyReferralLink = copyReferralLink;
+window.shareViaEmail = shareViaEmail;
+window.shareViaTwitter = shareViaTwitter;
+window.shareViaLinkedIn = shareViaLinkedIn;
+window.shareViaWhatsApp = shareViaWhatsApp;
+window.filterReferrals = filterReferrals;
+window.exportReferrals = exportReferrals;
+window.showShareModal = showShareModal;
+window.closeShareModal = closeShareModal;
+window.loadReferralList = loadReferralList;
+window.refreshAllData = refreshAllData;
