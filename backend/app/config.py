@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     PROJECT_VERSION: str = "1.0.0"
     
     # API settings
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/v1"
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DEBUG: bool = Field(default=False, env="DEBUG")
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "https://visionsai.store",
         "https://www.visionsai.store",
-        "http://localhost:3000",
+        "http://localhost",
     ]
     ALLOWED_HOSTS: List[str] = ["*"]
     
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     DATABASE_NAME: str = Field(default="job_platform", env="DATABASE_NAME")
     
     # Redis (for caching and rate limiting) - Optional for Phase 1
-    REDIS_URL: str = Field(default="redis://localhost:6379", env="REDIS_URL")
+    REDIS_URL: str = Field(default="redis://redis:6379", env="REDIS_URL")
     
     # External APIs - Made optional for Phase 1
     OPENAI_API_KEY: str = Field(default="", env="OPENAI_API_KEY")
@@ -124,11 +124,11 @@ class Settings(BaseSettings):
     
     # Background tasks
     CELERY_BROKER_URL: str = Field(
-        default="redis://localhost:6379/0", 
+        default="redis://redis:6379/0", 
         env="CELERY_BROKER_URL"
     )
     CELERY_RESULT_BACKEND: str = Field(
-        default="redis://localhost:6379/0", 
+        default="redis://redis:6379/0", 
         env="CELERY_RESULT_BACKEND"
     )
     
@@ -141,21 +141,6 @@ class Settings(BaseSettings):
     LINKEDIN_API_KEY: Optional[str] = Field(default=None, env="LINKEDIN_API_KEY")
     GLASSDOOR_API_KEY: Optional[str] = Field(default=None, env="GLASSDOOR_API_KEY")
 
-    # Redis Configuration (Phase 2)
-    REDIS_HOST: str = Field(default="localhost", env="REDIS_HOST")
-    REDIS_PORT: int = Field(default=6379, env="REDIS_PORT")
-    REDIS_DB: int = Field(default=0, env="REDIS_DB")
-    REDIS_PASSWORD: Optional[str] = Field(default=None, env="REDIS_PASSWORD")
-
-    @property
-    def REDIS_URL(self) -> str:
-        if self.REDIS_PASSWORD:
-            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
-        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
-
-    # Celery Configuration (Phase 2)
-    CELERY_BROKER_URL: str = Field(default="redis://localhost:6379/1", env="CELERY_BROKER_URL")
-    CELERY_RESULT_BACKEND: str = Field(default="redis://localhost:6379/2", env="CELERY_RESULT_BACKEND")
 
     # Scraping Configuration (Phase 2)
     SCRAPER_USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -204,15 +189,15 @@ class Settings(BaseSettings):
     # Google OAuth (ADD THESE)
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "https://visionsai.store/api/v1/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "http://localhost/api/v1/auth/google/callback"
     
     # LinkedIn OAuth (ADD THESE)
     LINKEDIN_CLIENT_ID: str = ""
     LINKEDIN_CLIENT_SECRET: str = ""
-    LINKEDIN_REDIRECT_URI: str = "https://visionsai.store/api/v1/auth/linkedin/callback"
+    LINKEDIN_REDIRECT_URI: str = "http://localhost/api/v1/auth/linkedin/callback"
     
     # Frontend URL (ADD THIS)
-    FRONTEND_URL: str = "https://visionsai.store"
+    FRONTEND_URL: str = "http://localhost"
 
     BROWSER_AUTOMATION_URL: str = "http://browser-automation:3000"
     

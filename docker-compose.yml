@@ -109,15 +109,16 @@ services:
     environment:
       - NODE_ENV=development
       - BACKEND_URL=http://backend:8000
-    volumes:
-      - ./browser-automation:/app
-      - /app/node_modules
+    # volumes:
+    #   - ./browser-automation:/app
+    #   - /app/node_modules
     depends_on:
       - backend
     networks:
       - vision_ai_network
     cap_add:
       - SYS_ADMIN
+    command: node src/index.js
 
   nginx:
     image: nginx:alpine

@@ -1,6 +1,7 @@
 // Global configuration
 const CONFIG = {
     BASE_URL: window.location.origin,
+    API_BASE_URL: window.location.origin,
     API_PREFIX: '/api/v1',
     TOKEN_KEY: 'access_token',
     USER_KEY: 'cvision_user'

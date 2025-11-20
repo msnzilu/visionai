@@ -108,6 +108,7 @@ Thumbs.db
 *.tmproj
 *.sublime-project
 *.sublime-workspace
+*.vs
 
 # Docker
 *.dockerignore
