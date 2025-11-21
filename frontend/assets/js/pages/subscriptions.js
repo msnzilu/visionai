@@ -1,5 +1,5 @@
 // frontend/assets/js/subscriptions.js
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
 let STRIPE_PUBLISHABLE_KEY = null;
 
 let stripe;

@@ -1,6 +1,6 @@
 // Self-contained Navbar Module - FIXED to use access_token
 const CVisionNavbar = (function() {
-    const API_BASE_URL = 'http://localhost:8000';
+    const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
     const TOKEN_KEY = 'access_token'; // FIXED: Use correct token key
     let pollingInterval = null;
     let userInfo = null;

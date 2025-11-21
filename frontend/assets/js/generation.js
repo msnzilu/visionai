@@ -1,7 +1,7 @@
 // frontend/assets/js/generation.js - Phase 3 Content Generation Module
 
 const GenerationModule = (() => {
-    const API_BASE_URL = 'http://localhost:8000';
+    const API_BASE_URL = `${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}`;
     let currentGeneration = null;
 
     // Define utility functions FIRST before they're used

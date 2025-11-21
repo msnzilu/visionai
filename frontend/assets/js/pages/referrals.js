@@ -1,6 +1,6 @@
 // frontend/assets/js/referrals.js - Referral Management System
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
 let currentReferralPage = 1;
 let referralPageSize = 10;
 let currentStatusFilter = 'all';

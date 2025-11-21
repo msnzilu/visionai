@@ -41,7 +41,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
     
-    # Phase 2: Initialize Redis cache
     try:
         await init_cache()
         logger.info("Redis cache initialized")
@@ -53,7 +52,6 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down CVision...")
     
-    # Phase 2: Close cache connection
     try:
         await close_cache()
         logger.info("Cache connection closed")
@@ -86,6 +84,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Mount uploads directory (create if it doesn't exist)

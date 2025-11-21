@@ -1,7 +1,7 @@
 // frontend/assets/js/browser-automation.js
 
 const BrowserAutomation = {
-    API_BASE_URL: 'http://localhost:8000',
+    const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
     
     /**
      * Start browser automation for a job application

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     PROJECT_VERSION: str = "1.0.0"
     
     # API settings
-    API_V1_STR: str = "/v1"
+    API_V1_STR: str = "/api/v1"
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DEBUG: bool = Field(default=False, env="DEBUG")
@@ -31,10 +31,12 @@ class Settings(BaseSettings):
     PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 24
 
     CORS_ORIGINS: List[str] = [
-        "https://visionsai.store",
-        "https://www.visionsai.store",
-        "http://localhost",
-    ]
+    "http://localhost",      # Matches your browser origin (port 80 implied)
+    "http://localhost:80",
+    "http://127.0.0.1",
+    "http://172.18.0.1",     # Docker gateway from logs
+]
+
     ALLOWED_HOSTS: List[str] = ["*"]
     
     # Database

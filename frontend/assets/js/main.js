@@ -100,7 +100,7 @@ const Utils = {
 const API = {
     // Make authenticated request
     async request(endpoint, options = {}) {
-        const url = `${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}${endpoint}`;
+        const url = `${CONFIG.API_BASE_URL}`;
         const token = Utils.getToken();
 
         const config = {
