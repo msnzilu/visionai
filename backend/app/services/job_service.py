@@ -158,28 +158,6 @@ class JobService:
                 salary_query["$lte"] = filters.salary_max
             mongo_query["salary_range.min_amount"] = salary_query
         
-        if filters and filters.posted_after:
-            mongo_query["posted_date"] = {"$gte": filters.posted_after}
-        
-        if filters and filters.skills:
-            mongo_query["skills_required"] = {"$in": filters.skills}
-        
-        # Always trigger scraping for fresh results when query/location provided
-        if query or location:
-            # Only scrape if we have no jobs or they're old
-            recent_count = await self.jobs_collection.count_documents({
-                "created_at": {"$gte": datetime.utcnow() - timedelta(hours=1)},
-                "status": JobStatus.ACTIVE
-            })
-            
-            if recent_count == 0:
-                logger.info(f"No recent jobs, triggering scrape for: {query} in {location}")
-                await self._scrape_and_populate(query or "jobs", location or "remote")
-        
-        # Query database for total count
-        total = await self.jobs_collection.count_documents(mongo_query)
-        
-        # Query database
         skip = (page - 1) * size
         cursor = self.jobs_collection.find(mongo_query)
         cursor = cursor.sort("created_at", -1)

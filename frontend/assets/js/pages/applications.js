@@ -1,4 +1,4 @@
-const API_BASE_URL = `${CONFIG.API_BASE_URL}${endpoint}`;
+const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
 let currentTab = 'applications';
 let notificationPollingInterval = null;
 

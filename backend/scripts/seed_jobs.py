@@ -111,8 +111,8 @@ async def seed_jobs(num_jobs: int = 50):
     jobs_collection = db.jobs
     
     # Clear existing jobs (optional - comment out if you want to keep existing data)
-    # await jobs_collection.delete_many({})
-    # print("🗑️  Cleared existing jobs")
+    await jobs_collection.delete_many({})
+    print("🗑️  Cleared existing jobs")
     
     jobs = []
     now = datetime.utcnow()
@@ -135,7 +135,7 @@ async def seed_jobs(num_jobs: int = 50):
         
         job = {
             "title": title,
-            "company": company,
+            "company_name": company,  # Changed from company to company_name to match model
             "location": location,
             "description": generate_job_description(title, company),
             "employment_type": random.choice(EMPLOYMENT_TYPES),
@@ -153,11 +153,13 @@ async def seed_jobs(num_jobs: int = 50):
             "source": random.choice(["linkedin", "indeed", "glassdoor", "company_website"]),
             "posted_date": posted_date,
             "application_deadline": deadline,
+            "status": "active",
             "is_active": True,
             "view_count": random.randint(0, 500),
             "application_count": random.randint(0, 50),
             "created_at": posted_date,
             "updated_at": posted_date,
+            "external_id": unique_id,
             "metadata": {
                 "scraped": False,
                 "verified": True,
@@ -183,7 +185,7 @@ async def seed_jobs(num_jobs: int = 50):
     
     # Print some stats
     print("\n📊 Job Statistics:")
-    print(f"   Companies: {len(set(j['company'] for j in jobs))}")
+    print(f"   Companies: {len(set(j['company_name'] for j in jobs))}")
     print(f"   Locations: {len(set(j['location'] for j in jobs))}")
     print(f"   Remote jobs: {sum(1 for j in jobs if j['remote_allowed'])}")
     print(f"   Visa sponsorship: {sum(1 for j in jobs if j['visa_sponsorship'])}")

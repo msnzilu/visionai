@@ -125,8 +125,6 @@ async function handleFileUpload(event) {
             body: formData
         });
 
-        console.log('📡 Response status:', response.status);
-
         if (!response.ok) {
             const errorData = await response.json();
             console.error('❌ Upload error:', errorData);
@@ -134,7 +132,6 @@ async function handleFileUpload(event) {
         }
 
         const result = await response.json();
-        console.log('✅ Upload successful:', result);
 
         CVision.Utils.showAlert('CV uploaded successfully! Processing...', 'success');
 
@@ -147,7 +144,6 @@ async function handleFileUpload(event) {
         event.target.value = '';
 
     } catch (error) {
-        console.error('❌ Upload error:', error);
         CVision.Utils.showAlert(`Upload failed: ${error.message}`, 'error');
     } finally {
         uploadLoading.classList.add('hidden');
@@ -171,7 +167,7 @@ async function loadUserProfile() {
             }
         }
     } catch (error) {
-        console.error('Error loading user profile:', error);
+        console.error('Error loading user profile:');
     }
 }
 
@@ -216,7 +212,6 @@ async function loadDocuments() {
             `${documents.length} doc${documents.length !== 1 ? 's' : ''}`;
 
     } catch (error) {
-        console.error('Error loading documents:', error);
         CVision.Utils.showAlert('Failed to load documents', 'error');
     }
 }

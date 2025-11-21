@@ -1,5 +1,4 @@
-// frontend/assets/js/jobs.js - Complete with Phase 3 & Phase 6 Integration
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
 
 let currentPage = 1;
 let currentFilters = {};
@@ -17,9 +16,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '../login.html';
         return;
     }
-    
+
     initializeJobSearch();
-    
+
     // Load existing jobs from database on page load
     await loadJobsFromDB();
 });
@@ -61,55 +60,10 @@ function initializeJobSearch() {
     }
 }
 
-// async function loadJobsFromDB() {
-//     const searchData = {
-//         query: null,
-//         location: null,
-//         filters: {},
-//         page: 1,
-//         size: 20
-//     };
-
-//     try {
-//         showLoading();
-        
-//         const response = await fetch(`${API_BASE_URL}/api/v1/jobs/search`, {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json',
-//                 'Authorization': `Bearer ${CVision.Utils.getToken()}`
-//             },
-//             body: JSON.stringify(searchData)
-//         });
-
-//         if (!response.ok) {
-//             throw new Error('Failed to load jobs');
-//         }
-
-//         const data = await response.json();
-//         currentJobs = data.jobs || [];
-        
-//         document.getElementById('loadingState').classList.add('hidden');
-        
-//         if (currentJobs.length === 0) {
-//             document.getElementById('resultsCount').textContent = 'No jobs available yet. Try searching to load fresh jobs!';
-//             showEmptyState();
-//         } else {
-//             displayJobs(currentJobs);
-//             updateResultsCount(data.total, currentJobs.length);
-//             updatePagination(data.page, data.pages);
-//         }
-//     } catch (error) {
-//         console.error('Error loading jobs:', error);
-//         document.getElementById('loadingState').classList.add('hidden');
-//         showEmptyState();
-//     }
-// }
-
 async function loadJobsFromDB() {
     try {
         showLoading();
-        
+
         // First, try to load user's saved jobs
         const savedResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/saved/me?page=1&size=20`, {
             headers: {
@@ -120,9 +74,9 @@ async function loadJobsFromDB() {
         if (savedResponse.ok) {
             const savedJobs = await savedResponse.json();
             currentJobs = savedJobs || [];
-            
+
             document.getElementById('loadingState').classList.add('hidden');
-            
+
             if (currentJobs.length === 0) {
                 // Show message encouraging user to search
                 document.getElementById('resultsCount').textContent = 'No saved jobs yet. Search for jobs to get started!';
@@ -166,7 +120,7 @@ function showEmptyStateWithSearchPrompt() {
 async function loadUserJobHistory() {
     try {
         showLoading();
-        
+
         // This would load jobs from user's search history
         const response = await fetch(`${API_BASE_URL}/api/v1/jobs/history/me?page=1&size=20`, {
             headers: {
@@ -177,9 +131,9 @@ async function loadUserJobHistory() {
         if (response.ok) {
             const data = await response.json();
             currentJobs = data.jobs || [];
-            
+
             document.getElementById('loadingState').classList.add('hidden');
-            
+
             if (currentJobs.length === 0) {
                 showEmptyStateWithSearchPrompt();
             } else {
@@ -221,7 +175,7 @@ async function performSearch(page = 1, sortBy = 'relevance') {
 
     try {
         showLoading();
-        
+
         const response = await fetch(`${API_BASE_URL}/api/v1/jobs/search`, {
             method: 'POST',
             headers: {
@@ -237,7 +191,7 @@ async function performSearch(page = 1, sortBy = 'relevance') {
 
         const data = await response.json();
         currentJobs = data.jobs || [];
-        
+
         if (currentJobs.length === 0) {
             showEmptyState();
         } else {
@@ -291,7 +245,7 @@ function clearFilters() {
     document.getElementById('salaryMin').value = '';
     document.getElementById('salaryMax').value = '';
     currentFilters = {};
-    
+
     if (currentQuery || currentLocation) {
         performSearch(1);
     } else {
@@ -361,9 +315,9 @@ function createJobCard(job) {
 
             ${job.skills_required && job.skills_required.length > 0 ? `
                 <div class="mt-4 flex flex-wrap gap-2">
-                    ${job.skills_required.slice(0, 5).map(skill => 
-                        `<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">${skill}</span>`
-                    ).join('')}
+                    ${job.skills_required.slice(0, 5).map(skill =>
+        `<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">${skill}</span>`
+    ).join('')}
                     ${job.skills_required.length > 5 ? `
                         <span class="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs">+${job.skills_required.length - 5} more</span>
                     ` : ''}
@@ -452,9 +406,9 @@ function showJobDetails(jobId) {
             <div class="mt-4">
                 <h4 class="font-semibold mb-2">Required Skills</h4>
                 <div class="flex flex-wrap gap-2">
-                    ${job.skills_required.map(skill => 
-                        `<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded">${skill}</span>`
-                    ).join('')}
+                    ${job.skills_required.map(skill =>
+        `<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded">${skill}</span>`
+    ).join('')}
                 </div>
             </div>
         ` : ''}
@@ -477,7 +431,7 @@ function showJobDetails(jobId) {
     `;
 
     document.getElementById('modalSaveJob').onclick = () => saveJob(jobId);
-    
+
     // Phase 3: Update customize button
     const customizeBtn = document.getElementById('modalCustomize');
     if (customizeBtn) {
@@ -486,7 +440,7 @@ function showJobDetails(jobId) {
             showCustomizeModal(jobId);
         };
     }
-    
+
     // Phase 6: Update apply button with browser automation
     const applyBtn = document.getElementById('modalApply');
     if (applyBtn) {
@@ -517,7 +471,7 @@ async function saveJob(jobId) {
         if (!response.ok) throw new Error('Failed to save job');
 
         CVision.Utils.showAlert('Job saved successfully!', 'success');
-        
+
         const saveBtn = document.querySelector(`[onclick*="saveJob('${jobId}')"]`);
         if (saveBtn) {
             saveBtn.innerHTML = `
@@ -539,28 +493,28 @@ function updateResultsCount(total, showing) {
 
 function updatePagination(currentPage, totalPages) {
     const container = document.getElementById('pagination');
-    
+
     if (totalPages <= 1) {
         container.classList.add('hidden');
         return;
     }
-    
+
     container.classList.remove('hidden');
     container.innerHTML = '';
-    
+
     if (currentPage > 1) {
         const prevBtn = createPageButton('Previous', currentPage - 1);
         container.appendChild(prevBtn);
     }
-    
+
     const startPage = Math.max(1, currentPage - 2);
     const endPage = Math.min(totalPages, currentPage + 2);
-    
+
     for (let i = startPage; i <= endPage; i++) {
         const pageBtn = createPageButton(i, i, i === currentPage);
         container.appendChild(pageBtn);
     }
-    
+
     if (currentPage < totalPages) {
         const nextBtn = createPageButton('Next', currentPage + 1);
         container.appendChild(nextBtn);
@@ -598,12 +552,12 @@ function formatEnumValue(value) {
 
 function formatDate(dateStr) {
     if (!dateStr) return 'recently';
-    
+
     const date = new Date(dateStr);
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'today';
     if (diffDays === 1) return 'yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -614,11 +568,11 @@ function formatDate(dateStr) {
 // Phase 3: Batch selection functions
 function toggleBatchMode(enabled) {
     batchModeActive = enabled;
-    
+
     if (!enabled) {
         clearBatchSelection();
     }
-    
+
     // Re-render jobs to show/hide checkboxes
     displayJobs(currentJobs);
 }
@@ -635,7 +589,7 @@ function toggleJobSelection(jobId, checkbox) {
 function updateBatchSelectionBar() {
     const bar = document.getElementById('batchSelectionBar');
     const count = document.getElementById('selectedCount');
-    
+
     if (bar && count) {
         count.textContent = selectedJobs.size;
         bar.style.display = selectedJobs.size > 0 ? 'block' : 'none';
@@ -715,13 +669,13 @@ async function applyToJob(jobId) {
         CVision.Utils.showAlert('Job not found', 'error');
         return;
     }
-    
+
     // Check if job has application URL
     if (!job.external_url && !job.apply_url) {
         CVision.Utils.showAlert('This job does not have an application link', 'warning');
         return;
     }
-    
+
     // Show modal to select CV and cover letter
     await showApplyModal(jobId);
 }
@@ -731,7 +685,7 @@ async function applyToJob(jobId) {
  */
 async function showApplyModal(jobId) {
     const job = currentJobs.find(j => (j._id || j.id) === jobId);
-    
+
     // Create modal HTML
     const modalHTML = `
         <div id="applyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -799,10 +753,10 @@ async function showApplyModal(jobId) {
             </div>
         </div>
     `;
-    
+
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
+
     // Load user's CVs and cover letters
     await loadApplyModalDocuments();
 }
@@ -818,11 +772,11 @@ async function loadApplyModalDocuments() {
                 'Authorization': `Bearer ${CVision.Utils.getToken()}`
             }
         });
-        
+
         if (cvResponse.ok) {
             const cvData = await cvResponse.json();
             const cvSelect = document.getElementById('applyModalCvSelect');
-            
+
             if (cvData.documents && cvData.documents.length > 0) {
                 cvSelect.innerHTML = cvData.documents.map(doc => `
                     <option value="${doc.id}">${doc.filename}</option>
@@ -831,18 +785,18 @@ async function loadApplyModalDocuments() {
                 cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
             }
         }
-        
+
         // Load cover letters
         const clResponse = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cover_letter`, {
             headers: {
                 'Authorization': `Bearer ${CVision.Utils.getToken()}`
             }
         });
-        
+
         if (clResponse.ok) {
             const clData = await clResponse.json();
             const clSelect = document.getElementById('applyModalCoverLetterSelect');
-            
+
             if (clData.documents && clData.documents.length > 0) {
                 clSelect.innerHTML = '<option value="">No cover letter</option>' +
                     clData.documents.map(doc => `
@@ -850,7 +804,7 @@ async function loadApplyModalDocuments() {
                     `).join('');
             }
         }
-        
+
     } catch (error) {
         console.error('Failed to load documents:', error);
         CVision.Utils.showAlert('Failed to load documents', 'error');
@@ -863,14 +817,14 @@ async function loadApplyModalDocuments() {
 async function startBrowserAutofill(jobId) {
     const cvId = document.getElementById('applyModalCvSelect')?.value;
     const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
-    
+
     if (!cvId) {
         CVision.Utils.showAlert('Please select a CV', 'warning');
         return;
     }
-    
+
     closeApplyModal();
-    
+
     try {
         // Check if BrowserAutomation module is loaded
         if (typeof BrowserAutomation === 'undefined') {
@@ -883,17 +837,17 @@ async function startBrowserAutofill(jobId) {
             }
             return;
         }
-        
+
         // Start browser automation
         await BrowserAutomation.startAutofill(
             jobId,
             cvId,
             coverLetterId || null
         );
-        
+
         // Track application
         await trackApplication(jobId, cvId, coverLetterId);
-        
+
     } catch (error) {
         console.error('Browser automation failed:', error);
         CVision.Utils.showAlert(error.message || 'Failed to start browser automation', 'error');
@@ -919,7 +873,7 @@ async function trackApplication(jobId, cvId, coverLetterId) {
                 applied_via: 'browser_automation'
             })
         });
-        
+
         if (response.ok) {
             console.log('Application tracked successfully');
         }
@@ -944,18 +898,18 @@ function closeApplyModal() {
 
 async function showCustomizeModal(jobId) {
     console.log('showCustomizeModal called with jobId:', jobId);
-    
+
     currentJobIdForCustomize = jobId;
-    
+
     const modal = document.getElementById('customizeModal');
     if (!modal) {
         console.error('Customize modal not found');
         return;
     }
-    
+
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    
+
     await loadUserCVs();
     await checkGenerationLimits();
     setupTemplateSelector();
@@ -982,10 +936,10 @@ async function loadUserCVs() {
 
         const data = await response.json();
         const cvs = data.documents || [];
-        
+
         const select = document.getElementById('cvSelect');
         if (!select) return cvs;
-        
+
         if (cvs.length > 0) {
             select.innerHTML = cvs.map(doc => `
                 <option value="${doc.id}">
@@ -995,7 +949,7 @@ async function loadUserCVs() {
         } else {
             select.innerHTML = '<option value="">No CVs found - Upload a CV first</option>';
         }
-        
+
         return cvs;
     } catch (error) {
         console.error('Failed to load CVs:', error);
@@ -1015,16 +969,16 @@ async function checkGenerationLimits() {
 
         const user = await response.json();
         const tier = user.subscription_tier || 'free';
-        
+
         const limits = {
             'free': 1,
             'basic': 150,
             'premium': 200
         };
-        
+
         const used = user.usage_stats?.monthly_searches || 0;
         const remaining = Math.max(0, limits[tier] - used);
-        
+
         const warningDiv = document.getElementById('usageWarning');
         if (warningDiv && remaining <= 5) {
             warningDiv.style.display = 'block';
@@ -1040,9 +994,9 @@ async function checkGenerationLimits() {
 
 function setupTemplateSelector() {
     const options = document.querySelectorAll('.template-option');
-    
+
     options.forEach(option => {
-        option.addEventListener('click', function() {
+        option.addEventListener('click', function () {
             options.forEach(o => {
                 o.classList.remove('active', 'border-primary-500');
                 o.classList.add('border-gray-200');
@@ -1054,9 +1008,9 @@ function setupTemplateSelector() {
 
     const coverLetterCheckbox = document.getElementById('includeCoverLetter');
     const coverLetterOptions = document.getElementById('coverLetterOptions');
-    
+
     if (coverLetterCheckbox && coverLetterOptions) {
-        coverLetterCheckbox.addEventListener('change', function() {
+        coverLetterCheckbox.addEventListener('change', function () {
             coverLetterOptions.style.display = this.checked ? 'block' : 'none';
         });
     }
@@ -1064,10 +1018,10 @@ function setupTemplateSelector() {
 
 async function startCustomization() {
     console.log('startCustomization - currentJobIdForCustomize:', currentJobIdForCustomize);
-    
+
     const cvSelect = document.getElementById('cvSelect');
     const cvId = cvSelect ? cvSelect.value : null;
-    
+
     if (!cvId) {
         CVision.Utils.showAlert('Please select a CV', 'error');
         return;
@@ -1084,10 +1038,10 @@ async function startCustomization() {
 
     const activeTemplate = document.querySelector('.template-option.active');
     const template = activeTemplate ? activeTemplate.dataset.template : 'professional';
-    
+
     const includeCoverLetterCheckbox = document.getElementById('includeCoverLetter');
     const includeCoverLetter = includeCoverLetterCheckbox ? includeCoverLetterCheckbox.checked : true;
-    
+
     const toneSelect = document.getElementById('toneSelect');
     const tone = toneSelect ? toneSelect.value : 'professional';
 

@@ -1,8 +1,9 @@
-// frontend/assets/js/browser-automation.js
-
 const BrowserAutomation = {
-    const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
-    
+
+    get API_BASE_URL() {
+        return CONFIG.API_BASE_URL;
+    },
+
     /**
      * Start browser automation for a job application
      */
@@ -12,10 +13,10 @@ const BrowserAutomation = {
             if (!token) {
                 throw new Error('Not authenticated');
             }
-            
+
             // Show loading state
             CVision.Utils.showAlert('Starting browser automation...', 'info');
-            
+
             const response = await fetch(`${this.API_BASE_URL}/api/v1/browser-automation/autofill/start`, {
                 method: 'POST',
                 headers: {
@@ -28,24 +29,24 @@ const BrowserAutomation = {
                     cover_letter_id: coverLetterId
                 })
             });
-            
+
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.detail || 'Failed to start browser automation');
             }
-            
+
             const result = await response.json();
-            
+
             CVision.Utils.showAlert(
                 'Browser window opened! Your information is being filled automatically.',
                 'success'
             );
-            
+
             // Poll for status updates
             this.pollAutofillStatus(result.session_id);
-            
+
             return result;
-            
+
         } catch (error) {
             console.error('Browser automation error:', error);
             CVision.Utils.showAlert(
@@ -55,13 +56,13 @@ const BrowserAutomation = {
             throw error;
         }
     },
-    
+
     /**
      * Poll for autofill session status
      */
     async pollAutofillStatus(sessionId, maxAttempts = 30) {
         let attempts = 0;
-        
+
         const checkStatus = async () => {
             try {
                 const token = CVision.Utils.getToken();
@@ -73,10 +74,10 @@ const BrowserAutomation = {
                         }
                     }
                 );
-                
+
                 if (response.ok) {
                     const status = await response.json();
-                    
+
                     if (status.status === 'completed') {
                         CVision.Utils.showAlert(
                             `Successfully filled ${status.filled_fields.length} fields!`,
@@ -91,20 +92,20 @@ const BrowserAutomation = {
                         return true;
                     }
                 }
-                
+
                 attempts++;
                 if (attempts < maxAttempts) {
                     setTimeout(checkStatus, 2000); // Check every 2 seconds
                 }
-                
+
             } catch (error) {
                 console.error('Status check error:', error);
             }
         };
-        
+
         checkStatus();
     },
-    
+
     /**
      * Submit feedback for ML training
      */
@@ -122,11 +123,11 @@ const BrowserAutomation = {
                     body: JSON.stringify(corrections)
                 }
             );
-            
+
             if (response.ok) {
                 CVision.Utils.showAlert('Feedback submitted successfully', 'success');
             }
-            
+
         } catch (error) {
             console.error('Feedback submission error:', error);
         }
