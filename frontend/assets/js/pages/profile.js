@@ -1,11 +1,11 @@
-const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
+// Use CONFIG.API_BASE_URL and CONFIG.API_PREFIX for all API calls
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     if (!CVision.Utils.isAuthenticated()) {
         window.location.href = '../login.html';
         return;
     }
-    
+
     initializeProfile();
 });
 
@@ -18,7 +18,7 @@ async function initializeProfile() {
 async function loadUserProfile() {
     try {
         // Get user info from /users/me
-        const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me`, {
             headers: {
                 'Authorization': `Bearer ${CVision.Utils.getToken()}`,
                 'Content-Type': 'application/json'
@@ -36,7 +36,7 @@ async function loadUserProfile() {
         document.getElementById('userName').textContent = user.full_name || user.email.split('@')[0];
         document.getElementById('userEmail').textContent = user.email;
         document.getElementById('userInitial').textContent = (user.full_name || user.email)[0].toUpperCase();
-        document.getElementById('subscriptionBadge').textContent = 
+        document.getElementById('subscriptionBadge').textContent =
             user.subscription_tier.charAt(0).toUpperCase() + user.subscription_tier.slice(1);
 
         // Update basic form fields
@@ -45,7 +45,7 @@ async function loadUserProfile() {
 
         // Get detailed profile if available
         try {
-            const profileResponse = await fetch(`${API_BASE_URL}/api/v1/users/me/profile`, {
+            const profileResponse = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/profile`, {
                 headers: {
                     'Authorization': `Bearer ${CVision.Utils.getToken()}`,
                     'Content-Type': 'application/json'
@@ -61,16 +61,18 @@ async function loadUserProfile() {
                 document.getElementById('phone').value = personalInfo.phone || '';
                 document.getElementById('location').value = personalInfo.location || '';
                 document.getElementById('linkedin').value = personalInfo.linkedin || '';
+            } else {
+                console.warn('Detailed profile not available (this is OK)');
             }
         } catch (profileError) {
-            console.warn('Could not load detailed profile:', profileError);
+            console.warn('Could not load detailed profile (this is OK):', profileError);
         }
 
         // Update usage stats
         if (user.usage_stats) {
             const searches = user.usage_stats.monthly_searches || 0;
-            const maxSearches = user.subscription_tier === 'free' ? 1 : 
-                              user.subscription_tier === 'basic' ? 150 : 200;
+            const maxSearches = user.subscription_tier === 'free' ? 1 :
+                user.subscription_tier === 'basic' ? 150 : 200;
 
             document.getElementById('searchesUsed').textContent = `${searches}/${maxSearches}`;
             document.getElementById('searchesBar').style.width = `${(searches / maxSearches) * 100}%`;
@@ -79,7 +81,7 @@ async function loadUserProfile() {
 
         // Load preferences
         try {
-            const prefsResponse = await fetch(`${API_BASE_URL}/api/v1/users/me/preferences`, {
+            const prefsResponse = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/preferences`, {
                 headers: {
                     'Authorization': `Bearer ${CVision.Utils.getToken()}`,
                     'Content-Type': 'application/json'
@@ -107,10 +109,12 @@ async function loadUserProfile() {
 
 async function loadRecentGenerations() {
     try {
-        const history = await GenerationModule.getHistory(1);
-        if (history && history.documents && history.documents.length > 0) {
-            displayRecentGenerations(history.documents.slice(0, 5));
-        }
+        // TODO: Implement generation history API
+        // const history = await CVision.API.request('/generation/history?page=1');
+        // if (history && history.documents && history.documents.length > 0) {
+        //     displayRecentGenerations(history.documents.slice(0, 5));
+        // }
+        console.log('[INFO] Generation history not yet implemented');
     } catch (error) {
         console.error('Error loading generations:', error);
     }
@@ -118,9 +122,9 @@ async function loadRecentGenerations() {
 
 function displayRecentGenerations(generations) {
     const container = document.getElementById('recentGenerations');
-    
+
     if (generations.length === 0) return;
-    
+
     container.innerHTML = generations.map(gen => `
         <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
@@ -156,7 +160,7 @@ function setupForms() {
             // Step 1: Update full_name using existing PUT /me endpoint
             if (fullName) {
                 console.log('[PERSONAL INFO] Step 1: Updating name via PUT /me');
-                const nameResponse = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+                const nameResponse = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${CVision.Utils.getToken()}`,
@@ -178,9 +182,9 @@ function setupForms() {
             // Step 2: Update contact info - get current user data first
             if (phone || location || linkedin) {
                 console.log('[PERSONAL INFO] Step 2: Getting current profile data');
-                
+
                 // Get current profile to preserve existing data
-                const currentProfileResponse = await fetch(`${API_BASE_URL}/api/v1/users/me/profile`, {
+                const currentProfileResponse = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/profile`, {
                     headers: {
                         'Authorization': `Bearer ${CVision.Utils.getToken()}`,
                         'Content-Type': 'application/json'
@@ -194,7 +198,7 @@ function setupForms() {
                 }
 
                 // Get current user for first_name and last_name
-                const userResponse = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+                const userResponse = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me`, {
                     headers: {
                         'Authorization': `Bearer ${CVision.Utils.getToken()}`,
                         'Content-Type': 'application/json'
@@ -207,7 +211,7 @@ function setupForms() {
                 }
 
                 console.log('[PERSONAL INFO] Step 3: Updating contact info via PUT /me/profile');
-                
+
                 // Merge with existing profile data and include required fields
                 const profileData = {
                     personal_info: {
@@ -221,7 +225,7 @@ function setupForms() {
 
                 console.log('[PERSONAL INFO] Sending profile data:', profileData);
 
-                const profileResponse = await fetch(`${API_BASE_URL}/api/v1/users/me/profile`, {
+                const profileResponse = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/profile`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${CVision.Utils.getToken()}`,
@@ -234,15 +238,15 @@ function setupForms() {
                     const error = await profileResponse.json();
                     console.error('[PERSONAL INFO] Profile update error:', error);
                     console.error('[PERSONAL INFO] Error details:', JSON.stringify(error, null, 2));
-                    
+
                     // Parse validation errors if they exist
                     if (Array.isArray(error.detail)) {
-                        const errorMessages = error.detail.map(err => 
+                        const errorMessages = error.detail.map(err =>
                             `${err.loc ? err.loc.join('.') : 'unknown'}: ${err.msg}`
                         ).join(', ');
                         throw new Error(errorMessages);
                     }
-                    
+
                     throw new Error(error.detail || 'Failed to update contact information');
                 }
                 console.log('[PERSONAL INFO] ✓ Contact info updated');
@@ -250,7 +254,7 @@ function setupForms() {
 
             console.log('[PERSONAL INFO] ✓ All fields saved successfully');
             CVision.Utils.showAlert('Personal information updated successfully', 'success');
-            
+
             // Refresh navbar to show updated name
             if (window.CVisionNavbar && window.CVisionNavbar.refreshUserInfo) {
                 await window.CVisionNavbar.refreshUserInfo();
@@ -276,7 +280,7 @@ function setupForms() {
         console.log('[PREFERENCES] Saving:', preferencesData);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/users/me/preferences`, {
+            const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/preferences`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${CVision.Utils.getToken()}`,
@@ -324,10 +328,10 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     const now = new Date();
     const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
-    
+
     return date.toLocaleDateString();
 }
