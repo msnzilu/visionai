@@ -1,4 +1,3 @@
-# backend/app/services/job_service.py
 """
 Job service - Core business logic for job management
 """
@@ -36,84 +35,6 @@ class JobService:
         except ImportError:
             logger.warning("RemoteOK client not available")
             self.remoteok_client = None
-        
-    # async def search_jobs(
-    #     self,
-    #     query: Optional[str] = None,
-    #     location: Optional[str] = None,
-    #     filters: Optional[JobFilter] = None,
-    #     page: int = 1,
-    #     size: int = 20,
-    #     user_id: Optional[str] = None
-    # ) -> Dict[str, Any]:
-    #     """Search jobs - always scrape fresh results, then query database"""
-        
-    #     # Build MongoDB query
-    #     mongo_query = {"status": JobStatus.ACTIVE}
-        
-    #     if query:
-    #         mongo_query["$text"] = {"$search": query}
-        
-    #     if location and filters and not filters.remote_only:
-    #         mongo_query["location"] = {"$regex": location, "$options": "i"}
-        
-    #     if filters and filters.remote_only:
-    #         from app.models.job import WorkArrangement
-    #         mongo_query["work_arrangement"] = WorkArrangement.REMOTE
-        
-    #     if filters and filters.employment_types:
-    #         mongo_query["employment_type"] = {"$in": filters.employment_types}
-        
-    #     if filters and filters.experience_levels:
-    #         mongo_query["experience_level"] = {"$in": filters.experience_levels}
-        
-    #     if filters and (filters.salary_min or filters.salary_max):
-    #         salary_query = {}
-    #         if filters.salary_min:
-    #             salary_query["$gte"] = filters.salary_min
-    #         if filters.salary_max:
-    #             salary_query["$lte"] = filters.salary_max
-    #         mongo_query["salary_range.min_amount"] = salary_query
-        
-    #     if filters and filters.posted_after:
-    #         mongo_query["posted_date"] = {"$gte": filters.posted_after}
-        
-    #     if filters and filters.skills:
-    #         mongo_query["skills_required"] = {"$in": filters.skills}
-        
-    #     # Always trigger scraping for fresh results when query/location provided
-    #     if query or location:
-    #         logger.info(f"Triggering scrape for: {query} in {location}")
-    #         await self._scrape_and_populate(query or "jobs", location or "remote")
-        
-    #     # Query database for total count
-    #     total = await self.jobs_collection.count_documents(mongo_query)
-        
-    #     # Query database
-    #     skip = (page - 1) * size
-    #     cursor = self.jobs_collection.find(mongo_query)
-    #     cursor = cursor.sort("created_at", -1)
-    #     cursor = cursor.skip(skip).limit(size)
-        
-    #     jobs_data = await cursor.to_list(length=size)
-    #     jobs = [self._doc_to_job_response(doc) for doc in jobs_data]
-        
-    #     pages = (total + size - 1) // size if total > 0 else 0
-        
-    #     # Build result
-    #     result = {
-    #         "jobs": jobs,
-    #         "total": total,
-    #         "page": page,
-    #         "size": size,
-    #         "pages": pages,
-    #         "has_next": page < pages,
-    #         "has_prev": page > 1,
-    #         "filters_applied": filters.dict() if filters else {},
-    #         "search_query": query
-    #     }
-        
-    #     return result
 
     async def search_jobs(
         self,
@@ -129,7 +50,7 @@ class JobService:
         # Build MongoDB query
         mongo_query = {"status": JobStatus.ACTIVE}
         
-        # CHANGED: Use regex instead of text search
+        # Use regex instead of text search
         if query:
             mongo_query["$or"] = [
                 {"title": {"$regex": query, "$options": "i"}},
@@ -158,13 +79,30 @@ class JobService:
                 salary_query["$lte"] = filters.salary_max
             mongo_query["salary_range.min_amount"] = salary_query
         
+        if filters and filters.posted_after:
+            mongo_query["posted_date"] = {"$gte": filters.posted_after}
+        
+        if filters and filters.skills:
+            mongo_query["skills_required"] = {"$in": filters.skills}
+        
+        # Always trigger scraping for fresh results when query/location provided
+        if query or location:
+            logger.info(f"Triggering scrape for: {query} in {location}")
+            await self._scrape_and_populate(query or "jobs", location or "remote")
+        
+        # Query database for total count
+        total = await self.jobs_collection.count_documents(mongo_query)
+        
+        # Query database
         skip = (page - 1) * size
         cursor = self.jobs_collection.find(mongo_query)
         cursor = cursor.sort("created_at", -1)
         cursor = cursor.skip(skip).limit(size)
         
         jobs_data = await cursor.to_list(length=size)
-        jobs = [self._doc_to_job_response(doc) for doc in jobs_data]
+        
+        # Convert to dict format to avoid Pydantic validation issues
+        jobs = [self._doc_to_dict(doc) for doc in jobs_data]
         
         pages = (total + size - 1) // size if total > 0 else 0
         
@@ -182,6 +120,46 @@ class JobService:
         }
         
         return result
+    
+    def _doc_to_dict(self, doc: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert MongoDB document to dict with all required JobResponse fields"""
+        # Convert ObjectId to string
+        job_dict = {
+            "id": str(doc.get("_id")),
+            "title": doc.get("title", ""),
+            "description": doc.get("description", ""),
+            "company_name": doc.get("company_name", ""),
+            "location": doc.get("location", ""),
+            "employment_type": doc.get("employment_type"),
+            "work_arrangement": doc.get("work_arrangement"),
+            "experience_level": doc.get("experience_level"),
+            "salary_range": doc.get("salary_range"),
+            "requirements": doc.get("requirements", []),
+            "benefits": doc.get("benefits", []),
+            "skills_required": doc.get("skills_required", []),
+            "skills_preferred": doc.get("skills_preferred", []),
+            "status": doc.get("status", JobStatus.ACTIVE),
+            "source": doc.get("source", JobSource.MANUAL),
+            "external_url": doc.get("external_url"),
+            "company_info": doc.get("company_info"),
+            "posted_date": doc.get("posted_date"),
+            "application_deadline": doc.get("application_deadline"),
+            "created_at": doc.get("created_at", datetime.utcnow()),
+            "updated_at": doc.get("updated_at", datetime.utcnow()),
+            "relevance_score": doc.get("relevance_score"),
+            "match_score": doc.get("match_score"),
+            "view_count": doc.get("view_count", 0),
+            "application_count": doc.get("application_count", 0),
+            "is_featured": doc.get("is_featured", False),
+            "tags": doc.get("tags", [])
+        }
+        
+        # Convert datetime objects to ISO strings for JSON serialization
+        for key in ["created_at", "updated_at", "posted_date"]:
+            if isinstance(job_dict.get(key), datetime):
+                job_dict[key] = job_dict[key].isoformat()
+        
+        return job_dict
     
     async def _scrape_and_populate(self, query: str, location: str) -> int:
         """Scrape jobs and populate database"""
@@ -340,13 +318,13 @@ class JobService:
         
         return inserted_count
     
-    async def get_job_by_id(self, job_id: str) -> Optional[JobResponse]:
-        """Get job by ID"""
+    async def get_job_by_id(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Get job by ID - returns dict instead of JobResponse"""
         
         try:
             doc = await self.jobs_collection.find_one({"_id": ObjectId(job_id)})
             if doc:
-                return self._doc_to_job_response(doc)
+                return self._doc_to_dict(doc)
         except Exception as e:
             logger.error(f"Error getting job {job_id}: {e}")
         
@@ -378,19 +356,7 @@ class JobService:
             }
         )
         
-        logger.info(f"Expired {result.modified_count} old jobs")
         return result.modified_count
-    
-    def _doc_to_job_response(self, doc: Dict[str, Any]) -> JobResponse:
-        """Convert MongoDB document to JobResponse"""
-        
-        doc["id"] = str(doc.pop("_id"))
-        return JobResponse(**doc)
-    
-    async def cleanup(self):
-        """Cleanup resources"""
-        if hasattr(self, 'linkedin_scraper') and self.linkedin_scraper:
-            await self.linkedin_scraper.close()
 
 
 job_service: Optional[JobService] = None

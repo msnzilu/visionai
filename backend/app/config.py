@@ -110,7 +110,7 @@ class Settings(BaseSettings):
     
     # Browser automation service
     AUTOMATION_SERVICE_URL: str = Field(
-        default="http://localhost:3001", 
+        default="http://localhost:3000", 
         env="AUTOMATION_SERVICE_URL"
     )
     AUTOMATION_SERVICE_TOKEN: str = Field(default="dev-automation-token")
@@ -201,7 +201,7 @@ class Settings(BaseSettings):
     # Frontend URL (ADD THIS)
     FRONTEND_URL: str = "http://localhost"
 
-    BROWSER_AUTOMATION_URL: str = "http://browser-automation:3000"
+    BROWSER_AUTOMATION_URL: str = Field(default="http://localhost:8081", env="BROWSER_AUTOMATION_URL")
     
         
     def create_upload_dir(self) -> None:

@@ -64,31 +64,45 @@ async function loadJobsFromDB() {
     try {
         showLoading();
 
-        // First, try to load user's saved jobs
-        const savedResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/saved/me?page=1&size=20`, {
+        // FIXED: Properly structure the request body to match JobSearch model
+        const response = await fetch(`${API_BASE_URL}/api/v1/jobs/search`, {
+            method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            }
+            },
+            body: JSON.stringify({
+                query: null,  // FIXED: Added required field
+                location: null,  // FIXED: Added required field
+                filters: null,  // FIXED: Added required field
+                page: 1,
+                size: 20,
+                sort_by: 'created_at',
+                sort_order: 'desc'
+            })
         });
 
-        if (savedResponse.ok) {
-            const savedJobs = await savedResponse.json();
-            currentJobs = savedJobs || [];
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            console.error('Search error:', errorData);
+            throw new Error(errorData?.detail || 'Failed to load jobs');
+        }
 
-            document.getElementById('loadingState').classList.add('hidden');
+        const data = await response.json();
+        currentJobs = data.jobs || [];
 
-            if (currentJobs.length === 0) {
-                // Show message encouraging user to search
-                document.getElementById('resultsCount').textContent = 'No saved jobs yet. Search for jobs to get started!';
-                showEmptyStateWithSearchPrompt();
-            } else {
-                displayJobs(currentJobs);
-                updateResultsCount(currentJobs.length, currentJobs.length);
-                document.getElementById('resultsCount').textContent = `Showing ${currentJobs.length} saved job${currentJobs.length !== 1 ? 's' : ''}`;
-                document.getElementById('pagination').classList.add('hidden');
-            }
+        document.getElementById('loadingState').classList.add('hidden');
+
+        if (currentJobs.length === 0) {
+            // Show message encouraging user to add jobs
+            document.getElementById('resultsCount').textContent = 'No jobs in database yet.';
+            showEmptyStateWithSearchPrompt();
         } else {
-            throw new Error('Failed to load saved jobs');
+            displayJobs(currentJobs);
+            updateResultsCount(data.total || currentJobs.length, currentJobs.length);
+            if (data.pages > 1) {
+                updatePagination(data.page || 1, data.pages);
+            }
         }
     } catch (error) {
         console.error('Error loading jobs:', error);
@@ -163,10 +177,11 @@ async function performSearch(page = 1, sortBy = 'relevance') {
         return;
     }
 
+    // FIXED: Properly structure search data
     const searchData = {
         query: currentQuery || null,
         location: currentLocation || null,
-        filters: buildFilters(),
+        filters: buildFilters(),  // This returns a properly structured filters object
         page: currentPage,
         size: 20,
         sort_by: sortBy,
@@ -186,7 +201,9 @@ async function performSearch(page = 1, sortBy = 'relevance') {
         });
 
         if (!response.ok) {
-            throw new Error('Search failed');
+            const errorData = await response.json().catch(() => null);
+            console.error('Search error:', errorData);
+            throw new Error(errorData?.detail || 'Search failed');
         }
 
         const data = await response.json();
@@ -215,13 +232,29 @@ function buildFilters() {
         document.querySelectorAll('.work-arrangement:checked')
     ).map(cb => cb.value);
 
-    const salaryMin = document.getElementById('salaryMin').value;
-    const salaryMax = document.getElementById('salaryMax').value;
+    const salaryMin = document.getElementById('salaryMin')?.value;
+    const salaryMax = document.getElementById('salaryMax')?.value;
 
-    const filters = {
-        employment_types: employmentTypes,
-        work_arrangements: workArrangements
-    };
+    // FIXED: Return null if no filters are applied, otherwise return filters object
+    const hasFilters = employmentTypes.length > 0 ||
+        workArrangements.length > 0 ||
+        salaryMin ||
+        salaryMax;
+
+    if (!hasFilters) {
+        currentFilters = null;
+        return null;
+    }
+
+    const filters = {};
+
+    if (employmentTypes.length > 0) {
+        filters.employment_types = employmentTypes;
+    }
+
+    if (workArrangements.length > 0) {
+        filters.work_arrangements = workArrangements;
+    }
 
     if (salaryMin) filters.salary_min = parseFloat(salaryMin);
     if (salaryMax) filters.salary_max = parseFloat(salaryMax);
@@ -242,9 +275,11 @@ function clearFilters() {
     document.querySelectorAll('.employment-type, .work-arrangement').forEach(cb => {
         cb.checked = false;
     });
-    document.getElementById('salaryMin').value = '';
-    document.getElementById('salaryMax').value = '';
-    currentFilters = {};
+    const salaryMinEl = document.getElementById('salaryMin');
+    const salaryMaxEl = document.getElementById('salaryMax');
+    if (salaryMinEl) salaryMinEl.value = '';
+    if (salaryMaxEl) salaryMaxEl.value = '';
+    currentFilters = null;
 
     if (currentQuery || currentLocation) {
         performSearch(1);

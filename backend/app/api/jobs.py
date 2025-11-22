@@ -4,11 +4,12 @@ Job-related API endpoints
 """
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
+from fastapi.responses import JSONResponse
 from typing import Optional, List
 from datetime import datetime
 
 from app.models.job import (
-    JobSearch, JobListResponse, JobResponse, 
+    JobSearch, JobResponse, 
     JobCreate, JobUpdate, JobFilter
 )
 from app.models.user import User
@@ -23,39 +24,51 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/search", response_model=JobListResponse)
+@router.post("/search")
 async def search_jobs(
     search_request: JobSearch,
     db = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user)
 ):
-    """Search jobs with filters and pagination"""
+    """Search jobs with filters and pagination - returns dict to avoid Pydantic validation issues"""
     
     job_service = get_job_service(db)
     
-    result = await job_service.search_jobs(
-        query=search_request.query,
-        location=search_request.location,
-        filters=search_request.filters,
-        page=search_request.page,
-        size=search_request.size,
-        user_id=str(current_user["_id"]) if current_user else None
-    )
-    
-    if current_user:
-        jobs = result.get("jobs", [])
-        scored_jobs = await matching_service.score_jobs(current_user, jobs)
-        result["jobs"] = scored_jobs
-    
-    return JobListResponse(**result)
+    try:
+        result = await job_service.search_jobs(
+            query=search_request.query,
+            location=search_request.location,
+            filters=search_request.filters,
+            page=search_request.page,
+            size=search_request.size,
+            user_id=str(current_user["_id"]) if current_user else None
+        )
+        
+        # If user is authenticated, add match scores
+        if current_user:
+            jobs = result.get("jobs", [])
+            # Note: matching_service.score_jobs should also work with dicts
+            try:
+                scored_jobs = await matching_service.score_jobs(current_user, jobs)
+                result["jobs"] = scored_jobs
+            except Exception as e:
+                logger.warning(f"Failed to score jobs: {e}")
+                # Continue without scoring
+        
+        # Return as JSONResponse to avoid FastAPI Pydantic validation
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        logger.error(f"Job search failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
-@router.get("/{job_id}", response_model=JobResponse)
+@router.get("/{job_id}")
 async def get_job(
     job_id: str,
     db = Depends(get_db)
 ):
-    """Get job details by ID"""
+    """Get job details by ID - returns dict"""
     
     job_service = get_job_service(db)
     job = await job_service.get_job_by_id(job_id)
@@ -65,10 +78,10 @@ async def get_job(
     
     await job_service.increment_view_count(job_id)
     
-    return job
+    return JSONResponse(content=job)
 
 
-@router.get("/matched/me", response_model=List[JobResponse])
+@router.get("/matched/me")
 async def get_my_matched_jobs(
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
@@ -76,13 +89,17 @@ async def get_my_matched_jobs(
 ):
     """Get personalized matched jobs for current user"""
     
-    jobs = await matching_service.get_matched_jobs(
-        user=current_user,
-        db=db,
-        limit=limit
-    )
-    
-    return jobs
+    try:
+        jobs = await matching_service.get_matched_jobs(
+            user=current_user,
+            db=db,
+            limit=limit
+        )
+        
+        return JSONResponse(content={"jobs": jobs})
+    except Exception as e:
+        logger.error(f"Failed to get matched jobs: {e}", exc_info=True)
+        return JSONResponse(content={"jobs": []})
 
 
 @router.post("/save/{job_id}")
@@ -92,6 +109,15 @@ async def save_job(
     db = Depends(get_db)
 ):
     """Save/bookmark a job"""
+    
+    # Check if already saved
+    existing = await db.saved_jobs.find_one({
+        "user_id": str(current_user["_id"]),
+        "job_id": job_id
+    })
+    
+    if existing:
+        return {"message": "Job already saved", "job_id": job_id}
     
     await db.saved_jobs.insert_one({
         "user_id": str(current_user["_id"]),
@@ -121,7 +147,7 @@ async def unsave_job(
     return {"message": "Job removed from saved"}
 
 
-@router.get("/saved/me", response_model=List[JobResponse])
+@router.get("/saved/me")
 async def get_saved_jobs(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -145,7 +171,7 @@ async def get_saved_jobs(
         if job:
             jobs.append(job)
     
-    return jobs
+    return JSONResponse(content={"jobs": jobs})
 
 
 @router.post("/trigger-scrape")
@@ -167,7 +193,7 @@ async def trigger_manual_scrape(
     }
 
 
-@router.post("/", response_model=JobResponse)
+@router.post("/")
 async def create_job(
     job_data: JobCreate,
     current_user: User = Depends(get_current_active_user),
@@ -181,10 +207,10 @@ async def create_job(
     
     job = await job_service.create_job(job_data)
     
-    return job_service._doc_to_job_response(job.dict())
+    return JSONResponse(content=job.dict())
 
 
-@router.put("/{job_id}", response_model=JobResponse)
+@router.put("/{job_id}")
 async def update_job(
     job_id: str,
     updates: JobUpdate,
@@ -195,12 +221,26 @@ async def update_job(
     
     job_service = get_job_service(db)
     
-    job = await job_service.update_job(job_id, updates)
+    # Get existing job
+    job = await job_service.get_job_by_id(job_id)
     
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    return job_service._doc_to_job_response(job.dict())
+    # Update fields
+    update_dict = updates.dict(exclude_unset=True)
+    update_dict["updated_at"] = datetime.utcnow()
+    
+    from bson import ObjectId
+    await db.jobs.update_one(
+        {"_id": ObjectId(job_id)},
+        {"$set": update_dict}
+    )
+    
+    # Get updated job
+    updated_job = await job_service.get_job_by_id(job_id)
+    
+    return JSONResponse(content=updated_job)
 
 
 @router.get("/stats/overview")

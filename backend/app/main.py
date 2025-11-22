@@ -257,6 +257,18 @@ except ImportError as e:
     logger.warning(f"Applications router not available: {e}")
 
 
+try:
+    from app.api import browser_automation
+    app.include_router(
+        browser_automation.router,
+        prefix=f"{settings.API_V1_STR}/browser-automation",
+        tags=["Browser Automation"]
+    )
+    logger.info("Browser automation router loaded")
+except ImportError as e:
+    logger.warning(f"Browser automation router not available: {e}")
+
+
 # Catch-all for missing routes during development
 @app.get("/api/v1/{path:path}")
 async def api_fallback(path: str):

@@ -26,7 +26,7 @@ services:
     networks:
       - vision_ai_network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -103,7 +103,7 @@ services:
       dockerfile: Dockerfile
     container_name: vision_ai_automation
     ports:
-      - "3000:3000"
+      - "4000:3000"
     env_file:
       - browser-automation/.env
     environment:
@@ -138,6 +138,7 @@ services:
 volumes:
   mongo_data:
   redis_data:
+
 
 networks:
   vision_ai_network:
