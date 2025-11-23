@@ -16,8 +16,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # Browser automation service URL (from docker-compose or config)
-BROWSER_AUTOMATION_URL = getattr(settings, 'BROWSER_AUTOMATION_URL', 'http://browser-automation:4000')
-
+BROWSER_AUTOMATION_URL = getattr(settings, 'BROWSER_AUTOMATION_URL')
 
 class AutomationService:
     """

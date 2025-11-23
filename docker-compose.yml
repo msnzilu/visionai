@@ -36,23 +36,15 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: vision_ai_backend
+    env_file:
+      - .env
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     ports:
-      - "8000:8000"
-    env_file:
-      - backend/.env
-    environment:
-      - DATABASE_URL=mongodb://mongo:27017/vision_ai
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - 8000:8000
     networks:
       - vision_ai_network
 
@@ -67,7 +59,7 @@ services:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     env_file:
-      - backend/.env
+      - .env
     environment:
       - DATABASE_URL=mongodb://mongo:27017/vision_ai
       - REDIS_URL=redis://redis:6379/0
@@ -87,7 +79,7 @@ services:
     volumes:
       - ./backend:/app
     env_file:
-      - backend/.env
+      - .env
     environment:
       - DATABASE_URL=mongodb://mongo:27017/vision_ai
       - REDIS_URL=redis://redis:6379/0
@@ -103,12 +95,13 @@ services:
       dockerfile: Dockerfile
     container_name: vision_ai_automation
     ports:
-      - "4000:3000"
+      - "4001:3001"
     env_file:
-      - browser-automation/.env
+      - .env
     environment:
       - NODE_ENV=development
       - BACKEND_URL=http://backend:8000
+      - AUTH_TOKEN=your-secret-token-here
     # volumes:
     #   - ./browser-automation:/app
     #   - /app/node_modules

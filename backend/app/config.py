@@ -4,215 +4,153 @@ Configuration settings for the AI Job Application Platform
 
 from pydantic_settings import BaseSettings
 from pydantic import Field
-from typing import List, Optional, Union
-import secrets
+from typing import List, Optional
 import os
 from pathlib import Path
 
 
 class Settings(BaseSettings):
     # Project information
-    PROJECT_NAME: str = "Visions AI"
+    PROJECT_NAME: str = Field(env="PROJECT_NAME")
     PROJECT_DESCRIPTION: str = "Comprehensive AI-powered job application automation platform"
-    PROJECT_VERSION: str = "1.0.0"
+    PROJECT_VERSION: str = Field(env="PROJECT_VERSION")
     
     # API settings
     API_V1_STR: str = "/api/v1"
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
-    DEBUG: bool = Field(default=False, env="DEBUG")
+    HOST: str = Field(env="HOST")
+    PORT: int = Field(env="PORT")
+    DEBUG: bool = Field(env="DEBUG")
     
     # Security
-    SECRET_KEY: str = Field(default="dev-secret-key-change-in-production")
-    JWT_SECRET_KEY: str = Field(default="dev-jwt-secret-key")
-    JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
-    REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30 days
-    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 24
+    SECRET_KEY: str = Field(env="SECRET_KEY")
+    JWT_SECRET_KEY: str = Field(env="JWT_SECRET_KEY")
+    JWT_ALGORITHM: str = Field(env="JWT_ALGORITHM")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(env="ACCESS_TOKEN_EXPIRE_MINUTES")
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(env="REFRESH_TOKEN_EXPIRE_MINUTES")
+    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = Field(env="PASSWORD_RESET_TOKEN_EXPIRE_HOURS")
 
-    CORS_ORIGINS: List[str] = [
-    "http://localhost",      # Matches your browser origin (port 80 implied)
-    "http://localhost:80",
-    "http://127.0.0.1",
-    "http://172.18.0.1",     # Docker gateway from logs
-]
-
+    # CORS & Allowed Hosts
+    CORS_ORIGINS: List[str] = Field(env="CORS_ORIGINS")
     ALLOWED_HOSTS: List[str] = ["*"]
     
     # Database
-    MONGODB_URL: str = Field(default="mongodb://mongo:27017", env="MONGODB_URL")
-    DATABASE_NAME: str = Field(default="job_platform", env="DATABASE_NAME")
+    MONGODB_URL: str = Field(env="MONGODB_URL")
+    DATABASE_NAME: str = Field(env="DATABASE_NAME")
     
-    # Redis (for caching and rate limiting) - Optional for Phase 1
-    REDIS_URL: str = Field(default="redis://redis:6379", env="REDIS_URL")
+    # Redis
+    REDIS_URL: str = Field(env="REDIS_URL")
+    REDIS_HOST: str = Field(env="REDIS_HOST")
+    REDIS_PORT: int = Field(env="REDIS_PORT")
+    REDIS_DB: int = Field(env="REDIS_DB")
+    CACHE_TTL: int = Field(env="CACHE_TTL")
     
-    # External APIs - Made optional for Phase 1
-    OPENAI_API_KEY: str = Field(default="", env="OPENAI_API_KEY")
-    OPENAI_MODEL: str = "gpt-4"
-    OPENAI_MAX_TOKENS: int = 4000
-    OPENAI_TEMPERATURE: float = 0.7
+    # OpenAI API
+    OPENAI_API_KEY: str = Field(env="OPENAI_API_KEY")
+    OPENAI_MODEL: str = Field(env="OPENAI_MODEL")
+    OPENAI_MAX_TOKENS: int = Field(env="OPENAI_MAX_TOKENS")
+    OPENAI_TEMPERATURE: float = Field(env="OPENAI_TEMPERATURE")
     
-    # Stripe - Optional for Phase 1
-    STRIPE_SECRET_KEY: str = Field(default="", env="STRIPE_SECRET_KEY")
-    STRIPE_PUBLISHABLE_KEY: str = Field(default="", env="STRIPE_PUBLISHABLE_KEY")
-    STRIPE_WEBHOOK_SECRET: str = Field(default="", env="STRIPE_WEBHOOK_SECRET")
+    # Stripe
+    STRIPE_SECRET_KEY: str = Field(env="STRIPE_SECRET_KEY")
+    STRIPE_PUBLISHABLE_KEY: str = Field(env="STRIPE_PUBLISHABLE_KEY")
+    STRIPE_WEBHOOK_SECRET: str = Field(env="STRIPE_WEBHOOK_SECRET")
+    STRIPE_BASIC_PRICE_ID: str = Field(env="STRIPE_BASIC_PRICE_ID")
+    STRIPE_PREMIUM_PRICE_ID: str = Field(env="STRIPE_PREMIUM_PRICE_ID")
     
-    # Email service - Optional for Phase 1
-    SMTP_HOST: str = Field(default="smtp.gmail.com", env="SMTP_HOST")
-    SMTP_PORT: int = Field(default=587, env="SMTP_PORT")
-    SMTP_USERNAME: str = Field(default="", env="SMTP_USERNAME")
-    SMTP_PASSWORD: str = Field(default="", env="SMTP_PASSWORD")
-    SMTP_USE_TLS: bool = True
+    # Email service
+    SMTP_HOST: str = Field(env="SMTP_HOST")
+    SMTP_PORT: int = Field(env="SMTP_PORT")
+    SMTP_USERNAME: str = Field(env="SMTP_USERNAME")
+    SMTP_PASSWORD: str = Field(env="SMTP_PASSWORD")
+    SMTP_USE_TLS: bool = Field(env="SMTP_USE_TLS")
 
-    MAIL_USERNAME: str
-    MAIL_PASSWORD: str
-    MAIL_FROM: str
-    MAIL_PORT: int
-    MAIL_SERVER: str
-    MAIL_STARTTLS: bool
-    MAIL_SSL_TLS: bool
-    FRONTEND_URL: str        # URL to your frontend for verification/reset links
-    SUPPORT_EMAIL: str       # Support email for contact in templates
-    COMPANY_NAME: str        # Your company/app name for branding in emails
+    # Mail settings
+    MAIL_USERNAME: str = Field(env="MAIL_USERNAME")
+    MAIL_PASSWORD: str = Field(env="MAIL_PASSWORD")
+    MAIL_FROM: str = Field(env="MAIL_FROM")
+    MAIL_FROM_NAME: str = Field(env="MAIL_FROM_NAME")
+    MAIL_PORT: int = Field(env="MAIL_PORT")
+    MAIL_SERVER: str = Field(env="MAIL_SERVER")
+    MAIL_STARTTLS: bool = Field(env="MAIL_STARTTLS")
+    MAIL_SSL_TLS: bool = Field(env="MAIL_SSL_TLS")
+    SUPPORT_EMAIL: str = Field(env="SUPPORT_EMAIL")
+    COMPANY_NAME: str = Field(env="COMPANY_NAME")
 
+    # OAuth
+    GOOGLE_CLIENT_ID: str = Field(env="GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: str = Field(env="GOOGLE_CLIENT_SECRET")
+    GOOGLE_REDIRECT_URI: str = Field(env="GOOGLE_REDIRECT_URI")
+    
+    LINKEDIN_CLIENT_ID: str = Field(env="LINKEDIN_CLIENT_ID")
+    LINKEDIN_CLIENT_SECRET: str = Field(env="LINKEDIN_CLIENT_SECRET")
+    LINKEDIN_REDIRECT_URI: str = Field(env="LINKEDIN_REDIRECT_URI")
+    
+    # Frontend URL
+    FRONTEND_URL: str = Field(env="FRONTEND_URL")
 
-    # Job board APIs - Optional for Phase 1
-    INDEED_API_KEY: Optional[str] = Field(default=None, env="INDEED_API_KEY")
-    LINKEDIN_API_KEY: Optional[str] = Field(default=None, env="LINKEDIN_API_KEY")
-    GLASSDOOR_API_KEY: Optional[str] = Field(default=None, env="GLASSDOOR_API_KEY")
+    # Job board APIs
+    INDEED_PUBLISHER_ID: str = Field(env="INDEED_PUBLISHER_ID")
+    INDEED_API_KEY: str = Field(env="INDEED_API_KEY")
     
     # File storage
-    UPLOAD_DIR: str = "uploads"
-    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    UPLOAD_DIR: str = Field(env="UPLOAD_DIR")
+    MAX_FILE_SIZE: int = Field(env="MAX_FILE_SIZE")
+    MAX_UPLOAD_SIZE: int = Field(env="MAX_UPLOAD_SIZE")
     ALLOWED_FILE_TYPES: List[str] = [".pdf", ".docx", ".doc", ".txt"]
     
     # Rate limiting
-    RATE_LIMIT_REQUESTS: int = 100
-    RATE_LIMIT_PERIOD: int = 3600  # 1 hour
+    RATE_LIMIT_REQUESTS: int = Field(env="RATE_LIMIT_REQUESTS")
+    RATE_LIMIT_PERIOD: int = Field(env="RATE_LIMIT_PERIOD")
     
-    # Subscription limits
-    FREE_TIER_MONTHLY_ATTEMPTS: int = 1
-    FREE_TIER_JOBS_PER_ATTEMPT: int = 3
+    # Subscription limits - Free Tier
+    FREE_TIER_MONTHLY_ATTEMPTS: int = Field(env="FREE_TIER_MONTHLY_ATTEMPTS")
+    FREE_TIER_JOBS_PER_ATTEMPT: int = Field(env="FREE_TIER_JOBS_PER_ATTEMPT")
     
-    BASIC_TIER_DAILY_ATTEMPTS: int = 5
-    BASIC_TIER_MONTHLY_ATTEMPTS: int = 150
-    BASIC_TIER_JOBS_PER_ATTEMPT: int = 10
-    BASIC_TIER_PRICE: int = 2000  # $20.00 in cents
+    # Subscription limits - Basic Tier
+    BASIC_TIER_DAILY_ATTEMPTS: int = Field(env="BASIC_TIER_DAILY_ATTEMPTS")
+    BASIC_TIER_MONTHLY_ATTEMPTS: int = Field(env="BASIC_TIER_MONTHLY_ATTEMPTS")
+    BASIC_TIER_JOBS_PER_ATTEMPT: int = Field(env="BASIC_TIER_JOBS_PER_ATTEMPT")
+    BASIC_TIER_PRICE: int = Field(env="BASIC_TIER_PRICE")
     
-    PREMIUM_TIER_MONTHLY_ATTEMPTS: int = 200
-    PREMIUM_TIER_JOBS_PER_ATTEMPT: int = 10
-    PREMIUM_TIER_PRICE: int = 4900  # $49.00 in cents
+    # Subscription limits - Premium Tier
+    PREMIUM_TIER_MONTHLY_ATTEMPTS: int = Field(env="PREMIUM_TIER_MONTHLY_ATTEMPTS")
+    PREMIUM_TIER_JOBS_PER_ATTEMPT: int = Field(env="PREMIUM_TIER_JOBS_PER_ATTEMPT")
+    PREMIUM_TIER_PRICE: int = Field(env="PREMIUM_TIER_PRICE")
     
     # Referral system
-    REFERRALS_FOR_FREE_ATTEMPT: int = 5
-    BASIC_REFERRAL_BONUS: int = 2
-    PREMIUM_REFERRAL_BONUS: int = 5
+    REFERRALS_FOR_FREE_ATTEMPT: int = Field(env="REFERRALS_FOR_FREE_ATTEMPT")
+    BASIC_REFERRAL_BONUS: int = Field(env="BASIC_REFERRAL_BONUS")
+    PREMIUM_REFERRAL_BONUS: int = Field(env="PREMIUM_REFERRAL_BONUS")
     
     # Browser automation service
-    AUTOMATION_SERVICE_URL: str = Field(
-        default="http://localhost:3000", 
-        env="AUTOMATION_SERVICE_URL"
-    )
-    AUTOMATION_SERVICE_TOKEN: str = Field(default="dev-automation-token")
+    BROWSER_AUTOMATION_URL: str = Field(env="BROWSER_AUTOMATION_URL")
     
     # Machine Learning
-    ML_MODEL_PATH: str = "ml-models/models/"
-    ML_TRAINING_DATA_PATH: str = "ml-models/data/"
-    ML_RETRAIN_INTERVAL_DAYS: int = 7
+    ML_MODEL_PATH: str = Field(env="ML_MODEL_PATH")
+    ML_TRAINING_DATA_PATH: str = Field(env="ML_TRAINING_DATA_PATH")
+    ML_RETRAIN_INTERVAL_DAYS: int = Field(env="ML_RETRAIN_INTERVAL_DAYS")
+    
+    # Scraping Configuration
+    SCRAPER_USER_AGENT: str = Field(env="SCRAPER_USER_AGENT")
+    SCRAPER_DELAY_MIN: int = Field(env="SCRAPER_DELAY_MIN")
+    SCRAPER_DELAY_MAX: int = Field(env="SCRAPER_DELAY_MAX")
     
     # Logging
-    LOG_LEVEL: str = "INFO"
-    LOG_FILE: str = "logs/app.log"
+    LOG_LEVEL: str = Field(env="LOG_LEVEL")
+    LOG_FILE: str = Field(env="LOG_FILE")
     
     # Background tasks
-    CELERY_BROKER_URL: str = Field(
-        default="redis://redis:6379/0", 
-        env="CELERY_BROKER_URL"
-    )
-    CELERY_RESULT_BACKEND: str = Field(
-        default="redis://redis:6379/0", 
-        env="CELERY_RESULT_BACKEND"
-    )
+    CELERY_BROKER_URL: str = Field(env="CELERY_BROKER_URL")
+    CELERY_RESULT_BACKEND: str = Field(env="CELERY_RESULT_BACKEND")
     
     # Webhooks
-    WEBHOOK_SECRET: str = Field(default="dev-webhook-secret")
-
-    # Job Board API Keys (Phase 2)
-    INDEED_PUBLISHER_ID: str = Field(default="", env="INDEED_PUBLISHER_ID")
-    INDEED_API_KEY: Optional[str] = Field(default=None, env="INDEED_API_KEY")
-    LINKEDIN_API_KEY: Optional[str] = Field(default=None, env="LINKEDIN_API_KEY")
-    GLASSDOOR_API_KEY: Optional[str] = Field(default=None, env="GLASSDOOR_API_KEY")
-
-
-    # Scraping Configuration (Phase 2)
-    SCRAPER_USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    SCRAPER_DELAY_MIN: int = 2
-    SCRAPER_DELAY_MAX: int = 5
-    SCRAPER_MAX_RETRIES: int = 3
-
-    # Cache Settings (Phase 2)
-    CACHE_TTL_DEFAULT: int = 3600  # 1 hour
-    CACHE_TTL_JOB_SEARCH: int = 1800  # 30 minutes
-    CACHE_TTL_JOB_DETAILS: int = 7200  # 2 hours
-
-    # Job Settings (Phase 2)
-    JOB_EXPIRY_DAYS: int = 90
-    MAX_JOBS_PER_SEARCH: int = 100
-
-        # Stripe Configuration (Phase 4)
-    STRIPE_SECRET_KEY: str = Field(default="", env="STRIPE_SECRET_KEY")
-    STRIPE_PUBLISHABLE_KEY: str = Field(default="", env="STRIPE_PUBLISHABLE_KEY")
-    STRIPE_WEBHOOK_SECRET: str = Field(default="", env="STRIPE_WEBHOOK_SECRET")
-
-    # Stripe Price IDs (create these in Stripe Dashboard)
-    STRIPE_BASIC_PRICE_ID: str = Field(default="", env="STRIPE_BASIC_PRICE_ID")
-    STRIPE_PREMIUM_PRICE_ID: str = Field(default="", env="STRIPE_PREMIUM_PRICE_ID")
-
-    # Subscription Configuration
-    FREE_TIER_MONTHLY_SEARCHES: int = 1
-    FREE_TIER_JOBS_PER_SEARCH: int = 3
-    FREE_TIER_REFERRALS_FOR_BONUS: int = 5
-
-    BASIC_TIER_MONTHLY_SEARCHES: int = 150
-    BASIC_TIER_JOBS_PER_SEARCH: int = 10
-    BASIC_TIER_PRICE: int = 2000  # $20.00 in cents
-    BASIC_TIER_REFERRAL_BONUS: int = 2
-
-    PREMIUM_TIER_MONTHLY_SEARCHES: int = 200
-    PREMIUM_TIER_JOBS_PER_SEARCH: int = 10
-    PREMIUM_TIER_PRICE: int = 4900  # $49.00 in cents
-    PREMIUM_TIER_REFERRAL_BONUS: int = 5
-
-    # Referral Program
-    REFERRAL_REWARD_AMOUNT: int = 1000  # $10 credit in cents
-    REFEREE_REWARD_AMOUNT: int = 500  # $5 discount in cents
-    REFERRAL_MINIMUM_DURATION_DAYS: int = 30
-
-    # Google OAuth (ADD THESE)
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost/api/v1/auth/google/callback"
+    WEBHOOK_SECRET: str = Field(env="WEBHOOK_SECRET")
     
-    # LinkedIn OAuth (ADD THESE)
-    LINKEDIN_CLIENT_ID: str = ""
-    LINKEDIN_CLIENT_SECRET: str = ""
-    LINKEDIN_REDIRECT_URI: str = "http://localhost/api/v1/auth/linkedin/callback"
-    
-    # Frontend URL (ADD THIS)
-    FRONTEND_URL: str = "http://localhost"
-
-    BROWSER_AUTOMATION_URL: str = Field(default="http://localhost:8081", env="BROWSER_AUTOMATION_URL")
-    
-        
     def create_upload_dir(self) -> None:
         """Create upload directory if it doesn't exist"""
         Path(self.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
         Path("logs").mkdir(exist_ok=True)
         Path(self.ML_MODEL_PATH).mkdir(parents=True, exist_ok=True)
-    
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
-    MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024 
-
     
     class Config:
         env_file = ".env"

@@ -1,7 +1,7 @@
 const BrowserAutomation = {
 
     get API_BASE_URL() {
-        return CONFIG.API_BASE_URL;
+        return `${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}`;
     },
 
     /**
@@ -25,7 +25,7 @@ const BrowserAutomation = {
             // Show loading state
             CVision.Utils.showAlert('Starting browser automation...', 'info');
 
-            const url = `${this.API_BASE_URL}/api/v1/browser-automation/autofill/start`;
+            const url = `${this.API_BASE_URL}/browser-automation/autofill/start`;
             const payload = {
                 job_id: jobId,
                 cv_id: cvId,
@@ -121,7 +121,7 @@ const BrowserAutomation = {
         const checkStatus = async () => {
             try {
                 const token = CVision.Utils.getToken();
-                const url = `${this.API_BASE_URL}/api/v1/browser-automation/autofill/status/${sessionId}`;
+                const url = `${this.API_BASE_URL}/browser-automation/autofill/status/${sessionId}`;
 
                 console.log(`📡 Status check ${attempts + 1}/${maxAttempts}:`, url);
 
@@ -174,7 +174,7 @@ const BrowserAutomation = {
         try {
             const token = CVision.Utils.getToken();
             const response = await fetch(
-                `${this.API_BASE_URL}/api/v1/browser-automation/autofill/feedback/${sessionId}`,
+                `${this.API_BASE_URL}/browser-automation/autofill/feedback/${sessionId}`,
                 {
                     method: 'POST',
                     headers: {

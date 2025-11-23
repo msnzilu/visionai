@@ -28,7 +28,7 @@ const GenerationModule = (() => {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
         modal.style.zIndex = '9999';
-        
+
         modal.innerHTML = `
             <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 p-6">
                 <div class="flex justify-between items-center mb-6">
@@ -95,9 +95,9 @@ const GenerationModule = (() => {
                 </button>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         modal.addEventListener('click', (e) => {
             if (e.target === modal) closeModal();
         });
@@ -107,7 +107,7 @@ const GenerationModule = (() => {
     const customizeForJob = async (documentId, jobId, options = {}) => {
         try {
             InlineMessage.success('Generating customized documents...');
-            
+
             const requestData = {
                 document_id: documentId,
                 job_id: jobId,
@@ -120,8 +120,8 @@ const GenerationModule = (() => {
             console.log('Document ID:', documentId);
             console.log('Job ID:', jobId);
             console.log('Full request:', JSON.stringify(requestData, null, 2));
-            
-            const response = await fetch(`${API_BASE_URL}/api/v1/generation/customize-cv`, {
+
+            const response = await fetch(`${API_BASE_URL}/generation/customize-cv`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -129,9 +129,9 @@ const GenerationModule = (() => {
                 },
                 body: JSON.stringify(requestData)
             });
-            
+
             console.log('Response status:', response.status);
-            
+
             hideLoading();
 
             // Read response body
@@ -144,7 +144,7 @@ const GenerationModule = (() => {
                 try {
                     const errorData = JSON.parse(responseText);
                     console.error('=== BACKEND ERROR ===', errorData);
-                    
+
                     // Handle Pydantic validation errors
                     if (errorData.detail) {
                         if (typeof errorData.detail === 'string') {
@@ -169,12 +169,12 @@ const GenerationModule = (() => {
             const result = JSON.parse(responseText);
             console.log('=== SUCCESS ===', result);
             currentGeneration = result;
-            
+
             CVision.Utils.showAlert('Documents generated successfully!', 'success');
             showGenerationModal(result);
-            
+
             return result;
-            
+
         } catch (error) {
             hideLoading();
             console.error('=== GENERATION ERROR ===', error);
@@ -189,10 +189,10 @@ const GenerationModule = (() => {
                 CVision.Utils.showAlert('Maximum 10 jobs allowed per batch', 'error');
                 return;
             }
-            
+
             showLoading(`Generating documents for ${jobIds.length} jobs...`);
-            
-            const response = await fetch(`${API_BASE_URL}/api/v1/generation/batch-customize`, {
+
+            const response = await fetch(`${API_BASE_URL}/generation/batch-customize`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -204,18 +204,18 @@ const GenerationModule = (() => {
                     template: template
                 })
             });
-            
+
             hideLoading();
-            
+
             if (!response.ok) {
                 throw new Error('Batch generation failed');
             }
 
             const result = await response.json();
             CVision.Utils.showAlert(`Generated documents for ${result.success_count || jobIds.length} jobs!`, 'success');
-            
+
             return result;
-            
+
         } catch (error) {
             hideLoading();
             console.error('Batch error:', error);

@@ -178,7 +178,7 @@ async def start_autofill_session(
         # Get automation service URL
         automation_url = getattr(settings, 'BROWSER_AUTOMATION_URL', None) or \
                        getattr(settings, 'AUTOMATION_SERVICE_URL', None) or \
-                       "http://automation:3000"
+                       "http://automation:3001"
         
         logger.info(f"Calling automation service at: {automation_url}")
         

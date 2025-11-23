@@ -141,7 +141,7 @@ class FormDetector {
 }
 
 // ES Module export
-export { FormDetector };
+module.exports = { FormDetector };
 
 // CommonJS export (comment out ES Module export above if using this)
 // module.exports = { FormDetector };

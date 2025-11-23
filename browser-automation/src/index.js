@@ -239,7 +239,7 @@ setInterval(() => {
     }
 }, 5 * 60 * 1000); // Check every 5 minutes
 
-app.listen(PORT, '127.0.0.1', () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Browser Automation Service (Playwright) running on port ${PORT}`);
     console.log(`Active sessions will be cleaned up after 30 minutes of inactivity`);
 });
