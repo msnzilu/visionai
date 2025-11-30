@@ -64,7 +64,6 @@ app.post('/api/automation/start', authenticate, async (req, res) => {
                 '--start-maximized',
             ],
             // Playwright-specific options
-            channel: 'chrome', // Use Chrome if available, otherwise Chromium
             slowMo: 50, // Slow down by 50ms for better visibility
         });
 

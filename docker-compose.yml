@@ -95,11 +95,12 @@ services:
       dockerfile: Dockerfile
     container_name: vision_ai_automation
     ports:
-      - "4001:3001"
+      - "4001:3000"
     env_file:
       - .env
     environment:
       - NODE_ENV=development
+      - PORT=3000
       - BACKEND_URL=http://backend:8000
       - AUTH_TOKEN=your-secret-token-here
     # volumes:

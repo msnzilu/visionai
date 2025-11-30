@@ -124,6 +124,8 @@ class Settings(BaseSettings):
     
     # Browser automation service
     BROWSER_AUTOMATION_URL: str = Field(env="BROWSER_AUTOMATION_URL")
+    AUTOMATION_SERVICE_TOKEN: str = Field(default="your-secret-token-here", env="AUTOMATION_SERVICE_TOKEN")
+
     
     # Machine Learning
     ML_MODEL_PATH: str = Field(env="ML_MODEL_PATH")
