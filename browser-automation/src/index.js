@@ -59,9 +59,14 @@ app.post('/api/automation/start', authenticate, async (req, res) => {
 
         // Launch browser with Playwright
         const browser = await chromium.launch({
-            headless: false, // Show browser to user
+            headless: false,
             args: [
-                '--start-maximized',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--disable-web-security',  // Helps with CORS issues
+                '--disable-features=IsolateOrigins,site-per-process'
             ],
             // Playwright-specific options
             slowMo: 50, // Slow down by 50ms for better visibility
@@ -151,46 +156,55 @@ app.post('/api/automation/close/:session_id', authenticate, async (req, res) => 
 });
 
 async function performAutofill(session_id, url, autofillData, jobSource, page) {
+    console.log(`=== STARTING AUTOFILL FOR SESSION ${session_id} ===`);
+
     const session = activeSessions.get(session_id);
-    if (!session) return;
+    if (!session) {
+        console.error(`Session ${session_id} not found in activeSessions!`);
+        return;
+    }
+
+    console.log(`Autofill data received:`, JSON.stringify(autofillData, null, 2));
 
     try {
         updateSessionStatus(session_id, 'navigating');
 
-        // Navigate to application page
-        // Playwright has better built-in waiting
-        await page.goto(url, {
-            waitUntil: 'domcontentloaded', // Faster than networkidle
-            timeout: 30000
+        console.log(`Navigating to: ${url}`);
+        const response = await page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60000
         });
 
-        // Wait for page to be ready
-        await page.waitForLoadState('networkidle');
+        console.log(`Navigation response status: ${response?.status()}`);
+        console.log(`Page loaded: ${await page.title()}`);
 
-        // Additional wait for dynamic content
-        await page.waitForTimeout(2000);
+        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
+            console.log('Network not idle after 10s, but continuing...');
+        });
+
+        await page.waitForTimeout(3000);
 
         updateSessionStatus(session_id, 'detecting_forms');
 
-        // Get site-specific handler
         const handler = SiteHandlerFactory.getHandler(url, jobSource);
 
-        // Detect forms on page
         const formDetector = new FormDetector(page);
         const forms = await formDetector.detectForms();
 
         console.log(`Detected ${forms.length} forms on page`);
 
+        // Log form details
+        forms.forEach((form, index) => {
+            console.log(`Form ${index + 1}:`, {
+                fields: form.fields?.length || 0,
+                fieldNames: form.fields?.map(f => f.name || f.id || f.placeholder).filter(Boolean)
+            });
+        });
+
         updateSessionStatus(session_id, 'filling_forms');
 
-        // Initialize autofill engine
         const autofillEngine = new AutofillEngine(page, handler);
-
-        // Perform autofill
-        const filledFields = await autofillEngine.fillForms(
-            forms,
-            autofillData
-        );
+        const filledFields = await autofillEngine.fillForms(forms, autofillData);
 
         session.filled_fields = filledFields;
         updateSessionStatus(session_id, 'completed', null, filledFields);
@@ -198,8 +212,22 @@ async function performAutofill(session_id, url, autofillData, jobSource, page) {
         console.log(`Autofill completed for session ${session_id}`);
         console.log(`Filled ${filledFields.length} fields`);
 
+        if (filledFields.length > 0) {
+            console.log('Filled fields:', filledFields);
+        }
+
+        await page.screenshot({ path: `/tmp/completed-${session_id}.png` }).catch(() => { });
+
     } catch (error) {
         console.error(`Autofill failed for session ${session_id}:`, error);
+
+        try {
+            await page.screenshot({ path: `/tmp/error-${session_id}.png` });
+            console.log(`Error screenshot saved: /tmp/error-${session_id}.png`);
+        } catch (screenshotError) {
+            console.error('Could not take error screenshot');
+        }
+
         updateSessionStatus(session_id, 'error', error.message);
     }
 }

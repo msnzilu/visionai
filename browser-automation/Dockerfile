@@ -25,22 +25,26 @@ RUN apt-get update && apt-get install -y \
     libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Playwright system dependencies as root
+RUN npx --yes playwright@latest install-deps chromium
+
+# Create non-root user and give ownership of /app
+RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
 # Copy package files
-COPY package*.json ./
+COPY --chown=appuser:appuser package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Install Playwright browsers
-RUN npx playwright install chromium --with-deps
+# Install Playwright browsers (without --with-deps since we already installed deps)
+RUN npx playwright install chromium
 
 # Copy application code
-COPY . .
-
-# Create non-root user
-RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
-
-USER appuser
+COPY --chown=appuser:appuser . .
 
 EXPOSE 3000
 

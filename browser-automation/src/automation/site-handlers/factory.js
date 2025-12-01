@@ -7,23 +7,23 @@ const { LinkedInHandler } = require('./linkedin');
 class SiteHandlerFactory {
     static getHandler(url, jobSource) {
         const hostname = new URL(url).hostname.toLowerCase();
-        
+
         // Match by hostname or job source
         if (hostname.includes('indeed.com') || jobSource === 'indeed') {
             console.log('Using Indeed handler');
             return new IndeedHandler();
         }
-        
+
         if (hostname.includes('linkedin.com') || jobSource === 'linkedin') {
             console.log('Using LinkedIn handler');
             return new LinkedInHandler();
         }
-        
+
         // Add more site-specific handlers here
         // if (hostname.includes('greenhouse.io')) {
         //     return new GreenhouseHandler();
         // }
-        
+
         console.log('Using generic handler');
         return new GenericHandler();
     }
