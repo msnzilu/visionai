@@ -38,6 +38,7 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    remember_me: Optional[bool] = False
 
 
 class UserResponse(BaseModel):
@@ -175,8 +176,20 @@ async def login(login_data: UserLogin):
                 message="Invalid email or password"
             )
         
-        # Create token using centralized function
-        token = create_access_token(str(user["_id"]))
+        # Determine token expiration based on remember_me
+        if login_data.remember_me:
+            # Remember Me: 1 day access token, 30 days refresh token
+            access_token_expires = timedelta(minutes=settings.REMEMBER_ME_ACCESS_TOKEN_EXPIRE_MINUTES)
+            refresh_token_expires = timedelta(minutes=settings.REMEMBER_ME_REFRESH_TOKEN_EXPIRE_MINUTES)
+        else:
+            # Regular: 30 min access token, 7 days refresh token
+            access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+        
+        # Create tokens using centralized function with custom expiration
+        from app.core.security import create_refresh_token
+        access_token = create_access_token(str(user["_id"]), expires_delta=access_token_expires)
+        refresh_token = create_refresh_token(str(user["_id"]), expires_delta=refresh_token_expires)
         
         # Create full_name for frontend compatibility
         full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
@@ -198,9 +211,11 @@ async def login(login_data: UserLogin):
             success=True,
             message="Login successful",
             data={
-                "access_token": token,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
                 "token_type": "bearer",
-                "user": user_response
+                "user": user_response,
+                "remember_me": login_data.remember_me
             }
         )
         
@@ -209,6 +224,73 @@ async def login(login_data: UserLogin):
         return APIResponse(
             success=False,
             message=f"Login failed: {str(e)}"
+        )
+
+
+@router.post("/refresh", response_model=APIResponse)
+async def refresh_token_endpoint(refresh_token: str):
+    """Refresh access token using refresh token"""
+    try:
+        from app.core.security import verify_refresh_token
+        
+        # Verify refresh token
+        payload = verify_refresh_token(refresh_token)
+        if not payload:
+            return APIResponse(
+                success=False,
+                message="Invalid or expired refresh token"
+            )
+        
+        user_id = payload.get("sub")
+        if not user_id:
+            return APIResponse(
+                success=False,
+                message="Invalid token payload"
+            )
+        
+        # Verify user still exists
+        users_collection = await get_users_collection()
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return APIResponse(
+                success=False,
+                message="User not found"
+            )
+        
+        # Create new access token with same expiration as original
+        # Check if this was a "remember me" token by checking expiration
+        token_exp = payload.get("exp")
+        token_iat = payload.get("iat")
+        
+        if token_exp and token_iat:
+            token_lifetime_minutes = (token_exp - token_iat) / 60
+            # If refresh token lifetime is ~30 days, it's a remember_me token
+            is_remember_me = token_lifetime_minutes > 20000  # > ~14 days
+            
+            if is_remember_me:
+                access_token_expires = timedelta(minutes=settings.REMEMBER_ME_ACCESS_TOKEN_EXPIRE_MINUTES)
+            else:
+                access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        else:
+            # Default to regular expiration
+            access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        
+        new_access_token = create_access_token(user_id, expires_delta=access_token_expires)
+        
+        return APIResponse(
+            success=True,
+            message="Token refreshed successfully",
+            data={
+                "access_token": new_access_token,
+                "token_type": "bearer"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Token refresh error: {str(e)}")
+        return APIResponse(
+            success=False,
+            message="Failed to refresh token"
         )
 
 

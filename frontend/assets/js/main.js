@@ -4,6 +4,7 @@ const CONFIG = {
     API_BASE_URL: window.location.origin,
     API_PREFIX: '/api/v1',
     TOKEN_KEY: 'access_token',
+    REFRESH_TOKEN_KEY: 'refresh_token',
     USER_KEY: 'cvision_user'
 };
 
@@ -23,7 +24,16 @@ const Utils = {
 
     removeToken() {
         localStorage.removeItem(CONFIG.TOKEN_KEY);
+        localStorage.removeItem(CONFIG.REFRESH_TOKEN_KEY);
         localStorage.removeItem(CONFIG.USER_KEY);
+    },
+
+    setRefreshToken(token) {
+        localStorage.setItem(CONFIG.REFRESH_TOKEN_KEY, token);
+    },
+
+    getRefreshToken() {
+        return localStorage.getItem(CONFIG.REFRESH_TOKEN_KEY);
     },
 
     setUser(user) {
@@ -38,6 +48,36 @@ const Utils = {
     // Check if user is authenticated
     isAuthenticated() {
         return !!this.getToken();
+    },
+
+    // Decode JWT token
+    decodeToken(token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload;
+        } catch (e) {
+            console.error('Failed to decode token:', e);
+            return null;
+        }
+    },
+
+    // Check if token is expiring soon (within 5 minutes)
+    isTokenExpiringSoon(token) {
+        const payload = this.decodeToken(token);
+        if (!payload || !payload.exp) return true;
+
+        const now = Date.now() / 1000;
+        const timeUntilExpiry = payload.exp - now;
+        return timeUntilExpiry < 300; // 5 minutes
+    },
+
+    // Check if token is expired
+    isTokenExpired(token) {
+        const payload = this.decodeToken(token);
+        if (!payload || !payload.exp) return true;
+
+        const now = Date.now() / 1000;
+        return payload.exp < now;
     },
 
     // Format date
@@ -120,6 +160,17 @@ const API = {
             const response = await fetch(url, config);
             const data = await response.json();
 
+            // If unauthorized and we have a refresh token, try to refresh
+            if (response.status === 401 && Utils.getRefreshToken()) {
+                const refreshed = await this.refreshAccessToken();
+                if (refreshed) {
+                    // Retry the original request with new token
+                    config.headers.Authorization = `Bearer ${Utils.getToken()}`;
+                    const retryResponse = await fetch(url, config);
+                    return await retryResponse.json();
+                }
+            }
+
             if (!response.ok) {
                 throw new Error(data.detail || data.message || 'Request failed');
             }
@@ -154,6 +205,39 @@ const API = {
 
     async getProfile() {
         return this.request('/auth/me');
+    },
+
+    // Refresh access token
+    async refreshAccessToken() {
+        try {
+            const refreshToken = Utils.getRefreshToken();
+            if (!refreshToken) {
+                return false;
+            }
+
+            const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/auth/refresh`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ refresh_token: refreshToken })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.data.access_token) {
+                Utils.setToken(data.data.access_token);
+                return true;
+            }
+
+            // Refresh failed, clear tokens
+            Utils.removeToken();
+            return false;
+        } catch (error) {
+            console.error('Token refresh failed:', error);
+            Utils.removeToken();
+            return false;
+        }
     },
 
     // Document endpoints
@@ -213,7 +297,7 @@ class FileUpload {
         this.fileInput.type = 'file';
         this.fileInput.style.display = 'none';
         this.fileInput.accept = '.pdf,.docx,.doc,.txt';
-        
+
         this.element.appendChild(this.fileInput);
 
         // Add event listeners
@@ -237,7 +321,7 @@ class FileUpload {
     handleDrop(e) {
         e.preventDefault();
         this.element.classList.remove('dragover');
-        
+
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {
             this.processFile(files[0]);
@@ -285,7 +369,7 @@ class FileUpload {
     async uploadFile(file) {
         try {
             const result = await API.uploadDocument(file);
-            
+
             if (result.success) {
                 this.showSuccess('CV uploaded and processed successfully!');
                 if (this.options.onUpload) {
@@ -327,7 +411,7 @@ class FileUpload {
                 <div class="file-upload-text">${message}</div>
             </div>
         `;
-        
+
         // Reset after 3 seconds
         setTimeout(() => this.resetUI(), 3000);
     }
@@ -340,7 +424,7 @@ class FileUpload {
                 <div class="file-upload-hint">Please try again</div>
             </div>
         `;
-        
+
         // Reset after 5 seconds
         setTimeout(() => this.resetUI(), 5000);
     }
@@ -384,7 +468,7 @@ function logout() {
 function redirectIfAuthenticated() {
     const publicPages = ['login.html', 'register.html'];
     const currentPage = window.location.pathname.split('/').pop();
-    
+
     if (publicPages.includes(currentPage) && Utils.isAuthenticated()) {
         window.location.href = '/dashboard.html';
     }

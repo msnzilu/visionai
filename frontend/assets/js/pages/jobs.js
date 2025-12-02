@@ -699,68 +699,69 @@ async function loadUserCVsForBatch() {
  * Opens modal for CV/cover letter selection, then starts browser autofill
  */
 async function applyToJob(jobId) {
-    const job = currentJobs.find(j => (j._id || j.id) === jobId);
-    if (!job) {
-        CVision.Utils.showAlert('Job not found', 'error');
-        return;
-    }
-
-    // Check if job has application URL
-    if (!job.external_url && !job.apply_url) {
-        CVision.Utils.showAlert('This job does not have an application link', 'warning');
-        return;
-    }
-
-    // Show modal to select CV and cover letter
-    await showApplyModal(jobId);
-    const cvResponse = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cv`, {
-        headers: {
-            'Authorization': `Bearer ${CVision.Utils.getToken()}`
+    try {
+        const job = currentJobs.find(j => (j._id || j.id) === jobId);
+        if (!job) {
+            CVision.Utils.showAlert('Job not found', 'error');
+            return;
         }
-    });
 
-    if (cvResponse.ok) {
-        const cvData = await cvResponse.json();
-        const cvSelect = document.getElementById('applyModalCvSelect');
+        // Check if job has application URL
+        if (!job.external_url && !job.apply_url) {
+            CVision.Utils.showAlert('This job does not have an application link', 'warning');
+            return;
+        }
 
-        if (cvData.documents && cvData.documents.length > 0) {
-            cvSelect.innerHTML = cvData.documents.map(doc => `
+        // Show modal to select CV and cover letter
+        await showApplyModal(jobId);
+        const cvResponse = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cv`, {
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            }
+        });
+
+        if (cvResponse.ok) {
+            const cvData = await cvResponse.json();
+            const cvSelect = document.getElementById('applyModalCvSelect');
+
+            if (cvData.documents && cvData.documents.length > 0) {
+                cvSelect.innerHTML = cvData.documents.map(doc => `
                     <option value="${doc.id}">${doc.filename}</option>
                 `).join('');
-        } else {
-            cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
+            } else {
+                cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
+            }
         }
-    }
 
-    // Load cover letters
-    const clResponse = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cover_letter`, {
-        headers: {
-            'Authorization': `Bearer ${CVision.Utils.getToken()}`
-        }
-    });
+        // Load cover letters
+        const clResponse = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cover_letter`, {
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            }
+        });
 
-    if (clResponse.ok) {
-        const clData = await clResponse.json();
-        const clSelect = document.getElementById('applyModalCoverLetterSelect');
+        if (clResponse.ok) {
+            const clData = await clResponse.json();
+            const clSelect = document.getElementById('applyModalCoverLetterSelect');
 
-        if (clData.documents && clData.documents.length > 0) {
-            clSelect.innerHTML = '<option value="">No cover letter</option>' +
-                clData.documents.map(doc => `
+            if (clData.documents && clData.documents.length > 0) {
+                clSelect.innerHTML = '<option value="">No cover letter</option>' +
+                    clData.documents.map(doc => `
                         <option value="${doc.id}">${doc.filename}</option>
                     `).join('');
+            }
         }
-    }
 
-} catch (error) {
-    console.error('Failed to load documents:', error);
-    CVision.Utils.showAlert('Failed to load documents', 'error');
-}
+    } catch (error) {
+        console.error('Failed to load documents:', error);
+        CVision.Utils.showAlert('Failed to load documents', 'error');
+    }
 }
 
 /**
- * Start browser autofill process
+ * Start Quick Apply (Email Agent)
  */
-async function startBrowserAutofill(jobId) {
+async function startQuickApply(jobId) {
     const cvId = document.getElementById('applyModalCvSelect')?.value;
     const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
 
@@ -769,43 +770,20 @@ async function startBrowserAutofill(jobId) {
         return;
     }
 
-    closeApplyModal();
+    // Show loading state in button
+    const applyBtn = document.querySelector('#applyModal button.btn-gradient');
+    const originalText = applyBtn.innerHTML;
+    applyBtn.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Sending Application...
+    `;
+    applyBtn.disabled = true;
 
     try {
-        // Check if BrowserAutomation module is loaded
-        if (typeof BrowserAutomation === 'undefined') {
-            // Fallback: Open URL directly if browser automation not available
-            console.warn('Browser automation not available, opening URL directly');
-            const job = currentJobs.find(j => (j._id || j.id) === jobId);
-            if (job && (job.external_url || job.apply_url)) {
-                window.open(job.external_url || job.apply_url, '_blank');
-                CVision.Utils.showAlert('Opening application page...', 'info');
-            }
-            return;
-        }
-
-        // Start browser automation
-        await BrowserAutomation.startAutofill(
-            jobId,
-            cvId,
-            coverLetterId || null
-        );
-
-        // Track application
-        await trackApplication(jobId, cvId, coverLetterId);
-
-    } catch (error) {
-        console.error('Browser automation failed:', error);
-        CVision.Utils.showAlert(error.message || 'Failed to start browser automation', 'error');
-    }
-}
-
-/**
- * Track application in database
- */
-async function trackApplication(jobId, cvId, coverLetterId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/applications`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/email-applications/apply`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -814,18 +792,126 @@ async function trackApplication(jobId, cvId, coverLetterId) {
             body: JSON.stringify({
                 job_id: jobId,
                 cv_id: cvId,
-                cover_letter_id: coverLetterId,
-                status: 'applied',
-                applied_via: 'browser_automation'
+                cover_letter: coverLetterId || null
             })
         });
 
-        if (response.ok) {
-            console.log('Application tracked successfully');
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'Failed to send application');
         }
+
+        CVision.Utils.showAlert('Application sent successfully via email!', 'success');
+        closeApplyModal();
+
+        // Update UI to show applied status
+        const applyBtnInCard = document.querySelector(`button[onclick*="applyToJob('${jobId}')"]`);
+        if (applyBtnInCard) {
+            applyBtnInCard.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Applied
+            `;
+            applyBtnInCard.classList.remove('btn-gradient');
+            applyBtnInCard.classList.add('bg-green-600', 'hover:bg-green-700');
+            applyBtnInCard.disabled = true;
+        }
+
     } catch (error) {
-        console.error('Failed to track application:', error);
+        console.error('Quick Apply failed:', error);
+        CVision.Utils.showAlert(error.message || 'Failed to send application', 'error');
+
+        // Reset button
+        applyBtn.innerHTML = originalText;
+        applyBtn.disabled = false;
     }
+}
+
+/**
+ * Track application in database (Legacy - now handled by backend)
+ */
+async function trackApplication(jobId, cvId, coverLetterId) {
+    // This is now handled automatically by the backend email-applications endpoint
+    console.log('Application tracking handled by backend');
+}
+
+/**
+ * Show apply modal for job application
+ */
+async function showApplyModal(jobId) {
+    const job = currentJobs.find(j => (j._id || j.id) === jobId);
+    if (!job) {
+        CVision.Utils.showAlert('Job not found', 'error');
+        return;
+    }
+
+    // Check if job has email application method
+    const hasEmail = job.application_email ||
+        job.employer_email ||
+        (job.company_info && job.company_info.contact && job.company_info.contact.email);
+
+    if (!hasEmail) {
+        CVision.Utils.showAlert('This job does not support email applications', 'warning');
+        return;
+    }
+
+    // Create modal HTML
+    const modalHTML = `
+        <div id="applyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">Quick Apply</h3>
+                    <button onclick="closeApplyModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-gray-600 mb-2">Applying to:</p>
+                    <p class="font-semibold text-gray-900">${job.title}</p>
+                    <p class="text-sm text-gray-500">${job.company_name}</p>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select CV *</label>
+                        <select id="applyModalCvSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            <option value="">Loading CVs...</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Cover Letter (Optional)</label>
+                        <select id="applyModalCoverLetterSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            <option value="">Loading cover letters...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button onclick="closeApplyModal()" class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 font-medium hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button onclick="startBrowserAutofill('${jobId}')" class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all">
+                        Apply Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('applyModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
 /**
@@ -1026,3 +1112,135 @@ window.startCustomization = startCustomization;
 window.showApplyModal = showApplyModal;
 window.closeApplyModal = closeApplyModal;
 window.startBrowserAutofill = startBrowserAutofill;
+
+
+/**
+ * Load CVs for apply modal
+ */
+async function loadCVsForApply() {
+    try {
+        const response = await CVision.API.request('/documents/?document_type=cv');
+        const cvSelect = document.getElementById('applyModalCvSelect');
+
+        if (!cvSelect) return;
+
+        if (response.documents && response.documents.length > 0) {
+            cvSelect.innerHTML = response.documents.map(doc =>
+                `<option value="${doc.id}">${doc.filename}</option>`
+            ).join('');
+        } else {
+            cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
+        }
+    } catch (error) {
+        console.error('Failed to load CVs:', error);
+    }
+}
+
+/**
+ * Load cover letters for apply modal
+ */
+async function loadCoverLettersForApply() {
+    try {
+        const response = await CVision.API.request('/documents/?document_type=cover_letter');
+        const clSelect = document.getElementById('applyModalCoverLetterSelect');
+
+        if (!clSelect) return;
+
+        if (response.documents && response.documents.length > 0) {
+            clSelect.innerHTML = '<option value="">No cover letter</option>' +
+                response.documents.map(doc =>
+                    `<option value="${doc.id}">${doc.filename}</option>`
+                ).join('');
+        }
+    } catch (error) {
+        console.error('Failed to load cover letters:', error);
+    }
+}
+
+/**
+ * Generate email preview
+ */
+function generateEmailPreview(job) {
+    const emailTo = job.application_email || job.employer_email || 'Not available';
+    const subject = `Application for ${job.title} Position`;
+    const body = `Dear Hiring Manager,
+
+I am writing to express my interest in the ${job.title} position at ${job.company_name}.
+
+I have attached my CV for your review. I believe my skills and experience make me a strong candidate for this role.
+
+Thank you for considering my application. I look forward to hearing from you.
+
+Best regards`;
+
+    const emailToEl = document.getElementById('emailTo');
+    const emailSubjectEl = document.getElementById('emailSubject');
+    const emailBodyEl = document.getElementById('emailBody');
+
+    if (emailToEl) emailToEl.textContent = emailTo;
+    if (emailSubjectEl) emailSubjectEl.textContent = subject;
+    if (emailBodyEl) emailBodyEl.textContent = body;
+}
+
+/**
+ * Send email application
+ */
+async function sendEmailApplication() {
+    const cvId = document.getElementById('applyModalCvSelect')?.value;
+    const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
+
+    if (!cvId) {
+        CVision.Utils.showAlert('Please select a CV', 'warning');
+        return;
+    }
+
+    const job = currentJobs.find(j => (j._id || j.id) === currentJobIdForApply);
+    if (!job) {
+        CVision.Utils.showAlert('Job not found', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('sendApplicationBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-spin mr-2">⏳</span> Sending...';
+    }
+
+    try {
+        const response = await CVision.API.request('/applications/email-apply', {
+            method: 'POST',
+            body: JSON.stringify({
+                job_id: job._id || job.id,
+                cv_id: cvId,
+                cover_letter_id: coverLetterId || null
+            })
+        });
+
+        CVision.Utils.showAlert('Application sent successfully!', 'success');
+        closeApplyModal();
+
+        // Optionally redirect to applications page
+        setTimeout(() => {
+            window.location.href = '/pages/applications.html';
+        }, 1500);
+
+    } catch (error) {
+        console.error('Failed to send application:', error);
+        CVision.Utils.showAlert(error.message || 'Failed to send application', 'error');
+
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Send Application';
+        }
+    }
+}
+
+/**
+ * Connect Gmail account
+ */
+function connectGmail() {
+    window.location.href = `${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/auth/gmail/connect`;
+}
+
+// Store current job ID for apply
+let currentJobIdForApply = null;

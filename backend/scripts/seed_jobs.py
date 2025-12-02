@@ -13,7 +13,7 @@ import random
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from motor.motor_asyncio import AsyncIOMotorClient
-from app.config import settings
+from app.core.config import settings
 
 # Realistic job data with real company career URLs
 JOBS_DATA = [
@@ -56,6 +56,7 @@ Nice to Have:
         "benefits": [],
         "external_url": "https://careers.google.com/jobs/results/",
         "source": "company_website",
+        "company_info": {"name": "Google", "contact": {"email": "careers@google.com"}},
         "tags": ["engineering", "web", "senior"],
         "is_featured": True
     },
@@ -99,6 +100,7 @@ We Offer:
         "benefits": [],
         "external_url": "https://careers.microsoft.com/us/en",
         "source": "company_website",
+        "company_info": {"name": "Microsoft", "contact": {"email": "careers@microsoft.com"}},
         "tags": ["python", "backend", "junior"]
     },
     {
@@ -141,6 +143,7 @@ Perks:
         "benefits": [],
         "external_url": "https://www.shopify.com/careers",
         "source": "company_website",
+        "company_info": {"name": "Shopify", "contact": {"email": "talent@shopify.com"}},
         "tags": ["frontend", "react", "remote"],
         "is_featured": True
     },
@@ -184,6 +187,7 @@ Benefits:
         "benefits": [],
         "external_url": "https://www.amazon.jobs/en/teams/aws",
         "source": "company_website",
+        "company_info": {"name": "Amazon Web Services", "contact": {"email": "aws-jobs@amazon.com"}},
         "tags": ["devops", "cloud", "infrastructure"]
     },
     {
@@ -226,6 +230,7 @@ Why Meta:
         "benefits": [],
         "external_url": "https://www.metacareers.com/",
         "source": "company_website",
+        "company_info": {"name": "Meta", "contact": {"email": "recruiting@meta.com"}},
         "tags": ["ml", "ai", "python", "senior"],
         "is_featured": True
     },
@@ -269,6 +274,7 @@ What We Offer:
         "benefits": [],
         "external_url": "https://stripe.com/jobs",
         "source": "company_website",
+        "company_info": {"name": "Stripe", "contact": {"email": "jobs@stripe.com"}},
         "tags": ["backend", "api", "payments"]
     },
     {
@@ -312,6 +318,7 @@ Why Apple:
         "benefits": [],
         "external_url": "https://www.apple.com/careers/us/",
         "source": "company_website",
+        "company_info": {"name": "Apple", "contact": {"email": "jobs@apple.com"}},
         "tags": ["ios", "mobile", "swift"]
     },
     {
@@ -354,6 +361,7 @@ Netflix Culture:
         "benefits": [],
         "external_url": "https://jobs.netflix.com/",
         "source": "company_website",
+        "company_info": {"name": "Netflix", "contact": {"email": "talent@netflix.com"}},
         "tags": ["data", "analytics", "ml"],
         "is_featured": True
     },
@@ -397,6 +405,7 @@ IBM Benefits:
         "benefits": [],
         "external_url": "https://www.ibm.com/careers",
         "source": "company_website",
+        "company_info": {"name": "IBM", "contact": {"email": "careers@ibm.com"}},
         "tags": ["cloud", "architecture", "enterprise"]
     },
     {
@@ -440,6 +449,7 @@ GitLab Perks:
         "benefits": [],
         "external_url": "https://about.gitlab.com/jobs/",
         "source": "company_website",
+        "company_info": {"name": "GitLab", "contact": {"email": "jobs@gitlab.com"}},
         "tags": ["vue", "frontend", "remote", "async"],
         "is_featured": True
     },
@@ -484,6 +494,7 @@ Why Cloudflare:
         "benefits": [],
         "external_url": "https://www.cloudflare.com/careers/",
         "source": "company_website",
+        "company_info": {"name": "Cloudflare", "contact": {"email": "recruiting@cloudflare.com"}},
         "tags": ["security", "infosec", "cybersecurity"]
     },
     {
@@ -526,6 +537,7 @@ OpenAI Offers:
         "benefits": [],
         "external_url": "https://openai.com/careers/",
         "source": "company_website",
+        "company_info": {"name": "OpenAI", "contact": {"email": "careers@openai.com"}},
         "tags": ["product", "ai", "ml", "pm"],
         "is_featured": True
     },
@@ -570,6 +582,7 @@ Airbnb Benefits:
         "benefits": [],
         "external_url": "https://careers.airbnb.com/",
         "source": "company_website",
+        "company_info": {"name": "Airbnb", "contact": {"email": "talent@airbnb.com"}},
         "tags": ["fullstack", "web", "travel"]
     },
     {
@@ -613,6 +626,7 @@ Uber Perks:
         "benefits": [],
         "external_url": "https://www.uber.com/us/en/careers/",
         "source": "company_website",
+        "company_info": {"name": "Uber", "contact": {"email": "recruiting@uber.com"}},
         "tags": ["sre", "reliability", "devops"]
     },
     {
@@ -656,6 +670,7 @@ Salesforce Benefits:
         "benefits": [],
         "external_url": "https://www.salesforce.com/company/careers/",
         "source": "company_website",
+        "company_info": {"name": "Salesforce", "contact": {"email": "careers@salesforce.com"}},
         "tags": ["qa", "testing", "automation"]
     }
 ]

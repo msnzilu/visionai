@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link rel="stylesheet" href="../assets/css/generation.css">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body class="bg-gray-50">
     <div id="navbar-container"></div>
 
@@ -21,22 +23,12 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
             <h2 class="text-xl font-semibold mb-4">Find Your Next Job</h2>
             <form id="jobSearchForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <input
-                    type="text"
-                    id="searchQuery"
-                    placeholder="Job title, keywords, or company"
-                    class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <input
-                    type="text"
-                    id="searchLocation"
-                    placeholder="City, state, or 'remote'"
-                    class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <button
-                    type="submit"
-                    class="btn-gradient text-white rounded-lg px-6 py-2 font-medium hover:shadow-lg transition-all"
-                >
+                <input type="text" id="searchQuery" placeholder="Job title, keywords, or company"
+                    class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                <input type="text" id="searchLocation" placeholder="City, state, or 'remote'"
+                    class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                <button type="submit"
+                    class="btn-gradient text-white rounded-lg px-6 py-2 font-medium hover:shadow-lg transition-all">
                     Search Jobs
                 </button>
             </form>
@@ -47,11 +39,12 @@
             <aside class="lg:col-span-1">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-24">
                     <h3 class="font-semibold mb-4">Filters</h3>
-                    
-                    <!-- Batch Selection Toggle (Phase 3) -->
+
+                    <!-- Batch Selection Toggle -->
                     <div class="mb-4 pb-4 border-b border-gray-200">
-                        <label class="flex items-center">
-                            <input type="checkbox" id="batchSelectMode" class="rounded text-primary-600" onchange="toggleBatchMode(this.checked)">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="batchSelectMode" class="rounded text-primary-600"
+                                onchange="toggleBatchMode(this.checked)">
                             <span class="ml-2 text-sm font-medium text-gray-700">Batch Select Mode</span>
                         </label>
                     </div>
@@ -59,15 +52,15 @@
                     <!-- Employment Type -->
                     <div class="mb-4">
                         <h4 class="text-sm font-medium mb-2">Employment Type</h4>
-                        <label class="flex items-center mb-2">
+                        <label class="flex items-center mb-2 cursor-pointer">
                             <input type="checkbox" class="employment-type rounded text-primary-600" value="full_time" />
                             <span class="ml-2 text-sm">Full Time</span>
                         </label>
-                        <label class="flex items-center mb-2">
+                        <label class="flex items-center mb-2 cursor-pointer">
                             <input type="checkbox" class="employment-type rounded text-primary-600" value="part_time" />
                             <span class="ml-2 text-sm">Part Time</span>
                         </label>
-                        <label class="flex items-center mb-2">
+                        <label class="flex items-center mb-2 cursor-pointer">
                             <input type="checkbox" class="employment-type rounded text-primary-600" value="contract" />
                             <span class="ml-2 text-sm">Contract</span>
                         </label>
@@ -76,15 +69,15 @@
                     <!-- Work Arrangement -->
                     <div class="mb-4">
                         <h4 class="text-sm font-medium mb-2">Work Arrangement</h4>
-                        <label class="flex items-center mb-2">
+                        <label class="flex items-center mb-2 cursor-pointer">
                             <input type="checkbox" class="work-arrangement rounded text-primary-600" value="remote" />
                             <span class="ml-2 text-sm">Remote</span>
                         </label>
-                        <label class="flex items-center mb-2">
+                        <label class="flex items-center mb-2 cursor-pointer">
                             <input type="checkbox" class="work-arrangement rounded text-primary-600" value="hybrid" />
                             <span class="ml-2 text-sm">Hybrid</span>
                         </label>
-                        <label class="flex items-center mb-2">
+                        <label class="flex items-center mb-2 cursor-pointer">
                             <input type="checkbox" class="work-arrangement rounded text-primary-600" value="on_site" />
                             <span class="ml-2 text-sm">On-site</span>
                         </label>
@@ -93,30 +86,18 @@
                     <!-- Salary Range -->
                     <div class="mb-4">
                         <h4 class="text-sm font-medium mb-2">Salary Range</h4>
-                        <input
-                            type="number"
-                            id="salaryMin"
-                            placeholder="Min salary"
-                            class="border border-gray-300 rounded px-3 py-1 w-full mb-2 text-sm"
-                        />
-                        <input
-                            type="number"
-                            id="salaryMax"
-                            placeholder="Max salary"
-                            class="border border-gray-300 rounded px-3 py-1 w-full text-sm"
-                        />
+                        <input type="number" id="salaryMin" placeholder="Min salary"
+                            class="border border-gray-300 rounded px-3 py-1 w-full mb-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                        <input type="number" id="salaryMax" placeholder="Max salary"
+                            class="border border-gray-300 rounded px-3 py-1 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>
 
-                    <button
-                        id="applyFilters"
-                        class="w-full btn-gradient text-white rounded-lg px-4 py-2 text-sm font-medium hover:shadow-lg transition-all"
-                    >
+                    <button id="applyFilters"
+                        class="w-full btn-gradient text-white rounded-lg px-4 py-2 text-sm font-medium hover:shadow-lg transition-all">
                         Apply Filters
                     </button>
-                    <button
-                        id="clearFilters"
-                        class="w-full border border-gray-300 text-gray-700 rounded-lg px-4 py-2 text-sm mt-2 hover:bg-gray-50"
-                    >
+                    <button id="clearFilters"
+                        class="w-full border border-gray-300 text-gray-700 rounded-lg px-4 py-2 text-sm mt-2 hover:bg-gray-50 transition-colors">
                         Clear All
                     </button>
                 </div>
@@ -127,7 +108,8 @@
                 <!-- Results Header -->
                 <div class="flex justify-between items-center mb-4">
                     <p id="resultsCount" class="text-gray-600">Search for jobs to get started</p>
-                    <select id="sortBy" class="border border-gray-300 rounded-lg px-3 py-1 text-sm">
+                    <select id="sortBy"
+                        class="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                         <option value="relevance">Sort by: Relevance</option>
                         <option value="date">Date Posted</option>
                         <option value="title">Title</option>
@@ -136,19 +118,22 @@
 
                 <!-- Loading State -->
                 <div id="loadingState" class="text-center py-12 hidden">
-                    <div class="spinner border-4 border-primary-200 border-t-primary-600 w-12 h-12 mx-auto mb-4"></div>
+                    <div
+                        class="spinner border-4 border-primary-200 border-t-primary-600 w-12 h-12 mx-auto mb-4 rounded-full animate-spin">
+                    </div>
                     <p class="text-gray-600">Searching for jobs...</p>
                 </div>
 
                 <!-- Job Cards Container -->
                 <div id="jobsContainer" class="space-y-4">
-                    <!-- Jobs will be inserted here -->
+                    <!-- Jobs will be inserted here dynamically -->
                 </div>
 
                 <!-- Empty State -->
                 <div id="emptyState" class="text-center py-12 hidden">
                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <h3 class="mt-4 text-lg font-medium text-gray-900">No jobs found</h3>
                     <p class="mt-2 text-gray-500">Try adjusting your search or filters</p>
@@ -156,68 +141,73 @@
 
                 <!-- Pagination -->
                 <div id="pagination" class="flex justify-center mt-8 gap-2 hidden">
-                    <!-- Pagination buttons will be inserted here -->
+                    <!-- Pagination buttons will be inserted here dynamically -->
                 </div>
             </div>
         </div>
     </main>
 
     <!-- Job Detail Modal -->
-    <div id="jobModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div id="jobModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div class="p-6">
                 <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <h2 id="modalTitle" class="text-2xl font-bold"></h2>
+                    <div class="flex-1 pr-4">
+                        <h2 id="modalTitle" class="text-2xl font-bold text-gray-900"></h2>
                         <p id="modalCompany" class="text-gray-600 mt-1"></p>
                         <p id="modalLocation" class="text-gray-500 text-sm mt-1"></p>
                     </div>
-                    <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                    <button id="closeModal" class="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <div id="modalContent" class="space-y-4">
-                    <!-- Job details will be inserted here -->
+                <div id="modalContent" class="space-y-4 mb-6">
+                    <!-- Job details will be inserted here dynamically -->
                 </div>
 
-                <!-- Phase 3: Action buttons -->
-                <div class="flex gap-3 mt-6">
-                    <button id="modalSaveJob" class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 font-medium hover:bg-gray-50 transition-colors">
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button id="modalSaveJob"
+                        class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 font-medium hover:bg-gray-50 transition-colors">
                         Save Job
                     </button>
 
-                    <button id="modalCustomize" style="background: #667eea;" class="flex-1 text-white rounded-lg px-4 py-2 font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                    <button id="modalCustomize"
+                        class="flex-1 bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         Customize
                     </button>
-                   
-                    <button id="modalApply" class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2">
+
+                    <button id="modalApply"
+                        class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
                         Apply Now
                     </button>
-                </div>            
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Phase 3: Customization Modal -->
-    <div id="customizeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <!-- Customization Modal -->
+    <div id="customizeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div class="p-6">
                 <div class="flex justify-between items-start mb-6">
                     <h2 class="text-2xl font-bold text-gray-900">Customize Documents</h2>
-                    <button onclick="closeCustomizeModal()" class="text-gray-400 hover:text-gray-600">
+                    <button onclick="closeCustomizeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
@@ -225,8 +215,10 @@
                 <div class="space-y-6">
                     <!-- CV Selection -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Your CV</label>
-                        <select id="cvSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500">
+                        <label for="cvSelect" class="block text-sm font-medium text-gray-700 mb-2">Select Your
+                            CV</label>
+                        <select id="cvSelect"
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
                             <option value="">Loading your CVs...</option>
                         </select>
                     </div>
@@ -235,20 +227,24 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-3">Choose Template</label>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <div class="template-option active cursor-pointer border-2 border-primary-500 rounded-lg p-3 text-center hover:shadow-md transition-all" data-template="professional">
-                                <div class="bg-gray-200 h-20 rounded mb-2"></div>
+                            <div class="template-option active cursor-pointer border-2 border-primary-500 rounded-lg p-3 text-center hover:shadow-md transition-all"
+                                data-template="professional">
+                                <div class="bg-gradient-to-br from-gray-200 to-gray-300 h-20 rounded mb-2"></div>
                                 <span class="text-sm font-medium">Professional</span>
                             </div>
-                            <div class="template-option cursor-pointer border-2 border-gray-200 rounded-lg p-3 text-center hover:border-primary-300 hover:shadow-md transition-all" data-template="modern">
-                                <div class="bg-gray-200 h-20 rounded mb-2"></div>
+                            <div class="template-option cursor-pointer border-2 border-gray-200 rounded-lg p-3 text-center hover:border-primary-300 hover:shadow-md transition-all"
+                                data-template="modern">
+                                <div class="bg-gradient-to-br from-blue-200 to-blue-300 h-20 rounded mb-2"></div>
                                 <span class="text-sm font-medium">Modern</span>
                             </div>
-                            <div class="template-option cursor-pointer border-2 border-gray-200 rounded-lg p-3 text-center hover:border-primary-300 hover:shadow-md transition-all" data-template="minimal">
-                                <div class="bg-gray-200 h-20 rounded mb-2"></div>
+                            <div class="template-option cursor-pointer border-2 border-gray-200 rounded-lg p-3 text-center hover:border-primary-300 hover:shadow-md transition-all"
+                                data-template="minimal">
+                                <div class="bg-gradient-to-br from-green-200 to-green-300 h-20 rounded mb-2"></div>
                                 <span class="text-sm font-medium">Minimal</span>
                             </div>
-                            <div class="template-option cursor-pointer border-2 border-gray-200 rounded-lg p-3 text-center hover:border-primary-300 hover:shadow-md transition-all" data-template="creative">
-                                <div class="bg-gray-200 h-20 rounded mb-2"></div>
+                            <div class="template-option cursor-pointer border-2 border-gray-200 rounded-lg p-3 text-center hover:border-primary-300 hover:shadow-md transition-all"
+                                data-template="creative">
+                                <div class="bg-gradient-to-br from-purple-200 to-purple-300 h-20 rounded mb-2"></div>
                                 <span class="text-sm font-medium">Creative</span>
                             </div>
                         </div>
@@ -256,14 +252,17 @@
 
                     <!-- Cover Letter Options -->
                     <div>
-                        <label class="flex items-center mb-3">
-                            <input type="checkbox" id="includeCoverLetter" checked class="rounded text-primary-600 focus:ring-primary-500">
+                        <label class="flex items-center mb-3 cursor-pointer">
+                            <input type="checkbox" id="includeCoverLetter" checked
+                                class="rounded text-primary-600 focus:ring-primary-500">
                             <span class="ml-2 text-sm font-medium text-gray-700">Generate Cover Letter</span>
                         </label>
 
                         <div id="coverLetterOptions">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Cover Letter Tone</label>
-                            <select id="toneSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500">
+                            <label for="toneSelect" class="block text-sm font-medium text-gray-700 mb-2">Cover Letter
+                                Tone</label>
+                            <select id="toneSelect"
+                                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
                                 <option value="professional">Professional</option>
                                 <option value="enthusiastic">Enthusiastic</option>
                                 <option value="conversational">Conversational</option>
@@ -273,28 +272,34 @@
                     </div>
 
                     <!-- Usage Warning -->
-                    <div id="usageWarning" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4" style="display: none;">
+                    <div id="usageWarning" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 hidden">
                         <div class="flex items-start">
-                            <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/>
+                            <svg class="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" />
                             </svg>
                             <div class="ml-3">
                                 <p class="text-sm font-medium text-yellow-800">
-                                    You have <strong id="remainingGenerations">0</strong> generations remaining this month.
+                                    You have <strong id="remainingGenerations">0</strong> generations remaining this
+                                    month.
                                 </p>
                                 <p class="text-xs text-yellow-700 mt-1">
-                                    <a href="subscription.html" class="underline hover:text-yellow-900">Upgrade your plan</a> for more generations.
+                                    <a href="subscription.html" class="underline hover:text-yellow-900">Upgrade your
+                                        plan</a> for more generations.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex gap-4 mt-8">
-                    <button onclick="closeCustomizeModal()" class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-6 py-2 font-medium hover:bg-gray-50">
+                <div class="flex flex-col sm:flex-row gap-4 mt-8">
+                    <button onclick="closeCustomizeModal()"
+                        class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-6 py-2 font-medium hover:bg-gray-50 transition-colors">
                         Cancel
                     </button>
-                    <button onclick="startCustomization()" class="flex-1 btn-gradient text-white rounded-lg px-6 py-2 font-medium hover:shadow-lg">
+                    <button onclick="startCustomization()"
+                        class="flex-1 btn-gradient text-white rounded-lg px-6 py-2 font-medium hover:shadow-lg transition-all">
                         Generate Documents
                     </button>
                 </div>
@@ -302,33 +307,130 @@
         </div>
     </div>
 
+    <!-- Quick Apply Modal -->
+    <div id="applyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Quick Apply</h2>
+                        <p id="applyModalJobTitle" class="text-gray-600 mt-1"></p>
+                    </div>
+                    <button onclick="closeApplyModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Gmail Connection Status -->
+                <div id="gmailNotConnected" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 hidden">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor"
+                            viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" />
+                        </svg>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-yellow-800">Gmail not connected</p>
+                            <p class="text-xs text-yellow-700 mt-1">Connect your Gmail account to send applications via
+                                email.</p>
+                            <button onclick="connectGmail()"
+                                class="mt-2 text-sm text-yellow-800 underline hover:text-yellow-900">
+                                Connect Gmail Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Application Form -->
+                <div id="applyForm" class="space-y-6">
+                    <!-- CV Selection -->
+                    <div>
+                        <label for="applyModalCvSelect" class="block text-sm font-medium text-gray-700 mb-2">Select
+                            CV</label>
+                        <select id="applyModalCvSelect"
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                            <option value="">Loading CVs...</option>
+                        </select>
+                    </div>
+
+                    <!-- Cover Letter Selection (Optional) -->
+                    <div>
+                        <label for="applyModalCoverLetterSelect"
+                            class="block text-sm font-medium text-gray-700 mb-2">Cover Letter (Optional)</label>
+                        <select id="applyModalCoverLetterSelect"
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                            <option value="">No cover letter</option>
+                        </select>
+                    </div>
+
+                    <!-- Email Preview -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email Preview</label>
+                        <div class="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div class="text-sm space-y-2">
+                                <div><strong>To:</strong> <span id="emailTo" class="text-gray-700"></span></div>
+                                <div><strong>Subject:</strong> <span id="emailSubject" class="text-gray-700"></span>
+                                </div>
+                                <div class="border-t pt-2 mt-2">
+                                    <div id="emailBody" class="whitespace-pre-wrap text-gray-700"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4 mt-8">
+                    <button onclick="closeApplyModal()"
+                        class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-6 py-2 font-medium hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="sendApplicationBtn" onclick="sendEmailApplication()"
+                        class="flex-1 btn-gradient text-white rounded-lg px-6 py-2 font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Send Application
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="../assets/js/inline-messages.js" defer></script>
     <script src="../assets/js/main.js" defer></script>
     <script src="../assets/js/browser-automation.js" defer></script>
     <script src="../assets/js/pages/jobs.js" defer></script>
     <script src="../assets/js/generation.js" defer></script>
     <script src="../assets/js/components/navbar.js" defer></script>
-    <script defer>
+    <script>
         // Load navbar component
         fetch('../components/navbar.html')
             .then(response => response.text())
             .then(html => {
                 document.getElementById('navbar-container').innerHTML = html;
-                // Optionally set page title
                 CVisionNavbar.init('Applications');
-            });
+            })
+            .catch(error => console.error('Error loading navbar:', error));
 
-        // Your page-specific JavaScript
+        // Initialize page
         document.addEventListener('DOMContentLoaded', () => {
             if (!CVision.Utils.isAuthenticated()) {
                 window.location.href = '../login.html';
                 return;
             }
-            
-            // Your page logic here
-            loadJobsFromDB()
+
+            // Load jobs from database
+            loadJobsFromDB();
         });
     </script>
 
 </body>
+
 </html>

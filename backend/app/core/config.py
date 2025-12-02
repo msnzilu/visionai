@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(env="ACCESS_TOKEN_EXPIRE_MINUTES")
     REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(env="REFRESH_TOKEN_EXPIRE_MINUTES")
     PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = Field(env="PASSWORD_RESET_TOKEN_EXPIRE_HOURS")
+    # Remember Me token expiration
+    REMEMBER_ME_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=1440, env="REMEMBER_ME_ACCESS_TOKEN_EXPIRE_MINUTES")  # 1 day
+    REMEMBER_ME_REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(default=43200, env="REMEMBER_ME_REFRESH_TOKEN_EXPIRE_MINUTES")  # 30 days
+
 
     # CORS & Allowed Hosts
     CORS_ORIGINS_RAW: Union[str, List[str]] = Field(default='["http://localhost", "http://localhost:80", "http://localhost:3000"]', alias="CORS_ORIGINS")

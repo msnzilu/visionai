@@ -1,6 +1,6 @@
 // CVision Authentication JavaScript
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Check if user is already authenticated
     if (CVision && CVision.Utils && CVision.Utils.isAuthenticated()) {
         window.location.href = 'dashboard.html';
@@ -10,15 +10,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize based on which form exists on the page
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
-    
+
     if (loginForm) {
         initializeLoginPage();
     }
-    
+
     if (registerForm) {
         initializeRegisterPage();
     }
-    
+
     // Initialize social login buttons (common to both pages)
     initializeSocialLogin();
 });
@@ -32,7 +32,7 @@ function initializeLoginPage() {
     if (togglePassword) {
         const passwordInput = document.getElementById('password');
         if (passwordInput) {
-            togglePassword.addEventListener('click', function() {
+            togglePassword.addEventListener('click', function () {
                 const type = passwordInput.type === 'password' ? 'text' : 'password';
                 passwordInput.type = type;
             });
@@ -41,7 +41,7 @@ function initializeLoginPage() {
 
     // Form submission handler
     if (form) {
-        form.addEventListener('submit', async function(e) {
+        form.addEventListener('submit', async function (e) {
             e.preventDefault();
             await handleLogin();
         });
@@ -51,16 +51,16 @@ function initializeLoginPage() {
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     const forgotPasswordModal = document.getElementById('forgotPasswordModal');
     const closeForgotModal = document.getElementById('closeForgotModal');
-    
+
     if (forgotPasswordLink && forgotPasswordModal) {
-        forgotPasswordLink.addEventListener('click', function(e) {
+        forgotPasswordLink.addEventListener('click', function (e) {
             e.preventDefault();
             forgotPasswordModal.classList.remove('hidden');
         });
     }
-    
+
     if (closeForgotModal && forgotPasswordModal) {
-        closeForgotModal.addEventListener('click', function() {
+        closeForgotModal.addEventListener('click', function () {
             forgotPasswordModal.classList.add('hidden');
         });
     }
@@ -75,7 +75,7 @@ function initializeRegisterPage() {
     if (togglePassword) {
         const passwordInput = document.getElementById('password');
         if (passwordInput) {
-            togglePassword.addEventListener('click', function() {
+            togglePassword.addEventListener('click', function () {
                 const type = passwordInput.type === 'password' ? 'text' : 'password';
                 passwordInput.type = type;
             });
@@ -84,7 +84,7 @@ function initializeRegisterPage() {
 
     // Form submission handler
     if (form) {
-        form.addEventListener('submit', async function(e) {
+        form.addEventListener('submit', async function (e) {
             e.preventDefault();
             await handleRegister();
         });
@@ -109,7 +109,7 @@ async function handleLogin() {
     const passwordInput = document.getElementById('password');
     const loginButton = document.getElementById('loginButton');
     const formError = document.getElementById('formError');
-    
+
     if (!emailInput || !passwordInput) {
         return;
     }
@@ -123,6 +123,7 @@ async function handleLogin() {
     // Get form values
     const email = emailInput.value.trim();
     const password = passwordInput.value;
+    const rememberMe = document.getElementById('rememberMe')?.checked || false;
 
     // Validate inputs
     if (!validateLoginForm(email, password)) {
@@ -138,15 +139,24 @@ async function handleLogin() {
         // Make login request
         const response = await CVision.API.login({
             email: email,
-            password: password
+            password: password,
+            remember_me: rememberMe
         });
 
         if (response.success) {
-            // Store token and user data
+            // Store tokens and user data
             CVision.Utils.setToken(response.data.access_token);
+            if (response.data.refresh_token) {
+                CVision.Utils.setRefreshToken(response.data.refresh_token);
+            }
             CVision.Utils.setUser(response.data.user);
-            InlineMessage.success('Logged In successfully! Redirecting to Dashboard...');
 
+            // Start token refresh timer
+            if (typeof CVision.startTokenRefreshTimer === 'function') {
+                CVision.startTokenRefreshTimer();
+            }
+
+            InlineMessage.success('Logged In successfully! Redirecting to Dashboard...');
 
             // Redirect to dashboard
             setTimeout(() => {
@@ -158,10 +168,10 @@ async function handleLogin() {
 
     } catch (error) {
         console.error('Login error:', error);
-        
+
         const errorMessage = error.message || 'Login failed. Please try again.';
         CVision.Utils.showAlert(errorMessage, 'error');
-        
+
         if (formError) {
             formError.textContent = errorMessage;
             formError.classList.remove('hidden');
@@ -180,7 +190,7 @@ async function handleRegister() {
     const termsInput = document.getElementById('terms');
     const registerButton = document.getElementById('registerButton');
     const formError = document.getElementById('formError');
-    
+
     if (!emailInput || !passwordInput) {
         console.error('Register form inputs not found');
         return;
@@ -216,7 +226,7 @@ async function handleRegister() {
 
         if (response.success) {
             InlineMessage.success('Account created successfully! Redirecting to login...');
-            
+
             // Redirect to login page
             setTimeout(() => {
                 window.location.href = 'login.html';
@@ -227,10 +237,10 @@ async function handleRegister() {
 
     } catch (error) {
         console.error('Registration error:', error);
-        
+
         const errorMessage = error.message || 'Registration failed. Please try again.';
         CVision.Utils.showAlert(errorMessage, 'error');
-        
+
         if (formError) {
             formError.textContent = errorMessage;
             formError.classList.remove('hidden');
@@ -316,10 +326,10 @@ function clearFieldErrors() {
 
 function setButtonLoading(button, loading) {
     if (!button) return;
-    
+
     const textElement = button.querySelector('.button-text');
     const spinnerElement = button.querySelector('.loading-spinner');
-    
+
     if (loading) {
         button.disabled = true;
         button.classList.add('opacity-75', 'cursor-not-allowed');
@@ -354,12 +364,12 @@ async function handleGoogleLogin() {
 
     } catch (error) {
         console.error('Google login error:', error);
-        CVision.Utils.showAlert('Google login failed. Please try again.', 'error'); 
-        InlineMessage.error('Google login failed. Please try again...', { 
-            autoHide: true, 
-            autoHideDelay: 4000 
+        CVision.Utils.showAlert('Google login failed. Please try again.', 'error');
+        InlineMessage.error('Google login failed. Please try again...', {
+            autoHide: true,
+            autoHideDelay: 4000
         });
-        
+
         const googleButton = document.getElementById('googleLogin') || document.getElementById('googleSignup');
         if (googleButton) {
             googleButton.disabled = false;
@@ -390,11 +400,11 @@ async function handleLinkedInLogin() {
     } catch (error) {
         console.error('LinkedIn login error:', error);
         CVision.Utils.showAlert('LinkedIn login failed. Please try again.', 'error');
-        InlineMessage.error('LinkedIn login failed. Please try again....', { 
-            autoHide: true, 
-            autoHideDelay: 4000 
+        InlineMessage.error('LinkedIn login failed. Please try again....', {
+            autoHide: true,
+            autoHideDelay: 4000
         });
-        
+
         const linkedinButton = document.getElementById('linkedinLogin') || document.getElementById('linkedinSignup');
         if (linkedinButton) {
             linkedinButton.disabled = false;

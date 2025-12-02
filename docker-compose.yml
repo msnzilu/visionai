@@ -47,6 +47,9 @@ services:
       - 8000:8000
     networks:
       - vision_ai_network
+    depends_on:
+      - mongo
+      - redis
 
   celery_worker:
     build:

@@ -27,7 +27,7 @@ class GmailService:
     def __init__(self):
         self.client_id = settings.GOOGLE_CLIENT_ID
         self.client_secret = settings.GOOGLE_CLIENT_SECRET
-        self.redirect_uri = f"{settings.API_V1_STR}/auth/gmail/callback"
+        self.redirect_uri = f"http://localhost:8000{settings.API_V1_STR}/auth/gmail/callback"
         
         # In development, allow HTTP for Oauth
         if settings.ENVIRONMENT == "development":
