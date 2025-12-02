@@ -50,7 +50,7 @@ def get_user_id(current_user: dict) -> str:
 @router.get("/config/stripe")
 async def get_stripe_config():
     """Get public Stripe configuration - no authentication required"""
-    from app.config import settings
+    from app.core.config import settings
     
     # Only return the publishable key (safe to expose publicly)
     return {
@@ -500,7 +500,7 @@ async def create_portal_session(
 async def stripe_webhook(request: Request, db = Depends(get_database)):
     """Handle Stripe webhook events"""
     from app.integrations.stripe_client import StripeClient
-    from app.config import settings
+    from app.core.config import settings
     
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")

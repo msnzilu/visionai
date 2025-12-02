@@ -12,7 +12,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from app.services.cache_service import init_cache, close_cache
-from app.config import settings
+from app.core.config import settings
 
 
 # Configure logging
@@ -267,6 +267,17 @@ try:
     logger.info("Browser automation router loaded")
 except ImportError as e:
     logger.warning(f"Browser automation router not available: {e}")
+
+try:
+    from app.api import email_applications
+    app.include_router(
+        email_applications.router,
+        prefix=f"{settings.API_V1_STR}/email-applications",
+        tags=["Email Applications"]
+    )
+    logger.info("Email applications router loaded")
+except ImportError as e:
+    logger.warning(f"Email applications router not available: {e}")
 
 
 # Catch-all for missing routes during development

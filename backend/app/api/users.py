@@ -65,7 +65,8 @@ async def get_current_user_profile(
             usage_stats=current_user.get("usage_stats", {}),
             referral_code=current_user.get("referral_code", ""),
             created_at=current_user.get("created_at"),
-            last_login=current_user.get("last_login")
+            last_login=current_user.get("last_login"),
+            gmail_connected=bool(current_user.get("gmail_auth"))
         )
         
     except KeyError as ke:
@@ -155,7 +156,8 @@ async def update_current_user_profile(
             usage_stats=updated_user.get("usage_stats", {}),
             referral_code=updated_user.get("referral_code", ""),
             created_at=updated_user.get("created_at"),
-            last_login=updated_user.get("last_login")
+            last_login=updated_user.get("last_login"),
+            gmail_connected=bool(updated_user.get("gmail_auth"))
         )
         
         logger.info(f"✓ Profile updated successfully")
@@ -228,6 +230,7 @@ async def update_current_user_profile(
 #             referral_code=updated_user["referral_code"],
 #             created_at=updated_user["created_at"],
 #             last_login=updated_user.get("last_login")
+#             gmail_connected=bool(updated_user.get("gmail_auth"))
 #         )
         
 #     except HTTPException:
@@ -594,7 +597,8 @@ async def update_user_admin(
             usage_stats=updated_user.get("usage_stats", {}),
             referral_code=updated_user["referral_code"],
             created_at=updated_user["created_at"],
-            last_login=updated_user.get("last_login")
+            last_login=updated_user.get("last_login"),
+            gmail_connected=bool(updated_user.get("gmail_auth"))
         )
         
     except HTTPException:

@@ -301,6 +301,12 @@ class Application(ApplicationBase, TimeStampedModel):
     company_name: Optional[str] = None  # Cached from job
     location: Optional[str] = None  # Cached from job
     
+    # Email Application Tracking
+    application_method: str = "external"  # "email" | "external"
+    email_thread_id: Optional[str] = None
+    last_email_at: Optional[datetime] = None
+    email_status: Optional[str] = None  # "sent" | "delivered" | "replied"
+    
     # Follow-up tracking
     last_follow_up: Optional[datetime] = None
     next_follow_up: Optional[datetime] = None

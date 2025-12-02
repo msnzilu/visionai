@@ -165,6 +165,11 @@ async function loadUserProfile() {
                 document.getElementById('searchesUsed').textContent = user.usage_stats.monthly_searches || 0;
                 document.getElementById('applicationsCount').textContent = user.usage_stats.total_applications || 0;
             }
+
+            // Check Gmail connection status
+            if (!user.gmail_connected) {
+                showGmailConnectAlert();
+            }
         }
     } catch (error) {
         console.error('Error loading user profile:');
@@ -423,5 +428,61 @@ async function unsaveJob(jobId) {
     } catch (error) {
         console.error('Error unsaving job:', error);
         CVision.Utils.showAlert('Failed to remove job', 'error');
+    }
+}
+
+function showGmailConnectAlert() {
+    const alertsContainer = document.getElementById('alerts');
+    if (!alertsContainer) return;
+
+    alertsContainer.innerHTML = `
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-r shadow-sm">
+            <div class="flex items-start justify-between">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-blue-800">Connect your Gmail account</h3>
+                        <div class="mt-2 text-sm text-blue-700">
+                            <p>Enable the Email Agent to automatically track applications and apply via email.</p>
+                        </div>
+                        <div class="mt-4">
+                            <button onclick="connectGmail()" class="text-sm font-medium text-blue-600 hover:text-blue-500 bg-white px-3 py-1.5 rounded border border-blue-200 shadow-sm transition-colors">
+                                Connect Gmail
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-blue-400 hover:text-blue-500">
+                    <span class="sr-only">Dismiss</span>
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function connectGmail() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auth/gmail/connect`, {
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to initiate connection');
+
+        const data = await response.json();
+        if (data.success && data.data.auth_url) {
+            window.location.href = data.data.auth_url;
+        }
+    } catch (error) {
+        console.error('Gmail connect error:', error);
+        CVision.Utils.showAlert('Failed to connect Gmail', 'error');
     }
 }

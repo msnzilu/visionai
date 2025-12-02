@@ -460,7 +460,7 @@ async def get_generation_history(
 # Helper functions
 async def _check_generation_limit(user_id: str, tier: str, db) -> bool:
     """Check if user has remaining generations"""
-    from app.config import settings
+    from app.core.config import settings
     
     # Get usage this month
     now = datetime.utcnow()

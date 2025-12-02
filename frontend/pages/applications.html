@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,10 +13,17 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
+
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -39,7 +47,8 @@
             font-weight: 600;
         }
 
-        .notification-dropdown, .user-dropdown {
+        .notification-dropdown,
+        .user-dropdown {
             position: absolute;
             top: 100%;
             right: 0;
@@ -58,27 +67,54 @@
             overflow-y: auto;
         }
 
-        .user-dropdown { width: 200px; }
+        .user-dropdown {
+            width: 200px;
+        }
 
-        .notification-dropdown.show, .user-dropdown.show {
+        .notification-dropdown.show,
+        .user-dropdown.show {
             display: block;
             animation: slideDown 0.2s ease-out;
         }
 
         @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .notification-item { transition: background-color 0.2s; }
-        .notification-item:hover { background-color: #f9fafb; }
-        .notification-item.unread { background-color: #eff6ff; }
-        .notification-item.unread:hover { background-color: #dbeafe; }
+        .notification-item {
+            transition: background-color 0.2s;
+        }
 
-        .mobile-menu { display: none; }
-        .mobile-menu.show { display: block; }
+        .notification-item:hover {
+            background-color: #f9fafb;
+        }
+
+        .notification-item.unread {
+            background-color: #eff6ff;
+        }
+
+        .notification-item.unread:hover {
+            background-color: #dbeafe;
+        }
+
+        .mobile-menu {
+            display: none;
+        }
+
+        .mobile-menu.show {
+            display: block;
+        }
     </style>
 </head>
+
 <body class="bg-gray-50">
     <!-- Updated Navbar -->
     <div id="navbar-container"></div>
@@ -90,10 +126,17 @@
         <!-- Tabs -->
         <div class="mb-6 border-b border-gray-200">
             <nav class="-mb-px flex space-x-8">
-                <button onclick="switchTab('applications')" id="tab-applications" class="tab-button border-b-2 border-primary-600 text-primary-600 py-4 px-1 text-sm font-medium">Applications</button>
-                <button onclick="switchTab('interviews')" id="tab-interviews" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Upcoming Interviews</button>
-                <button onclick="switchTab('followups')" id="tab-followups" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Follow-ups Needed</button>
-                <button onclick="switchTab('saved')" id="tab-saved" class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Saved Jobs</button>
+                <button onclick="switchTab('applications')" id="tab-applications"
+                    class="tab-button border-b-2 border-primary-600 text-primary-600 py-4 px-1 text-sm font-medium">Applications</button>
+                <button onclick="switchTab('interviews')" id="tab-interviews"
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Upcoming
+                    Interviews</button>
+                <button onclick="switchTab('followups')" id="tab-followups"
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Follow-ups
+                    Needed</button>
+                <button onclick="switchTab('saved')" id="tab-saved"
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Saved
+                    Jobs</button>
             </nav>
         </div>
 
@@ -103,7 +146,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select id="filter-status" onchange="loadApplications()" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <select id="filter-status" onchange="loadApplications()"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
                             <option value="">All Statuses</option>
                             <option value="pending">Pending</option>
                             <option value="applied">Applied</option>
@@ -117,35 +161,17 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                        <select id="filter-priority" onchange="loadApplications()" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <select id="filter-priority" onchange="loadApplications()"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
                             <option value="">All Priorities</option>
                             <option value="high">High</option>
                             <option value="medium">Medium</option>
                             <option value="low">Low</option>
-                        </select>
+                            <div id="followupsList" class="space-y-4"></div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
-                        <input type="text" id="filter-company" onchange="loadApplications()" placeholder="Search company..." class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <div id="content-saved" class="tab-content hidden">
+                        <div id="savedJobsList" class="space-y-4"></div>
                     </div>
-                    <div class="flex items-end">
-                        <button onclick="clearFilters()" class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Clear Filters</button>
-                    </div>
-                </div>
-            </div>
-            <div id="applicationsList" class="space-y-4"></div>
-        </div>
-
-        <!-- Other Tabs -->
-        <div id="content-interviews" class="tab-content hidden">
-            <div id="interviewsList" class="space-y-4"></div>
-        </div>
-        <div id="content-followups" class="tab-content hidden">
-            <div id="followupsList" class="space-y-4"></div>
-        </div>
-        <div id="content-saved" class="tab-content hidden">
-            <div id="savedJobsList" class="space-y-4"></div>
-        </div>
     </main>
 
     <!-- Modal -->
@@ -176,10 +202,11 @@
                 window.location.href = '../login.html';
                 return;
             }
-            
+
             // Your page logic here
             loadApplications();
         });
     </script>
 </body>
+
 </html>

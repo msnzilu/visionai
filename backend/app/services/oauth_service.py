@@ -10,7 +10,7 @@ from typing import Dict, Optional, Tuple
 from datetime import datetime
 import logging
 
-from app.config import settings
+from app.core.config import settings
 from app.database import get_users_collection
 from app.services.auth_service import AuthService
 

@@ -713,137 +713,48 @@ async function applyToJob(jobId) {
 
     // Show modal to select CV and cover letter
     await showApplyModal(jobId);
-}
+    const cvResponse = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cv`, {
+        headers: {
+            'Authorization': `Bearer ${CVision.Utils.getToken()}`
+        }
+    });
 
-/**
- * Show apply modal with CV/cover letter selection
- */
-async function showApplyModal(jobId) {
-    const job = currentJobs.find(j => (j._id || j.id) === jobId);
+    if (cvResponse.ok) {
+        const cvData = await cvResponse.json();
+        const cvSelect = document.getElementById('applyModalCvSelect');
 
-    // Create modal HTML
-    const modalHTML = `
-        <div id="applyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-xl max-w-lg w-full mx-4 p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-900">Apply with Autofill</h2>
-                        <p class="text-sm text-gray-600 mt-1">${job.title} at ${job.company_name}</p>
-                    </div>
-                    <button onclick="closeApplyModal()" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="space-y-4">
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div class="flex items-start">
-                            <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/>
-                            </svg>
-                            <div>
-                                <p class="text-sm font-medium text-blue-900">Browser Autofill</p>
-                                <p class="text-xs text-blue-700 mt-1">
-                                    We'll open the application page and automatically fill in your information
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Select CV</label>
-                        <select id="applyModalCvSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500">
-                            <option value="">Loading CVs...</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Select Cover Letter (Optional)
-                        </label>
-                        <select id="applyModalCoverLetterSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500">
-                            <option value="">No cover letter</option>
-                        </select>
-                    </div>
-                    
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                        <p class="text-xs text-yellow-800">
-                            <strong>Note:</strong> The browser will open in a new window. Please review all information before submitting the application.
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="flex gap-3 mt-6">
-                    <button onclick="closeApplyModal()" 
-                        class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 font-medium hover:bg-gray-50">
-                        Cancel
-                    </button>
-                    <button onclick="startBrowserAutofill('${jobId}')" 
-                        class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg">
-                        Start Autofill
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-    // Load user's CVs and cover letters
-    await loadApplyModalDocuments();
-}
-
-/**
- * Load documents for apply modal
- */
-async function loadApplyModalDocuments() {
-    try {
-        // Load CVs
-        const cvResponse = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cv`, {
-            headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            }
-        });
-
-        if (cvResponse.ok) {
-            const cvData = await cvResponse.json();
-            const cvSelect = document.getElementById('applyModalCvSelect');
-
-            if (cvData.documents && cvData.documents.length > 0) {
-                cvSelect.innerHTML = cvData.documents.map(doc => `
+        if (cvData.documents && cvData.documents.length > 0) {
+            cvSelect.innerHTML = cvData.documents.map(doc => `
                     <option value="${doc.id}">${doc.filename}</option>
                 `).join('');
-            } else {
-                cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
-            }
+        } else {
+            cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
         }
+    }
 
-        // Load cover letters
-        const clResponse = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cover_letter`, {
-            headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            }
-        });
+    // Load cover letters
+    const clResponse = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cover_letter`, {
+        headers: {
+            'Authorization': `Bearer ${CVision.Utils.getToken()}`
+        }
+    });
 
-        if (clResponse.ok) {
-            const clData = await clResponse.json();
-            const clSelect = document.getElementById('applyModalCoverLetterSelect');
+    if (clResponse.ok) {
+        const clData = await clResponse.json();
+        const clSelect = document.getElementById('applyModalCoverLetterSelect');
 
-            if (clData.documents && clData.documents.length > 0) {
-                clSelect.innerHTML = '<option value="">No cover letter</option>' +
-                    clData.documents.map(doc => `
+        if (clData.documents && clData.documents.length > 0) {
+            clSelect.innerHTML = '<option value="">No cover letter</option>' +
+                clData.documents.map(doc => `
                         <option value="${doc.id}">${doc.filename}</option>
                     `).join('');
-            }
         }
-
-    } catch (error) {
-        console.error('Failed to load documents:', error);
-        CVision.Utils.showAlert('Failed to load documents', 'error');
     }
+
+} catch (error) {
+    console.error('Failed to load documents:', error);
+    CVision.Utils.showAlert('Failed to load documents', 'error');
+}
 }
 
 /**

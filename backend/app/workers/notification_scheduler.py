@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import asyncio
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
-from app.config import settings
+from app.core.config import settings
 from app.services.notification_service import NotificationService
 from backend.app.services.application_tracking_service import ApplicationTrackingService
 from app.services.analytics_service import AnalyticsService

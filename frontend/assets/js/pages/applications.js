@@ -297,57 +297,13 @@ async function loadApplications() {
         const data = await response.json();
         displayApplications(data.applications || []);
     } catch (error) {
-        console.error('Load error:', error);
-        document.getElementById('applicationsList').innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load applications</p></div>';
-    }
-}
-
-function displayApplications(applications) {
-    const container = document.getElementById('applicationsList');
-    if (!applications || applications.length === 0) {
-        container.innerHTML = `
-                    <div class="bg-white rounded-lg border p-12 text-center">
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">No Applications Yet</h3>
-                        <p class="text-gray-600 mb-6">Start applying to jobs to track them here</p>
-                        <a href="jobs.html" class="btn-gradient text-white px-6 py-2 rounded-lg inline-block">Search for Jobs</a>
-                    </div>
-                `;
-        return;
-    }
-    container.innerHTML = applications.map(app => `
-                <div class="bg-white rounded-lg border p-6 hover:shadow-md transition">
-                    <div class="flex justify-between gap-4">
-                        <div class="flex-1">
-                            <div class="flex items-start gap-3 mb-2">
-                                <h3 class="text-lg font-semibold">${app.job_title || 'Unknown'}</h3>
-                                ${getStatusBadge(app.status)}
-                            </div>
-                            <p class="text-gray-600">${app.company_name || 'Unknown'}</p>
-                            <p class="text-gray-500 text-sm mt-1">${app.location || 'Location not specified'}</p>
-                            <div class="flex gap-2 mt-3">
-                                ${getPriorityBadge(app.priority)}
-                                ${app.applied_date ? `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Applied: ${formatDate(app.applied_date)}</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <button onclick="viewApplicationDetails('${app.id}')" class="px-4 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 rounded-lg">View Details</button>
-                            <button onclick="showStatusMenu('${app.id}')" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Update Status</button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-}
-
-function getStatusBadge(status) {
-    const colors = {
-        pending: 'bg-yellow-100 text-yellow-800',
         applied: 'bg-blue-100 text-blue-800',
-        screening: 'bg-indigo-100 text-indigo-800',
-        interview: 'bg-purple-100 text-purple-800',
-        offer: 'bg-green-100 text-green-800',
-        accepted: 'bg-green-600 text-white',
-        rejected: 'bg-red-100 text-red-800',
-        withdrawn: 'bg-gray-100 text-gray-800'
+            screening: 'bg-indigo-100 text-indigo-800',
+                interview: 'bg-purple-100 text-purple-800',
+                    offer: 'bg-green-100 text-green-800',
+                        accepted: 'bg-green-600 text-white',
+                            rejected: 'bg-red-100 text-red-800',
+                                withdrawn: 'bg-gray-100 text-gray-800'
     };
     return `<span class="status-badge ${colors[status] || colors.pending}">${formatEnumValue(status)}</span>`;
 }

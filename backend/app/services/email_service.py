@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
 
-from app.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

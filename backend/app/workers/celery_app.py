@@ -5,7 +5,7 @@ Celery configuration for background tasks
 
 from celery import Celery
 from celery.schedules import crontab
-from app.config import settings
+from app.core.config import settings
 
 celery_app = Celery(
     "job_platform",

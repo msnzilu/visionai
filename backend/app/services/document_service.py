@@ -13,7 +13,7 @@ from io import BytesIO
 from pathlib import Path
 import logging
 
-from app.config import settings
+from app.core.config import settings
 from app.services.ai_service import ai_service
 from app.database import get_database
 from fastapi import HTTPException, UploadFile

@@ -13,7 +13,7 @@ from passlib.context import CryptContext
 from fastapi import HTTPException, status
 import logging
 
-from app.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

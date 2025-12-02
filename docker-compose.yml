@@ -133,7 +133,6 @@ volumes:
   mongo_data:
   redis_data:
 
-
 networks:
   vision_ai_network:
     driver: bridge

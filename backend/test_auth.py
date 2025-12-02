@@ -21,7 +21,8 @@ async def test_authentication():
     # Test 1: Check if we can connect to database
     print("\n1. Testing database connection...")
     try:
-        from app.database import get_users_collection
+        from app.database import init_database, get_users_collection
+        await init_database()
         users_collection = await get_users_collection()
         user_count = await users_collection.count_documents({})
         print(f"   ✓ Connected to database")
@@ -30,27 +31,45 @@ async def test_authentication():
         print(f"   ✗ Database connection failed: {str(e)}")
         return
     
-    # Test 2: Get a test user
+    # Test 2: Get or create a test user
     print("\n2. Getting test user...")
     try:
         user = await users_collection.find_one({})
         if not user:
-            print("   ✗ No users found in database")
-            print("   → Please register a user first")
-            return
+            print("   ! No users found, creating test user...")
+            from app.core.security import hash_password
+            from datetime import datetime
+            
+            new_user = {
+                "email": "test@example.com",
+                "password": hash_password("password123"),
+                "first_name": "Test",
+                "last_name": "User",
+                "is_active": True,
+                "is_verified": True,
+                "role": "user",
+                "subscription_tier": "free",
+                "created_at": datetime.utcnow(),
+                "referral_code": "TEST1234"
+            }
+            result = await users_collection.insert_one(new_user)
+            user = await users_collection.find_one({"_id": result.inserted_id})
+            print(f"   ✓ Created test user: {user['email']}")
         
         print(f"   ✓ Found user: {user.get('email')}")
         print(f"   ✓ User ID: {user['_id']}")
         print(f"   ✓ User fields: {list(user.keys())}")
     except Exception as e:
-        print(f"   ✗ Failed to get user: {str(e)}")
+        print(f"   ✗ Failed to get/create user: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return
     
     # Test 3: Create a token
     print("\n3. Creating access token...")
     try:
         from app.core.security import create_access_token
-        token = create_access_token(data={"sub": str(user["_id"])})
+        token = create_access_token(subject=str(user["_id"]))
         print(f"   ✓ Token created: {token[:50]}...")
     except Exception as e:
         print(f"   ✗ Failed to create token: {str(e)}")

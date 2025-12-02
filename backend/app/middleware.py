@@ -16,7 +16,7 @@ from typing import Dict, Any, Optional
 import asyncio
 from collections import defaultdict, deque
 
-from app.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

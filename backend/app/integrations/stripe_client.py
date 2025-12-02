@@ -3,7 +3,7 @@
 import stripe
 from typing import Dict, Any, Optional
 import logging
-from app.config import settings
+from app.core.config import settings
 from app.models.user import SubscriptionTier
 from app.models.subscription import Money
 

@@ -16,7 +16,7 @@ from app.core.security import (
 )
 from app.database import get_users_collection
 from app.models.user import UserCreate, SubscriptionTier, UserUsageStats, UserPreferences
-from app.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -3,9 +3,10 @@ Configuration settings for the AI Job Application Platform
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import Field
-from typing import List, Optional
+from pydantic import Field, field_validator
+from typing import List, Optional, Union
 import os
+import json
 from pathlib import Path
 
 
@@ -20,6 +21,7 @@ class Settings(BaseSettings):
     HOST: str = Field(env="HOST")
     PORT: int = Field(env="PORT")
     DEBUG: bool = Field(env="DEBUG")
+    ENVIRONMENT: str = Field(default="production", env="ENVIRONMENT")
     
     # Security
     SECRET_KEY: str = Field(env="SECRET_KEY")
@@ -30,8 +32,24 @@ class Settings(BaseSettings):
     PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = Field(env="PASSWORD_RESET_TOKEN_EXPIRE_HOURS")
 
     # CORS & Allowed Hosts
-    CORS_ORIGINS: List[str] = Field(env="CORS_ORIGINS")
+    CORS_ORIGINS_RAW: Union[str, List[str]] = Field(default='["http://localhost", "http://localhost:80", "http://localhost:3000"]', alias="CORS_ORIGINS")
     ALLOWED_HOSTS: List[str] = ["*"]
+    
+    @property
+    def CORS_ORIGINS(self) -> List[str]:
+        """Parse and return CORS origins"""
+        v = self.CORS_ORIGINS_RAW
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            # Remove escaped quotes if present
+            cleaned = v.replace('\\"', '"')
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError:
+                # If it's a simple comma-separated string
+                return [origin.strip() for origin in cleaned.split(',')]
+        return ["http://localhost", "http://localhost:80", "http://localhost:3000"]
     
     # Database
     MONGODB_URL: str = Field(env="MONGODB_URL")
@@ -158,6 +176,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = True
         extra = "ignore"
+        populate_by_name = True  # Allow using alias names
 
 
 # Create settings instance

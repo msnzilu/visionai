@@ -157,6 +157,18 @@ class UserPreferences(BaseModel):
     dashboard_layout: str = "default"
 
 
+class GmailAuth(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_uri: str = "https://oauth2.googleapis.com/token"
+    client_id: str
+    client_secret: str
+    scopes: List[str]
+    expiry: Optional[datetime] = None
+    connected_at: datetime = Field(default_factory=datetime.utcnow)
+    email_address: Optional[str] = None
+
+
 class User(BaseModel):
     id: Optional[str] = Field(alias="_id")
     email: EmailStr
@@ -170,6 +182,7 @@ class User(BaseModel):
     profile: UserProfile = Field(default_factory=UserProfile)
     usage_stats: UserUsageStats = Field(default_factory=UserUsageStats)
     preferences: UserPreferences = Field(default_factory=UserPreferences)
+    gmail_auth: Optional[GmailAuth] = None
     referral_code: str
     referred_by: Optional[str] = None
     created_at: datetime
@@ -216,6 +229,7 @@ class UserResponse(BaseModel):
     referral_code: str
     created_at: datetime
     last_login: Optional[datetime] = None
+    gmail_connected: bool = False
 
     @model_validator(mode='before')
     def generate_full_name(cls, values):

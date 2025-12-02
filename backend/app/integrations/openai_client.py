@@ -8,7 +8,7 @@ import asyncio
 from typing import Dict, Any, List, Optional, Union
 from openai import AsyncOpenAI
 import logging
-from app.config import settings
+from app.core.config import settings
 from fastapi import HTTPException
 
 

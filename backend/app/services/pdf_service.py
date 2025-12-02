@@ -21,7 +21,7 @@ from reportlab.platypus import (
 )
 from reportlab.pdfgen import canvas
 
-from app.config import settings
+from app.core.config import settings
 from app.database import get_database
 
 logger = logging.getLogger(__name__)

@@ -17,7 +17,7 @@ from app.database import (
     get_usage_tracking_collection
 )
 from app.models.user import SubscriptionTier
-from app.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
@@ -26,41 +26,44 @@ security = HTTPBearer(auto_error=False)
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Optional[Dict[str, Any]]:
+    """Get current user from JWT token"""
     if not credentials:
-        print("DEBUG: No credentials provided")
+        logger.debug("No credentials provided")
         return None
     
     try:
         from bson import ObjectId
         
         payload = verify_access_token(credentials.credentials)
-        print(f"DEBUG: Token payload = {payload}")
+        logger.debug(f"Token payload: {payload}")
         
         if not payload:
-            print("DEBUG: Payload is None")
+            logger.debug("Payload is None")
             return None
         
         user_id = payload.get("sub")
-        print(f"DEBUG: user_id from token = {user_id}, type = {type(user_id)}")
+        logger.debug(f"User ID from token: {user_id}")
         
         if not user_id:
-            print("DEBUG: No user_id in payload")
+            logger.debug("No user_id in payload")
             return None
         
         try:
             user_object_id = ObjectId(user_id)
-            print(f"DEBUG: Converted to ObjectId = {user_object_id}")
         except Exception as e:
-            print(f"DEBUG: Failed to convert to ObjectId: {e}")
+            logger.error(f"Failed to convert to ObjectId: {e}")
             return None
         
         users_collection = await get_users_collection()
         user = await users_collection.find_one({"_id": user_object_id})
-        print(f"DEBUG: Found user = {user is not None}")
+        
+        if user:
+            logger.debug(f"Found user: {user.get('email')}")
+        else:
+            logger.debug("User not found in database")
         
         return user
     except Exception as e:
-        print(f"DEBUG: Exception in get_current_user: {e}")
         logger.error(f"Error getting current user: {str(e)}")
         return None
 

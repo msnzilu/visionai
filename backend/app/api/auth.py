@@ -6,15 +6,19 @@ CVision Authentication API - Frontend Compatible
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
-import bcrypt
-import jwt
 from bson import ObjectId
 from fastapi.responses import RedirectResponse
+
+# Import centralized security functions
+from app.core.security import hash_password, verify_password, create_access_token
+from app.dependencies import get_current_user
 from app.services.oauth_service import OAuthService
-from app.config import settings
+from app.core.config import settings
 from app.database import get_users_collection
+from app.services.gmail_service import gmail_service
+from app.models.user import GmailAuth
 
 import logging
 logger = logging.getLogger(__name__)
@@ -52,48 +56,6 @@ class APIResponse(BaseModel):
     data: Optional[dict] = None
 
 
-# Utility functions
-def hash_password(password: str) -> str:
-    """Hash password with bcrypt"""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-
-def verify_password(password: str, hashed: str) -> bool:
-    """Verify password against hash"""
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-
-
-def create_access_token(user_id: str) -> str:
-    """Create JWT access token"""
-    payload = {
-        'sub': user_id,
-        'exp': datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-        'iat': datetime.utcnow()
-    }
-    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-
-
-def verify_token(token: str) -> str:
-    """Verify JWT token and return user_id"""
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        return payload.get('sub')
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-
-async def get_current_user(token: str = Depends(security)):
-    """Get current user from token"""
-    user_id = verify_token(token.credentials)
-    users_collection = await get_users_collection()
-    user = await users_collection.find_one({"_id": ObjectId(user_id)})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
-
-
 # API Routes
 @router.post("/register", response_model=APIResponse)
 async def register(user_data: UserRegister):
@@ -127,7 +89,7 @@ async def register(user_data: UserRegister):
         
         # If we couldn't generate a unique code, leave it as None (will be handled by partial index)
         if not referral_code:
-            print("Warning: Could not generate unique referral code after 5 attempts")
+            logger.warning("Could not generate unique referral code after 5 attempts")
         
         # Create user document
         user_doc = {
@@ -149,7 +111,7 @@ async def register(user_data: UserRegister):
         result = await users_collection.insert_one(user_doc)
         user_doc["_id"] = result.inserted_id
         
-        # Create token
+        # Create token using centralized function
         token = create_access_token(str(result.inserted_id))
         
         # Create full_name for frontend compatibility
@@ -192,7 +154,7 @@ async def register(user_data: UserRegister):
             )
         else:
             # Log the full error for debugging but return user-friendly message
-            print(f"Registration error: {str(e)}")
+            logger.error(f"Registration error: {str(e)}")
             return APIResponse(
                 success=False,
                 message="Registration failed. Please try again."
@@ -213,7 +175,7 @@ async def login(login_data: UserLogin):
                 message="Invalid email or password"
             )
         
-        # Create token
+        # Create token using centralized function
         token = create_access_token(str(user["_id"]))
         
         # Create full_name for frontend compatibility
@@ -243,6 +205,7 @@ async def login(login_data: UserLogin):
         )
         
     except Exception as e:
+        logger.error(f"Login error: {str(e)}")
         return APIResponse(
             success=False,
             message=f"Login failed: {str(e)}"
@@ -284,6 +247,7 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         )
         
     except Exception as e:
+        logger.error(f"Get user info error: {str(e)}")
         return APIResponse(
             success=False,
             message=f"Failed to retrieve profile: {str(e)}"
@@ -389,3 +353,60 @@ async def linkedin_callback(code: str, state: str):
     except Exception as e:
         logger.error(f"LinkedIn callback error: {str(e)}")
         return RedirectResponse(url=f"{settings.FRONTEND_URL}/login.html?error=auth_failed")
+
+
+# ============ GMAIL INTEGRATION ROUTES ============
+
+@router.get("/gmail/connect")
+async def connect_gmail(current_user: dict = Depends(get_current_user)):
+    """Initiate Gmail connection flow"""
+    try:
+        # Pass user ID in state to verify on callback
+        state = str(current_user["_id"])
+        auth_url = gmail_service.get_authorization_url()
+        
+        return APIResponse(
+            success=True,
+            message="Gmail connection initiated",
+            data={"auth_url": auth_url}
+        )
+    except Exception as e:
+        logger.error(f"Gmail connect failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to initiate Gmail connection: {str(e)}")
+
+
+@router.get("/gmail/callback")
+async def gmail_callback(code: str, state: Optional[str] = None):
+    """Handle Gmail OAuth callback"""
+    try:
+        # Exchange code for tokens
+        token_data = gmail_service.exchange_code_for_token(code)
+        
+        # Create GmailAuth object
+        gmail_auth = GmailAuth(**token_data)
+        
+        # Get user email address from Gmail API to confirm
+        profile = gmail_service.get_profile(gmail_auth)
+        gmail_auth.email_address = profile.get("emailAddress")
+        
+        # We need to identify the user. 
+        # Since this is a callback, we might not have the auth header.
+        # We should ideally pass the user ID in the 'state' parameter.
+        # For now, let's assume the state contains the user ID.
+        if not state:
+             return RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard.html?error=invalid_state")
+
+        user_id = state
+        users_collection = await get_users_collection()
+        
+        # Update user with gmail_auth
+        await users_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"gmail_auth": gmail_auth.dict()}}
+        )
+        
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard.html?gmail_connected=true")
+        
+    except Exception as e:
+        logger.error(f"Gmail callback error: {str(e)}")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard.html?error=gmail_connection_failed")

@@ -7,7 +7,7 @@ bcrypt==4.1.2
 beautifulsoup4==4.14.2
 billiard==4.2.2
 black==23.11.0
-cachetools==6.2.0
+cachetools==5.5.0
 celery==5.3.4
 certifi==2025.8.3
 cffi==2.0.0
@@ -100,3 +100,6 @@ watchfiles==1.1.0
 wcwidth==0.2.14
 websockets==15.0.1
 fastapi-mail
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0
+google-api-python-client==2.108.0

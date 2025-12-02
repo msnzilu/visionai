@@ -18,7 +18,7 @@ from app.models.subscription import (
 from app.models.user import SubscriptionTier
 from app.models.common import Currency
 from app.integrations.stripe_client import StripeClient
-from app.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

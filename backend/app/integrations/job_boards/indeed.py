@@ -11,7 +11,7 @@ from app.models.job import (
     JobCreate, JobSource, EmploymentType, 
     WorkArrangement, SalaryRange
 )
-from app.config import settings
+from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
