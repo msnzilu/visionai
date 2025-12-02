@@ -896,7 +896,7 @@ async function showApplyModal(jobId) {
                     <button onclick="closeApplyModal()" class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 font-medium hover:bg-gray-50 transition-colors">
                         Cancel
                     </button>
-                    <button onclick="openQuickApplyForm('${jobId}')" class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all">
+                    <button onclick="closeApplyModal(); openQuickApplyForm('${jobId}')" class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all">
                         Apply Now
                     </button>
                 </div>
