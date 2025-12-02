@@ -69,4 +69,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-**Built with ❤️ using FastAPI, MongoDB, and OpenAI**
+**Built with ❤️ using Vanilla Javacript, pure HTML, Tailwind CSS, FastAPI, MongoDB, and OpenAI**

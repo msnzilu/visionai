@@ -1,338 +1,270 @@
 # backend/app/api/browser_automation.py
+"""
+Quick Apply / Email Agent API
+Handles intelligent form prefilling and email-based application submission
+"""
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-import httpx
+from typing import Dict, Any
 import logging
 from datetime import datetime
 from bson import ObjectId
 
 from app.database import get_database
 from app.api.deps import get_current_user
-from app.core.config import settings
+from app.services.email_agent_service import email_agent_service
+from app.schemas.quick_apply import (
+    QuickApplyPrefillResponse,
+    QuickApplySubmission,
+    QuickApplySubmissionResponse,
+    QuickApplyStatusResponse
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-class AutofillRequest(BaseModel):
-    job_id: str
-    cv_id: Optional[str] = None
-    cover_letter_id: Optional[str] = None
-    custom_data: Optional[Dict[str, Any]] = None
-
-
-class AutofillResponse(BaseModel):
-    session_id: str
-    status: str
-    message: str
-    browser_url: Optional[str] = None
-
-
 def get_user_id(user: dict) -> str:
-    """Extract user ID from user dict, handling both 'id' and '_id' keys"""
+    """Extract user ID from user dict"""
     return str(user.get("id") or user.get("_id") or user.get("user_id", ""))
 
 
-def safe_object_id(id_str: str):
-    """Safely convert string to ObjectId, return original if invalid"""
+@router.post("/quick-apply/prefill", response_model=QuickApplyPrefillResponse)
+async def prefill_quick_apply_form(
+    job_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Prefill quick apply form with user's CV data
+    
+    This endpoint extracts data from the user's CV and returns
+    form-ready data for the quick apply form.
+    """
     try:
-        return ObjectId(id_str)
-    except:
-        return id_str
+        user_id = get_user_id(current_user)
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid user session"
+            )
+        
+        logger.info(f"Prefilling form for user {user_id}, job {job_id}")
+        
+        db = await get_database()
+        
+        # Get job details
+        job = await db.jobs.find_one({"_id": ObjectId(job_id)})
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Job not found: {job_id}"
+            )
+        
+        # Extract form data from CV
+        form_data = await email_agent_service.extract_form_data_from_cv(user_id)
+        
+        # Determine recipient email (from job posting or company)
+        recipient_email = job.get("contact_email") or job.get("recruiter_email")
+        
+        return QuickApplyPrefillResponse(
+            success=True,
+            form_data=form_data,
+            job_title=job.get("title", ""),
+            company_name=job.get("company_name", ""),
+            recipient_email=recipient_email,
+            message="Form data loaded successfully"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error prefilling form: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to prefill form: {str(e)}"
+        )
 
 
-@router.post("/autofill/start", response_model=AutofillResponse)
-async def start_autofill_session(
-    request: AutofillRequest,
+@router.post("/quick-apply/submit", response_model=QuickApplySubmissionResponse)
+async def submit_quick_apply(
+    submission: QuickApplySubmission,
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Start a browser automation session for job application.
-    This endpoint communicates with the browser-automation service
-    to open a browser instance with pre-filled data.
+    Submit job application via email agent
+    
+    This endpoint:
+    1. Creates an application record
+    2. Composes a professional application email
+    3. Sends via user's Gmail account
+    4. Tracks the application
     """
     try:
-        db = await get_database()
         user_id = get_user_id(current_user)
         
         if not user_id:
-            logger.error(f"Invalid user object: {current_user}")
             raise HTTPException(
                 status_code=401,
-                detail="Invalid user session. Please login again."
+                detail="Invalid user session"
             )
         
-        logger.info(f"Starting autofill for user {user_id}, job {request.job_id}")
+        logger.info(f"Submitting application for user {user_id}, job {submission.job_id}")
         
-        # Get job details - try both ID formats
-        job = None
-        job_id_obj = safe_object_id(request.job_id)
+        db = await get_database()
         
-        job = await db.jobs.find_one({"_id": job_id_obj})
-        if not job:
-            # Try with string ID
-            job = await db.jobs.find_one({"_id": request.job_id})
-        
-        if not job:
-            logger.error(f"Job not found with ID: {request.job_id}")
-            raise HTTPException(
-                status_code=404,
-                detail=f"Job not found with ID: {request.job_id}"
-            )
-        
-        if not job.get("external_url") and not job.get("apply_url"):
+        # Check if user has Gmail connected
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        if not user or not user.get("gmail_auth"):
             raise HTTPException(
                 status_code=400,
-                detail="This job doesn't have an application URL"
+                detail="Gmail not connected. Please connect your Gmail account to send applications."
             )
         
-        # Get CV data if provided
-        cv_data = None
-        if request.cv_id:
-            cv_id_obj = safe_object_id(request.cv_id)
-            user_id_obj = safe_object_id(user_id)
-            
-            cv_doc = await db.documents.find_one({
-                "_id": cv_id_obj,
-                "user_id": user_id_obj
-            })
-            
-            if not cv_doc:
-                # Try with string IDs
-                cv_doc = await db.documents.find_one({
-                    "_id": request.cv_id,
-                    "user_id": user_id
-                })
-            
-            if cv_doc:
-                cv_data = cv_doc.get("parsed_data", {})
-                logger.info(f"Found CV document for user {user_id}")
-            else:
-                logger.warning(f"CV not found: {request.cv_id} for user {user_id}")
+        # Get job details
+        job = await db.jobs.find_one({"_id": ObjectId(submission.job_id)})
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Job not found: {submission.job_id}"
+            )
         
-        # Get cover letter if provided
-        cover_letter_content = None
-        if request.cover_letter_id:
-            cl_id_obj = safe_object_id(request.cover_letter_id)
-            user_id_obj = safe_object_id(user_id)
-            
-            cover_letter = await db.documents.find_one({
-                "_id": cl_id_obj,
-                "user_id": user_id_obj
-            })
-            
-            if not cover_letter:
-                cover_letter = await db.documents.find_one({
-                    "_id": request.cover_letter_id,
-                    "user_id": user_id
-                })
-            
-            if cover_letter:
-                cover_letter_content = cover_letter.get("content", "")
-                logger.info(f"Found cover letter for user {user_id}")
+        # Check if application already exists
+        existing_app = await db.applications.find_one({
+            "user_id": ObjectId(user_id),
+            "job_id": ObjectId(submission.job_id)
+        })
         
-        # Prepare autofill data
-        autofill_data = {
-            "user": {
-                "first_name": current_user.get("first_name", ""),
-                "last_name": current_user.get("last_name", ""),
-                "email": current_user.get("email", ""),
-                "phone": current_user.get("phone", ""),
-                "address": current_user.get("address", ""),
-                "city": current_user.get("city", ""),
-                "state": current_user.get("state", ""),
-                "zip_code": current_user.get("zip_code", ""),
-                "country": current_user.get("country", ""),
-            },
-            "cv_data": cv_data,
-            "cover_letter": cover_letter_content,
-            "job": {
-                "title": job.get("title", ""),
-                "company": job.get("company_name", ""),
-                "url": job.get("external_url") or job.get("apply_url")
-            }
-        }
+        if existing_app:
+            raise HTTPException(
+                status_code=400,
+                detail="You have already applied to this job"
+            )
         
-        # Add custom data if provided
-        if request.custom_data:
-            autofill_data.update(request.custom_data)
-        
-        # Create session record
-        session_id = f"session_{user_id}_{int(datetime.utcnow().timestamp())}"
-        session_record = {
-            "_id": session_id,
-            "user_id": user_id,
-            "job_id": request.job_id,
+        # Create application record
+        application_doc = {
+            "user_id": ObjectId(user_id),
+            "job_id": ObjectId(submission.job_id),
             "status": "pending",
-            "autofill_data": autofill_data,
+            "source": "email_agent",
+            "job_title": job.get("title"),
+            "company_name": job.get("company_name"),
+            "location": job.get("location"),
+            "form_data": submission.form_data.dict(),
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
         
-        await db.automation_sessions.insert_one(session_record)
-        logger.info(f"Created session: {session_id}")
+        result = await db.applications.insert_one(application_doc)
+        application_id = str(result.inserted_id)
         
-        # Get automation service URL
-        automation_url = getattr(settings, 'BROWSER_AUTOMATION_URL', None) or \
-                       getattr(settings, 'AUTOMATION_SERVICE_URL', None) or \
-                       "http://automation:3000"
+        logger.info(f"Created application record: {application_id}")
         
-        logger.info(f"Calling automation service at: {automation_url}")
-        
-        # Call browser automation service
+        # Send application via Gmail in background
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                automation_payload = {
-                    "session_id": session_id,
-                    "url": job.get("external_url") or job.get("apply_url"),
-                    "autofill_data": autofill_data,
-                    "job_source": job.get("source", "unknown")
-                }
-                
-                logger.debug(f"Automation payload: {automation_payload}")
-                
-                response = await client.post(
-                    f"{automation_url}/api/automation/start",
-                    json=automation_payload,
-                    headers={
-                        "Authorization": f"Bearer {getattr(settings, 'AUTOMATION_SERVICE_TOKEN', '')}"
-                    }
+            send_result = await email_agent_service.send_application_via_gmail(
+                user_id=user_id,
+                job_id=submission.job_id,
+                application_id=application_id,
+                recipient_email=submission.recipient_email,
+                form_data=submission.form_data.dict(),
+                cv_document_id=submission.cv_document_id,
+                cover_letter_document_id=submission.cover_letter_document_id,
+                additional_message=submission.additional_message
+            )
+            
+            if send_result.get("success"):
+                return QuickApplySubmissionResponse(
+                    success=True,
+                    application_id=application_id,
+                    gmail_message_id=send_result.get("gmail_message_id"),
+                    sent_at=datetime.fromisoformat(send_result.get("sent_at")),
+                    recipient=send_result.get("recipient"),
+                    message="Application sent successfully via email"
+                )
+            else:
+                return QuickApplySubmissionResponse(
+                    success=False,
+                    application_id=application_id,
+                    error=send_result.get("error"),
+                    message="Failed to send application email"
                 )
                 
-                logger.info(f"Automation service response: {response.status_code}")
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    # Update session status
-                    await db.automation_sessions.update_one(
-                        {"_id": session_id},
-                        {
-                            "$set": {
-                                "status": "started",
-                                "browser_session": result.get("browser_session_id"),
-                                "updated_at": datetime.utcnow()
-                            }
-                        }
-                    )
-                    
-                    logger.info(f"Session {session_id} started successfully")
-                    
-                    return AutofillResponse(
-                        session_id=session_id,
-                        status="started",
-                        message="Browser automation started successfully",
-                        browser_url=job.get("external_url") or job.get("apply_url")
-                    )
-                else:
-                    error_text = response.text
-                    logger.error(f"Automation service error: {response.status_code} - {error_text}")
-                    raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"Browser automation service error: {error_text}"
-                    )
-                    
-        except httpx.RequestError as e:
-            logger.error(f"Failed to connect to automation service: {e}")
-            raise HTTPException(
-                status_code=503,
-                detail="Browser automation service unavailable. Please try again later."
+        except Exception as send_error:
+            logger.error(f"Error sending email: {str(send_error)}")
+            return QuickApplySubmissionResponse(
+                success=False,
+                application_id=application_id,
+                error=str(send_error),
+                message="Application created but email sending failed"
             )
-    
+        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error in start_autofill_session: {e}", exc_info=True)
+        logger.error(f"Error submitting application: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Internal server error: {str(e)}"
+            detail=f"Failed to submit application: {str(e)}"
         )
 
 
-@router.get("/autofill/status/{session_id}")
-async def get_autofill_status(
-    session_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get the status of a browser automation session"""
-    try:
-        db = await get_database()
-        user_id = get_user_id(current_user)
-        
-        session = await db.automation_sessions.find_one({
-            "_id": session_id,
-            "user_id": user_id
-        })
-        
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
-        
-        return {
-            "session_id": session_id,
-            "status": session.get("status", "unknown"),
-            "created_at": session.get("created_at"),
-            "updated_at": session.get("updated_at"),
-            "filled_fields": session.get("filled_fields", []),
-            "errors": session.get("errors", [])
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting status: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/autofill/feedback/{session_id}")
-async def submit_feedback(
-    session_id: str,
-    corrections: Dict[str, Any],
+@router.get("/quick-apply/status/{application_id}", response_model=QuickApplyStatusResponse)
+async def get_application_status(
+    application_id: str,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Submit feedback for ML model training.
-    Records user corrections to improve autofill accuracy.
+    Get application submission and tracking status
     """
     try:
-        db = await get_database()
         user_id = get_user_id(current_user)
         
-        session = await db.automation_sessions.find_one({
-            "_id": session_id,
-            "user_id": user_id
+        db = await get_database()
+        
+        # Get application
+        application = await db.applications.find_one({
+            "_id": ObjectId(application_id),
+            "user_id": ObjectId(user_id)
         })
         
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
+        if not application:
+            raise HTTPException(
+                status_code=404,
+                detail="Application not found"
+            )
         
-        # Store feedback for ML training
-        feedback_record = {
-            "session_id": session_id,
-            "user_id": user_id,
-            "job_id": session.get("job_id"),
-            "corrections": corrections,
-            "original_data": session.get("autofill_data"),
-            "created_at": datetime.utcnow()
-        }
-        
-        await db.autofill_feedback.insert_one(feedback_record)
-        
-        # Update session with feedback
-        await db.automation_sessions.update_one(
-            {"_id": session_id},
-            {
-                "$set": {
-                    "has_feedback": True,
-                    "feedback_at": datetime.utcnow()
-                }
-            }
+        return QuickApplyStatusResponse(
+            application_id=application_id,
+            status=application.get("status", "unknown"),
+            email_sent_via=application.get("email_sent_via"),
+            gmail_message_id=application.get("gmail_message_id"),
+            email_sent_at=application.get("email_sent_at"),
+            recipient_email=application.get("recipient_email"),
+            response_received=application.get("response_received", False),
+            response_at=application.get("response_at"),
+            error_message=application.get("error_message")
         )
         
-        return {"message": "Feedback recorded successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error submitting feedback: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error getting status: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+# Legacy endpoint compatibility (redirects to prefill)
+@router.post("/autofill/start")
+async def legacy_autofill_start(
+    job_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Legacy endpoint - redirects to quick apply prefill
+    """
+    logger.warning("Legacy /autofill/start endpoint called, redirecting to /quick-apply/prefill")
+    return await prefill_quick_apply_form(job_id, current_user)

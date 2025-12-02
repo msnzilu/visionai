@@ -402,10 +402,14 @@
         </div>
     </div>
 
+    <!-- Quick Apply Form Component -->
+    <div id="quickApplyFormContainer"></div>
+
     <!-- Scripts -->
     <script src="../assets/js/inline-messages.js" defer></script>
     <script src="../assets/js/main.js" defer></script>
     <script src="../assets/js/browser-automation.js" defer></script>
+    <script src="../assets/js/quick-apply.js" defer></script>
     <script src="../assets/js/pages/jobs.js" defer></script>
     <script src="../assets/js/generation.js" defer></script>
     <script src="../assets/js/components/navbar.js" defer></script>
@@ -418,6 +422,14 @@
                 CVisionNavbar.init('Applications');
             })
             .catch(error => console.error('Error loading navbar:', error));
+
+        // Load quick apply form component
+        fetch('../components/quick-apply-form.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('quickApplyFormContainer').innerHTML = html;
+            })
+            .catch(error => console.error('Error loading quick apply form:', error));
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', () => {

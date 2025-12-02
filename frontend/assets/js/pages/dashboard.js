@@ -13,6 +13,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
 async function initializeDashboard() {
     CVision.initUserInfo();
+
+    // Check if Gmail was just connected
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('gmail_connected') === 'true') {
+        CVision.Utils.showAlert('Gmail connected successfully! Email agent is now active.', 'success');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('error')) {
+        const error = urlParams.get('error');
+        CVision.Utils.showAlert(`Gmail connection failed: ${error}`, 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     await loadUserProfile();
     await loadDocuments();
     await loadSavedJobs();
@@ -355,7 +368,8 @@ async function loadSavedJobs() {
 
         if (!response.ok) throw new Error('Failed to load saved jobs');
 
-        const jobs = await response.json();
+        const data = await response.json();
+        const jobs = data.jobs || data || [];
         displaySavedJobs(jobs);
     } catch (error) {
         console.error('Error loading saved jobs:', error);

@@ -33,7 +33,7 @@ class GmailService:
         if settings.ENVIRONMENT == "development":
             os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-    def get_authorization_url(self, redirect_uri: Optional[str] = None) -> str:
+    def get_authorization_url(self, redirect_uri: Optional[str] = None, state: Optional[str] = None) -> str:
         """Generate the authorization URL for the user"""
         flow = Flow.from_client_config(
             self._get_client_config(),
@@ -41,11 +41,18 @@ class GmailService:
             redirect_uri=redirect_uri or self.redirect_uri
         )
         
-        auth_url, _ = flow.authorization_url(
-            access_type='offline',
-            include_granted_scopes='true',
-            prompt='consent'
-        )
+        # Build authorization URL parameters
+        auth_params = {
+            'access_type': 'offline',
+            'include_granted_scopes': 'true',
+            'prompt': 'consent'
+        }
+        
+        # Add state if provided
+        if state:
+            auth_params['state'] = state
+        
+        auth_url, _ = flow.authorization_url(**auth_params)
         
         return auth_url
 

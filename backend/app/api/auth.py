@@ -445,7 +445,7 @@ async def connect_gmail(current_user: dict = Depends(get_current_user)):
     try:
         # Pass user ID in state to verify on callback
         state = str(current_user["_id"])
-        auth_url = gmail_service.get_authorization_url()
+        auth_url = gmail_service.get_authorization_url(state=state)
         
         return APIResponse(
             success=True,
