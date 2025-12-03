@@ -92,31 +92,6 @@ services:
     networks:
       - vision_ai_network
 
-  automation:
-    build:
-      context: ./browser-automation
-      dockerfile: Dockerfile
-    container_name: vision_ai_automation
-    ports:
-      - "4001:3000"
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - BACKEND_URL=http://backend:8000
-      - AUTH_TOKEN=your-secret-token-here
-    # volumes:
-    #   - ./browser-automation:/app
-    #   - /app/node_modules
-    depends_on:
-      - backend
-    networks:
-      - vision_ai_network
-    cap_add:
-      - SYS_ADMIN
-    command: node src/index.js
-
   nginx:
     image: nginx:alpine
     container_name: vision_ai_nginx

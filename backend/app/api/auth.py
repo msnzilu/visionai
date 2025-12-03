@@ -6,7 +6,7 @@ CVision Authentication API - Frontend Compatible
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from bson import ObjectId
 from fastapi.responses import RedirectResponse
@@ -49,6 +49,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str] = None  # Added for frontend compatibility
     subscription_tier: str
     created_at: str
+    gmail_connected: bool = False
 
 
 class APIResponse(BaseModel):
@@ -128,7 +129,8 @@ async def register(user_data: UserRegister):
             "full_name": full_name,
             "referral_code": user_doc["referral_code"],  # Include referral code in response
             "subscription_tier": user_doc["subscription_tier"],
-            "created_at": user_doc["created_at"].isoformat()
+            "created_at": user_doc["created_at"].isoformat(),
+            "gmail_connected": False
         }
         
         return APIResponse(
@@ -204,7 +206,8 @@ async def login(login_data: UserLogin):
             "full_name": full_name,
             "role": user.get("role", "user"),
             "subscription_tier": user["subscription_tier"],
-            "created_at": user["created_at"].isoformat()
+            "created_at": user["created_at"].isoformat(),
+            "gmail_connected": bool(user.get("gmail_auth"))
         }
         
         return APIResponse(
@@ -319,7 +322,8 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
             "last_name": current_user.get("last_name", ""),
             "full_name": full_name,
             "subscription_tier": current_user["subscription_tier"],
-            "created_at": current_user["created_at"].isoformat()
+            "created_at": current_user["created_at"].isoformat(),
+            "gmail_connected": bool(current_user.get("gmail_auth"))
         }
         
         return APIResponse(
@@ -491,4 +495,4 @@ async def gmail_callback(code: str, state: Optional[str] = None):
         
     except Exception as e:
         logger.error(f"Gmail callback error: {str(e)}")
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard.html?error=gmail_connection_failed")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard.html?error=gmail_connection_failed&details={str(e)}")

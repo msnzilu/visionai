@@ -29,10 +29,17 @@ class GmailService:
     def __init__(self):
         self.client_id = settings.GOOGLE_CLIENT_ID
         self.client_secret = settings.GOOGLE_CLIENT_SECRET
-        self.redirect_uri = f"http://localhost:8000{settings.API_V1_STR}/auth/gmail/callback"
+        # Derive redirect_uri from the configured GOOGLE_REDIRECT_URI
+        # This ensures we use the same domain/host that is already working for login
+        # We replace the 'google/callback' part with 'gmail/callback'
+        if settings.GOOGLE_REDIRECT_URI:
+            self.redirect_uri = settings.GOOGLE_REDIRECT_URI.replace('google/callback', 'gmail/callback')
+        else:
+            # Fallback for development if setting is missing (though it shouldn't be)
+            self.redirect_uri = f"http://localhost:8000{settings.API_V1_STR}/auth/gmail/callback"
         
-        # In development, allow HTTP for Oauth
-        if settings.ENVIRONMENT == "development":
+        # In development or if using HTTP redirect, allow HTTP for Oauth
+        if settings.ENVIRONMENT == "development" or self.redirect_uri.startswith("http:"):
             os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
     def get_authorization_url(self, redirect_uri: Optional[str] = None, state: Optional[str] = None) -> str:

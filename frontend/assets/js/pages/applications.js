@@ -117,13 +117,13 @@ function displayNavbarNotifications(notifications) {
 
     if (!notifications || notifications.length === 0) {
         container.innerHTML = `
-                    <div class="text-center py-12 text-gray-500">
-                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                        </svg>
-                        <p class="text-sm">No notifications yet</p>
-                    </div>
-                `;
+            <div class="text-center py-12 text-gray-500">
+                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+                <p class="text-sm">No notifications yet</p>
+            </div>
+        `;
         return;
     }
 
@@ -133,19 +133,19 @@ function displayNavbarNotifications(notifications) {
         const icon = getNotificationIcon(notif.type);
 
         return `
-                    <div class="notification-item ${isUnread ? 'unread' : ''} px-4 py-3 cursor-pointer" 
-                         onclick="markNotificationAsRead('${notif.id}')">
-                        <div class="flex items-start space-x-3">
-                            <div class="flex-shrink-0 mt-1">${icon}</div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-gray-900 ${isUnread ? 'font-semibold' : ''}">${notif.title}</p>
-                                <p class="text-sm text-gray-600 mt-1">${notif.message}</p>
-                                <p class="text-xs text-gray-500 mt-1">${timeAgo}</p>
-                            </div>
-                            ${isUnread ? '<div class="flex-shrink-0"><div class="w-2 h-2 bg-blue-600 rounded-full"></div></div>' : ''}
-                        </div>
+            <div class="notification-item ${isUnread ? 'unread' : ''} px-4 py-3 cursor-pointer" 
+                 onclick="markNotificationAsRead('${notif.id}')">
+                <div class="flex items-start space-x-3">
+                    <div class="flex-shrink-0 mt-1">${icon}</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 ${isUnread ? 'font-semibold' : ''}">${notif.title}</p>
+                        <p class="text-sm text-gray-600 mt-1">${notif.message}</p>
+                        <p class="text-xs text-gray-500 mt-1">${timeAgo}</p>
                     </div>
-                `;
+                    ${isUnread ? '<div class="flex-shrink-0"><div class="w-2 h-2 bg-blue-600 rounded-full"></div></div>' : ''}
+                </div>
+            </div>
+        `;
     }).join('');
 }
 
@@ -239,10 +239,19 @@ function switchTab(tab) {
         btn.classList.remove('border-primary-600', 'text-primary-600');
         btn.classList.add('border-transparent', 'text-gray-500');
     });
-    document.getElementById(`tab-${tab}`).classList.remove('border-transparent', 'text-gray-500');
-    document.getElementById(`tab-${tab}`).classList.add('border-primary-600', 'text-primary-600');
+
+    const tabElement = document.getElementById(`tab-${tab}`);
+    if (tabElement) {
+        tabElement.classList.remove('border-transparent', 'text-gray-500');
+        tabElement.classList.add('border-primary-600', 'text-primary-600');
+    }
+
     document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-    document.getElementById(`content-${tab}`).classList.remove('hidden');
+
+    const contentElement = document.getElementById(`content-${tab}`);
+    if (contentElement) {
+        contentElement.classList.remove('hidden');
+    }
 
     if (tab === 'applications') loadApplications();
     else if (tab === 'interviews') loadUpcomingInterviews();
@@ -257,24 +266,28 @@ async function loadStats() {
         });
         if (!response.ok) throw new Error('Failed');
         const stats = await response.json();
-        document.getElementById('statsOverview').innerHTML = `
-                    <div class="bg-white rounded-lg shadow-sm border p-6">
-                        <div class="text-sm text-gray-600 mb-1">Total Applications</div>
-                        <div class="text-3xl font-bold text-gray-900">${stats.total_applications || 0}</div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm border p-6">
-                        <div class="text-sm text-gray-600 mb-1">Active</div>
-                        <div class="text-3xl font-bold text-blue-600">${stats.active_applications || 0}</div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm border p-6">
-                        <div class="text-sm text-gray-600 mb-1">Interviews</div>
-                        <div class="text-3xl font-bold text-purple-600">${stats.interview_count || 0}</div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm border p-6">
-                        <div class="text-sm text-gray-600 mb-1">Success Rate</div>
-                        <div class="text-3xl font-bold text-green-600">${stats.success_rate ? Math.round(stats.success_rate * 100) : 0}%</div>
-                    </div>
-                `;
+
+        const statsContainer = document.getElementById('statsOverview');
+        if (statsContainer) {
+            statsContainer.innerHTML = `
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <div class="text-sm text-gray-600 mb-1">Total Applications</div>
+                    <div class="text-3xl font-bold text-gray-900">${stats.total_applications || 0}</div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <div class="text-sm text-gray-600 mb-1">Active</div>
+                    <div class="text-3xl font-bold text-blue-600">${stats.active_applications || 0}</div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <div class="text-sm text-gray-600 mb-1">Interviews</div>
+                    <div class="text-3xl font-bold text-purple-600">${stats.interview_count || 0}</div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <div class="text-sm text-gray-600 mb-1">Success Rate</div>
+                    <div class="text-3xl font-bold text-green-600">${stats.success_rate ? Math.round(stats.success_rate * 100) : 0}%</div>
+                </div>
+            `;
+        }
     } catch (error) {
         console.error('Stats error:', error);
     }
@@ -297,13 +310,60 @@ async function loadApplications() {
         const data = await response.json();
         displayApplications(data.applications || []);
     } catch (error) {
+        console.error('Load applications error:', error);
+        const container = document.getElementById('applicationsList');
+        if (container) {
+            container.innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load applications</p></div>';
+        }
+    }
+}
+
+function displayApplications(applications) {
+    const container = document.getElementById('applicationsList');
+    if (!container) return;
+
+    if (!applications || applications.length === 0) {
+        container.innerHTML = `
+            <div class="bg-white rounded-lg border p-12 text-center">
+                <h3 class="text-lg font-medium mb-2">No Applications Yet</h3>
+                <p class="text-gray-600 mb-6">Start applying to jobs to track them here</p>
+                <a href="jobs.html" class="btn-gradient text-white px-6 py-2 rounded-lg inline-block">Search Jobs</a>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = applications.map(app => `
+        <div class="bg-white rounded-lg border p-6 hover:shadow-md transition cursor-pointer" onclick="viewApplicationDetails('${app._id || app.id}')">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold">${app.job_title}</h3>
+                    <p class="text-gray-600 mt-1">${app.company_name}</p>
+                    <p class="text-gray-500 text-sm mt-1">${app.location || 'Remote'}</p>
+                </div>
+                <div class="flex flex-col items-end gap-2">
+                    ${getStatusBadge(app.status)}
+                    ${app.priority ? getPriorityBadge(app.priority) : ''}
+                </div>
+            </div>
+            <div class="flex justify-between items-center text-sm text-gray-500">
+                <span>Applied: ${formatDate(app.created_at)}</span>
+                ${app.source ? `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${formatEnumValue(app.source)}</span>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function getStatusBadge(status) {
+    const colors = {
+        pending: 'bg-gray-100 text-gray-800',
         applied: 'bg-blue-100 text-blue-800',
-            screening: 'bg-indigo-100 text-indigo-800',
-                interview: 'bg-purple-100 text-purple-800',
-                    offer: 'bg-green-100 text-green-800',
-                        accepted: 'bg-green-600 text-white',
-                            rejected: 'bg-red-100 text-red-800',
-                                withdrawn: 'bg-gray-100 text-gray-800'
+        screening: 'bg-indigo-100 text-indigo-800',
+        interview: 'bg-purple-100 text-purple-800',
+        offer: 'bg-green-100 text-green-800',
+        accepted: 'bg-green-600 text-white',
+        rejected: 'bg-red-100 text-red-800',
+        withdrawn: 'bg-gray-100 text-gray-800'
     };
     return `<span class="status-badge ${colors[status] || colors.pending}">${formatEnumValue(status)}</span>`;
 }
@@ -330,45 +390,55 @@ async function viewApplicationDetails(appId) {
 }
 
 function displayApplicationModal(app, timeline) {
-    document.getElementById('applicationModalContent').innerHTML = `
-                <div class="flex justify-between mb-6">
-                    <div>
-                        <h2 class="text-2xl font-bold">${app.job_title}</h2>
-                        <p class="text-gray-600 mt-1">${app.company_name}</p>
+    const modalContent = document.getElementById('applicationModalContent');
+    if (!modalContent) return;
+
+    modalContent.innerHTML = `
+        <div class="flex justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold">${app.job_title}</h2>
+                <p class="text-gray-600 mt-1">${app.company_name}</p>
+            </div>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div><span class="text-sm text-gray-600">Status:</span> ${getStatusBadge(app.status)}</div>
+            <div><span class="text-sm text-gray-600">Priority:</span> ${getPriorityBadge(app.priority)}</div>
+        </div>
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Quick Actions</h3>
+            <div class="grid grid-cols-3 gap-3">
+                <button onclick="updateStatus('${app.id}')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">Update Status</button>
+                <button onclick="scheduleInterview('${app.id}')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200">Schedule Interview</button>
+                <button onclick="setFollowUp('${app.id}')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">Set Follow-up</button>
+            </div>
+        </div>
+        <div>
+            <h3 class="text-lg font-semibold mb-3">Timeline</h3>
+            <div class="space-y-3 max-h-64 overflow-y-auto">
+                ${timeline && timeline.length > 0 ? timeline.map(e => `
+                    <div class="border-l-2 border-gray-200 pl-4 py-2">
+                        <p class="text-sm font-medium">${e.description}</p>
+                        <p class="text-xs text-gray-500">${formatDateTime(e.timestamp)}</p>
                     </div>
-                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                </div>
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div><span class="text-sm text-gray-600">Status:</span> ${getStatusBadge(app.status)}</div>
-                    <div><span class="text-sm text-gray-600">Priority:</span> ${getPriorityBadge(app.priority)}</div>
-                </div>
-                <div class="mb-6">
-                    <h3 class="text-lg font-semibold mb-3">Quick Actions</h3>
-                    <div class="grid grid-cols-3 gap-3">
-                        <button onclick="updateStatus('${app.id}')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">Update Status</button>
-                        <button onclick="scheduleInterview('${app.id}')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200">Schedule Interview</button>
-                        <button onclick="setFollowUp('${app.id}')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">Set Follow-up</button>
-                    </div>
-                </div>
-                <div>
-                    <h3 class="text-lg font-semibold mb-3">Timeline</h3>
-                    <div class="space-y-3 max-h-64 overflow-y-auto">
-                        ${timeline && timeline.length > 0 ? timeline.map(e => `
-                            <div class="border-l-2 border-gray-200 pl-4 py-2">
-                                <p class="text-sm font-medium">${e.description}</p>
-                                <p class="text-xs text-gray-500">${formatDateTime(e.timestamp)}</p>
-                            </div>
-                        `).join('') : '<p class="text-gray-500 text-sm">No timeline events</p>'}
-                    </div>
-                </div>
-            `;
-    document.getElementById('applicationModal').classList.remove('hidden');
+                `).join('') : '<p class="text-gray-500 text-sm">No timeline events</p>'}
+            </div>
+        </div>
+    `;
+
+    const modal = document.getElementById('applicationModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
 }
 
 function closeModal() {
-    document.getElementById('applicationModal').classList.add('hidden');
+    const modal = document.getElementById('applicationModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
 }
 
 async function updateStatus(appId) {
@@ -437,20 +507,25 @@ async function loadUpcomingInterviews() {
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
         const container = document.getElementById('interviewsList');
+        if (!container) return;
+
         if (!data.interviews || data.interviews.length === 0) {
             container.innerHTML = '<div class="bg-white rounded-lg border p-12 text-center"><p class="text-gray-600">No upcoming interviews</p></div>';
             return;
         }
         container.innerHTML = data.interviews.map(i => `
-                    <div class="bg-white rounded-lg border p-6">
-                        <h3 class="text-lg font-semibold">${i.job_title}</h3>
-                        <p class="text-gray-600">${i.company_name}</p>
-                        <p class="text-sm text-gray-500 mt-2">${formatDateTime(i.interview_date)}</p>
-                        <p class="text-sm text-gray-500">${i.location || 'Location TBD'}</p>
-                    </div>
-                `).join('');
+            <div class="bg-white rounded-lg border p-6">
+                <h3 class="text-lg font-semibold">${i.job_title}</h3>
+                <p class="text-gray-600">${i.company_name}</p>
+                <p class="text-sm text-gray-500 mt-2">${formatDateTime(i.interview_date)}</p>
+                <p class="text-sm text-gray-500">${i.location || 'Location TBD'}</p>
+            </div>
+        `).join('');
     } catch (error) {
-        document.getElementById('interviewsList').innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+        const container = document.getElementById('interviewsList');
+        if (container) {
+            container.innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+        }
     }
 }
 
@@ -462,20 +537,25 @@ async function loadFollowUps() {
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
         const container = document.getElementById('followupsList');
+        if (!container) return;
+
         if (!data.applications || data.applications.length === 0) {
             container.innerHTML = '<div class="bg-white rounded-lg border p-12 text-center"><p class="text-gray-600">No follow-ups needed</p></div>';
             return;
         }
         container.innerHTML = data.applications.map(a => `
-                    <div class="bg-white rounded-lg border border-yellow-200 border-l-4 p-6">
-                        <h3 class="text-lg font-semibold">${a.job_title}</h3>
-                        <p class="text-gray-600">${a.company_name}</p>
-                        <p class="text-sm text-yellow-600 mt-2">Follow-up due: ${formatDate(a.next_follow_up)}</p>
-                        <button onclick="viewApplicationDetails('${a._id}')" class="mt-4 px-4 py-2 text-sm bg-primary-600 text-white rounded-lg">View Details</button>
-                    </div>
-                `).join('');
+            <div class="bg-white rounded-lg border border-yellow-200 border-l-4 p-6">
+                <h3 class="text-lg font-semibold">${a.job_title}</h3>
+                <p class="text-gray-600">${a.company_name}</p>
+                <p class="text-sm text-yellow-600 mt-2">Follow-up due: ${formatDate(a.next_follow_up)}</p>
+                <button onclick="viewApplicationDetails('${a._id}')" class="mt-4 px-4 py-2 text-sm bg-primary-600 text-white rounded-lg">View Details</button>
+            </div>
+        `).join('');
     } catch (error) {
-        document.getElementById('followupsList').innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+        const container = document.getElementById('followupsList');
+        if (container) {
+            container.innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+        }
     }
 }
 
@@ -487,33 +567,38 @@ async function loadSavedJobs() {
         if (!res.ok) throw new Error('Failed');
         const jobs = await res.json();
         const container = document.getElementById('savedJobsList');
+        if (!container) return;
+
         if (!jobs || jobs.length === 0) {
             container.innerHTML = `
-                        <div class="bg-white rounded-lg border p-12 text-center">
-                            <h3 class="text-lg font-medium mb-2">No Saved Jobs</h3>
-                            <p class="text-gray-600 mb-6">Save jobs while searching</p>
-                            <a href="jobs.html" class="btn-gradient text-white px-6 py-2 rounded-lg inline-block">Search Jobs</a>
-                        </div>
-                    `;
+                <div class="bg-white rounded-lg border p-12 text-center">
+                    <h3 class="text-lg font-medium mb-2">No Saved Jobs</h3>
+                    <p class="text-gray-600 mb-6">Save jobs while searching</p>
+                    <a href="jobs.html" class="btn-gradient text-white px-6 py-2 rounded-lg inline-block">Search Jobs</a>
+                </div>
+            `;
             return;
         }
         container.innerHTML = jobs.map(j => `
-                    <div class="bg-white rounded-lg border p-6 hover:shadow-md transition">
-                        <div class="flex justify-between gap-4">
-                            <div class="flex-1">
-                                <h3 class="text-lg font-semibold">${j.title}</h3>
-                                <p class="text-gray-600 mt-1">${j.company_name}</p>
-                                <p class="text-gray-500 text-sm mt-1">${j.location}</p>
-                            </div>
-                            <div class="flex flex-col gap-2">
-                                <button onclick="window.location.href='jobs.html?job=${j.id}'" class="px-4 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 rounded-lg">View</button>
-                                <button onclick="unsaveJob('${j.id}')" class="px-4 py-2 text-sm text-red-600 bg-red-100 hover:bg-red-200 rounded-lg">Remove</button>
-                            </div>
-                        </div>
+            <div class="bg-white rounded-lg border p-6 hover:shadow-md transition">
+                <div class="flex justify-between gap-4">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold">${j.title}</h3>
+                        <p class="text-gray-600 mt-1">${j.company_name}</p>
+                        <p class="text-gray-500 text-sm mt-1">${j.location}</p>
                     </div>
-                `).join('');
+                    <div class="flex flex-col gap-2">
+                        <button onclick="window.location.href='jobs.html?job=${j.id}'" class="px-4 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 rounded-lg">View</button>
+                        <button onclick="unsaveJob('${j.id}')" class="px-4 py-2 text-sm text-red-600 bg-red-100 hover:bg-red-200 rounded-lg">Remove</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
     } catch (error) {
-        document.getElementById('savedJobsList').innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+        const container = document.getElementById('savedJobsList');
+        if (container) {
+            container.innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+        }
     }
 }
 
@@ -533,9 +618,14 @@ async function unsaveJob(jobId) {
 }
 
 function clearFilters() {
-    document.getElementById('filter-status').value = '';
-    document.getElementById('filter-priority').value = '';
-    document.getElementById('filter-company').value = '';
+    const statusFilter = document.getElementById('filter-status');
+    const priorityFilter = document.getElementById('filter-priority');
+    const companyFilter = document.getElementById('filter-company');
+
+    if (statusFilter) statusFilter.value = '';
+    if (priorityFilter) priorityFilter.value = '';
+    if (companyFilter) companyFilter.value = '';
+
     loadApplications();
 }
 
@@ -558,9 +648,14 @@ function formatDateTime(dateString) {
     return new Date(dateString).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-document.getElementById('applicationModal').addEventListener('click', (e) => {
-    if (e.target.id === 'applicationModal') closeModal();
-});
+// Modal event listeners
+const applicationModal = document.getElementById('applicationModal');
+if (applicationModal) {
+    applicationModal.addEventListener('click', (e) => {
+        if (e.target.id === 'applicationModal') closeModal();
+    });
+}
+
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
 });

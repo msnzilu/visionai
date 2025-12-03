@@ -182,6 +182,8 @@ async function loadUserProfile() {
             // Check Gmail connection status
             if (!user.gmail_connected) {
                 showGmailConnectAlert();
+            } else {
+                showGmailConnectedAlert(user);
             }
         }
     } catch (error) {
@@ -476,6 +478,33 @@ function showGmailConnectAlert() {
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
                 </button>
+            </div>
+        </div>
+    `;
+}
+
+function showGmailConnectedAlert(user) {
+    const alertsContainer = document.getElementById('alerts');
+    if (!alertsContainer) return;
+
+    // Get Gmail email from user data
+    const gmailEmail = user.email || 'your Gmail account';
+
+    alertsContainer.innerHTML = `
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-4 rounded-r shadow-sm">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3 flex-1">
+                    <h3 class="text-sm font-medium text-green-800">Gmail Connected - Email Agent Active</h3>
+                    <div class="mt-2 text-sm text-green-700">
+                        <p>Applications will be sent and tracked from: <strong>${gmailEmail}</strong></p>
+                        <p class="mt-1 text-xs">All job applications will be automatically sent via email and tracked in your applications page.</p>
+                    </div>
+                </div>
             </div>
         </div>
     `;

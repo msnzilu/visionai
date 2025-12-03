@@ -113,7 +113,8 @@ class QuickApplyManager {
                 throw new Error('Failed to load documents');
             }
 
-            const documents = await response.json();
+            const data = await response.json();
+            const documents = data.documents || data || [];
 
             // Populate CV dropdown
             const cvSelect = document.querySelector('[name="cv_document_id"]');
@@ -204,16 +205,31 @@ class QuickApplyManager {
                 }
             );
 
+            // Check for HTTP errors
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Your session has expired. Please refresh the page and try again.');
+                } else if (response.status === 400) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Invalid application data. Please check your inputs.');
+                } else if (response.status === 404) {
+                    throw new Error('Job not found. It may have been removed.');
+                } else {
+                    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                    throw new Error(error.detail || `Server error (${response.status}). Please try again.`);
+                }
+            }
+
             const result = await response.json();
 
             if (result.success) {
                 this.showSuccess('Application sent successfully! Check your Gmail sent folder.');
                 this.closeQuickApplyForm();
 
-                // Refresh applications list if on applications page
-                if (typeof loadApplications === 'function') {
-                    setTimeout(() => loadApplications(), 1000);
-                }
+                // Redirect to applications page to track the application
+                setTimeout(() => {
+                    window.location.href = '/pages/applications.html';
+                }, 1500);
             } else {
                 throw new Error(result.error || result.message || 'Failed to send application');
             }
