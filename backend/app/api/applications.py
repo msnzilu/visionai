@@ -1379,3 +1379,146 @@ async def update_application_priority(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update priority"
         )
+
+    # ==================== EMAIL MONITORING ENDPOINTS ====================
+@router.post("/{application_id}/enable-monitoring", response_model=SuccessResponse)
+async def enable_email_monitoring(
+    application_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db = Depends(get_database)
+):
+    """Enable email monitoring for an application"""
+    try:
+        from app.services.email_agent_service import email_agent_service
+        
+        try:
+            ObjectId(application_id)
+        except:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid application ID")
+        
+        user = await db.users.find_one({"_id": ObjectId(str(current_user["_id"]))})
+        if not user or not user.get("gmail_auth"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gmail not connected")
+        
+        application = await ApplicationTrackingService.get_application_by_id(application_id, db)
+        if not application:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+        if application["user_id"] != str(current_user["_id"]):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+        
+        await db.applications.update_one(
+            {"_id": ObjectId(application_id)},
+            {"$set": {"email_monitoring_enabled": True, "updated_at": datetime.utcnow()}}
+        )
+        
+        return SuccessResponse(message="Email monitoring enabled", data={"application_id": application_id})
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error enabling monitoring: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+@router.post("/{application_id}/disable-monitoring", response_model=SuccessResponse)
+async def disable_email_monitoring(
+    application_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db = Depends(get_database)
+):
+    """Disable email monitoring for an application"""
+    try:
+        try:
+            ObjectId(application_id)
+        except:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid application ID")
+        
+        application = await ApplicationTrackingService.get_application_by_id(application_id, db)
+        if not application:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+        if application["user_id"] != str(current_user["_id"]):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+        
+        await db.applications.update_one(
+            {"_id": ObjectId(application_id)},
+            {"$set": {"email_monitoring_enabled": False, "updated_at": datetime.utcnow()}}
+        )
+        
+        return SuccessResponse(message="Email monitoring disabled", data={"application_id": application_id})
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error disabling monitoring: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+@router.post("/{application_id}/check-responses", response_model=SuccessResponse)
+async def check_application_responses(
+    application_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db = Depends(get_database)
+):
+    """Manually check for email responses"""
+    try:
+        from app.services.email_agent_service import email_agent_service
+        
+        try:
+            ObjectId(application_id)
+        except:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid application ID")
+        
+        application = await ApplicationTrackingService.get_application_by_id(application_id, db)
+        if not application:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+        if application["user_id"] != str(current_user["_id"]):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+        
+        if application.get("source") != "auto_apply":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not sent via email agent")
+        
+        responses = await email_agent_service.monitor_application_responses(str(current_user["_id"]), days_back=30)
+        
+        await db.applications.update_one(
+            {"_id": ObjectId(application_id)},
+            {
+                "$set": {"last_response_check": datetime.utcnow(), "updated_at": datetime.utcnow()},
+                "$inc": {"response_check_count": 1}
+            }
+        )
+        
+        app_responses = [r for r in responses if r.get("application_id") == application_id]
+        
+        return SuccessResponse(
+            message=f"Found {len(app_responses)} response(s)" if app_responses else "No responses found",
+            data={"application_id": application_id, "responses_found": len(app_responses)}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking responses: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+@router.get("/monitoring/status")
+async def get_monitoring_status(
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db = Depends(get_database)
+):
+    """Get overall email monitoring status"""
+    try:
+        user_id = str(current_user["_id"])
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        gmail_connected = bool(user and user.get("gmail_auth"))
+        
+        monitored_count = await db.applications.count_documents({
+            "user_id": user_id,
+            "email_monitoring_enabled": True,
+            "deleted_at": None
+        })
+        
+        last_check = await db.applications.find_one(
+            {"user_id": user_id, "last_response_check": {"$exists": True}, "deleted_at": None},
+            sort=[("last_response_check", -1)]
+        )
+        
+        return {
+            "gmail_connected": gmail_connected,
+            "monitored_applications_count": monitored_count,
+            "last_check": last_check.get("last_response_check") if last_check else None
+        }
+    except Exception as e:
+        logger.error(f"Error getting monitoring status: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

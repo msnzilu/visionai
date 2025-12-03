@@ -123,8 +123,11 @@ class GmailService:
         raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
         
         try:
-            message = service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
-            return message
+            sent_message = service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
+            return {
+                'id': sent_message.get('id'),
+                'threadId': sent_message.get('threadId')
+            }
         except HttpError as error:
             print(f'An error occurred: {error}')
             raise error
@@ -151,6 +154,36 @@ class GmailService:
         except HttpError as error:
             print(f'An error occurred: {error}')
             raise error
+    
+    def get_thread_messages(self, auth: GmailAuth, thread_id: str) -> List[Dict[str, Any]]:
+        """Get all messages in a thread"""
+        service = self.get_service(auth)
+        
+        try:
+            thread = service.users().threads().get(userId='me', id=thread_id).execute()
+            return thread.get('messages', [])
+        except HttpError as error:
+            print(f'An error occurred: {error}')
+            return []
+    
+    def check_thread_for_replies(self, auth: GmailAuth, thread_id: str, sent_message_id: str, after_date: datetime) -> List[Dict[str, Any]]:
+        """Check if a thread has replies after the sent message"""
+        messages = self.get_thread_messages(auth, thread_id)
+        
+        replies = []
+        for msg in messages:
+            # Skip the original sent message
+            if msg.get('id') == sent_message_id:
+                continue
+            
+            # Check if message is after the sent date
+            internal_date = int(msg.get('internalDate', 0)) / 1000  # Convert from milliseconds
+            msg_date = datetime.fromtimestamp(internal_date)
+            
+            if msg_date > after_date:
+                replies.append(msg)
+        
+        return replies
             
     def get_profile(self, auth: GmailAuth) -> Dict[str, Any]:
         """Get user's email profile"""

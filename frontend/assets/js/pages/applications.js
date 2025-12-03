@@ -389,51 +389,6 @@ async function viewApplicationDetails(appId) {
     }
 }
 
-function displayApplicationModal(app, timeline) {
-    const modalContent = document.getElementById('applicationModalContent');
-    if (!modalContent) return;
-
-    modalContent.innerHTML = `
-        <div class="flex justify-between mb-6">
-            <div>
-                <h2 class="text-2xl font-bold">${app.job_title}</h2>
-                <p class="text-gray-600 mt-1">${app.company_name}</p>
-            </div>
-            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <div><span class="text-sm text-gray-600">Status:</span> ${getStatusBadge(app.status)}</div>
-            <div><span class="text-sm text-gray-600">Priority:</span> ${getPriorityBadge(app.priority)}</div>
-        </div>
-        <div class="mb-6">
-            <h3 class="text-lg font-semibold mb-3">Quick Actions</h3>
-            <div class="grid grid-cols-3 gap-3">
-                <button onclick="updateStatus('${app.id}')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">Update Status</button>
-                <button onclick="scheduleInterview('${app.id}')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200">Schedule Interview</button>
-                <button onclick="setFollowUp('${app.id}')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">Set Follow-up</button>
-            </div>
-        </div>
-        <div>
-            <h3 class="text-lg font-semibold mb-3">Timeline</h3>
-            <div class="space-y-3 max-h-64 overflow-y-auto">
-                ${timeline && timeline.length > 0 ? timeline.map(e => `
-                    <div class="border-l-2 border-gray-200 pl-4 py-2">
-                        <p class="text-sm font-medium">${e.description}</p>
-                        <p class="text-xs text-gray-500">${formatDateTime(e.timestamp)}</p>
-                    </div>
-                `).join('') : '<p class="text-gray-500 text-sm">No timeline events</p>'}
-            </div>
-        </div>
-    `;
-
-    const modal = document.getElementById('applicationModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-    }
-}
-
 function closeModal() {
     const modal = document.getElementById('applicationModal');
     if (modal) {
@@ -669,3 +624,186 @@ if (applicationModal) {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
 });
+
+// ==================== EMAIL MONITORING FUNCTIONS ====================
+async function toggleEmailMonitoring(applicationId, currentlyEnabled) {
+    const endpoint = currentlyEnabled ? 'disable-monitoring' : 'enable-monitoring';
+    const action = currentlyEnabled ? 'disabled' : 'enabled';
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/applications/${applicationId}/${endpoint}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || 'Failed to toggle monitoring');
+        }
+        InlineMessage.success(`Email monitoring ${action}`);
+        loadApplications(); // Refresh the list
+        viewApplicationDetails(applicationId); // Refresh the modal
+
+    } catch (error) {
+        console.error('Toggle monitoring error:', error);
+        InlineMessage.error(error.message || 'Failed to toggle monitoring');
+    }
+}
+async function checkForResponses(applicationId) {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/applications/${applicationId}/check-responses`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || 'Failed to check responses');
+        }
+        const data = await res.json();
+        if (data.data.responses_found > 0) {
+            InlineMessage.success(data.message);
+        } else {
+            InlineMessage.info(data.message);
+        }
+        loadApplications(); // Refresh to show updated check time
+        viewApplicationDetails(applicationId); // Refresh the modal // Refresh to show updated check time
+    } catch (error) {
+        console.error('Check responses error:', error);
+        InlineMessage.error(error.message || 'Failed to check responses');
+    }
+}
+function getSourceBadge(source) {
+    if (source === 'auto_apply') {
+        return `<span class="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+            Email Agent
+        </span>`;
+    }
+    return `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${formatEnumValue(source)}</span>`;
+}
+function getMonitoringBadge(app) {
+    if (app.source !== 'auto_apply') return '';
+    if (app.email_monitoring_enabled) {
+        return `<span class="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"></path>
+            </svg>
+            Monitoring
+        </span>`;
+    }
+    return `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Manual</span>`;
+}
+// ==================== MODIFIED FUNCTIONS ====================
+// REPLACE the existing displayApplications function (around line 321) with this enhanced version:
+function displayApplications(applications) {
+    const container = document.getElementById('applicationsList');
+    if (!container) return;
+    if (!applications || applications.length === 0) {
+        container.innerHTML = `
+            <div class="bg-white rounded-lg border p-12 text-center">
+                <h3 class="text-lg font-medium mb-2">No Applications Yet</h3>
+                <p class="text-gray-600 mb-6">Start applying to jobs to track them here</p>
+                <a href="jobs.html" class="btn-gradient text-white px-6 py-2 rounded-lg inline-block">Search Jobs</a>
+            </div>
+        `;
+        return;
+    }
+    container.innerHTML = applications.map(app => `
+        <div class="bg-white rounded-lg border p-6 hover:shadow-md transition cursor-pointer" onclick="viewApplicationDetails('${app._id || app.id}')">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold">${app.job_title}</h3>
+                    <p class="text-gray-600 mt-1">${app.company_name}</p>
+                    <p class="text-gray-500 text-sm mt-1">${app.location || 'Remote'}</p>
+                </div>
+                <div class="flex flex-col items-end gap-2">
+                    ${getStatusBadge(app.status)}
+                    ${app.priority ? getPriorityBadge(app.priority) : ''}
+                </div>
+            </div>
+            <div class="flex justify-between items-center text-sm text-gray-500">
+                <span>Applied: ${formatDate(app.created_at)}</span>
+                <div class="flex gap-2">
+                    ${getSourceBadge(app.source)}
+                    ${getMonitoringBadge(app)}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+// REPLACE the existing displayApplicationModal function (around line 392) with this enhanced version:
+function displayApplicationModal(app, timeline) {
+    const modalContent = document.getElementById('applicationModalContent');
+    if (!modalContent) return;
+    const isEmailApp = app.source === 'auto_apply';
+    const monitoringEnabled = app.email_monitoring_enabled || false;
+    modalContent.innerHTML = `
+        <div class="flex justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold">${app.job_title}</h2>
+                <p class="text-gray-600 mt-1">${app.company_name}</p>
+            </div>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div><span class="text-sm text-gray-600">Status:</span> ${getStatusBadge(app.status)}</div>
+            <div><span class="text-sm text-gray-600">Priority:</span> ${getPriorityBadge(app.priority)}</div>
+            <div><span class="text-sm text-gray-600">Source:</span> ${getSourceBadge(app.source)}</div>
+            ${isEmailApp ? `<div><span class="text-sm text-gray-600">Monitoring:</span> ${getMonitoringBadge(app)}</div>` : ''}
+        </div>
+        
+        ${isEmailApp ? `
+        <div class="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                Email Agent Monitoring
+            </h3>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-700">Auto-check for responses:</span>
+                    <button onclick="event.stopPropagation(); toggleEmailMonitoring('${app._id || app.id}', ${monitoringEnabled})"                            class="px-4 py-2 text-sm rounded-lg ${monitoringEnabled ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        ${monitoringEnabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                </div>
+                ${app.last_response_check ? `
+                <div class="text-xs text-gray-600">
+                    Last checked: ${formatDateTime(app.last_response_check)} (${app.response_check_count || 0} checks)
+                </div>
+                ` : ''}
+                <button onclick="event.stopPropagation(); checkForResponses('${app._id || app.id}')" 
+                        class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
+                    Check for Responses Now
+                </button>
+            </div>
+        </div>
+        ` : ''}
+        
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Quick Actions</h3>
+            <div class="grid grid-cols-3 gap-3">
+                <button onclick="updateStatus('${app._id || app.id}')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">Update Status</button>
+                <button onclick="scheduleInterview('${app._id || app.id}')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200">Schedule Interview</button>
+                <button onclick="setFollowUp('${app._id || app.id}')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">Set Follow-up</button>        </div>
+        
+        <div>
+            <h3 class="text-lg font-semibold mb-3">Timeline</h3>
+            <div class="space-y-3 max-h-64 overflow-y-auto">
+                ${timeline && timeline.length > 0 ? timeline.map(e => `
+                    <div class="border-l-2 border-gray-200 pl-4 py-2">
+                        <p class="text-sm font-medium">${e.description}</p>
+                        <p class="text-xs text-gray-500">${formatDateTime(e.timestamp)}</p>
+                    </div>
+                `).join('') : '<p class="text-gray-500 text-sm">No timeline events</p>'}
+            </div>
+        </div>
+    `;
+    const modal = document.getElementById('applicationModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}

@@ -307,6 +307,13 @@ class Application(ApplicationBase, TimeStampedModel):
     email_thread_id: Optional[str] = None
     last_email_at: Optional[datetime] = None
     email_status: Optional[str] = None  # "sent" | "delivered" | "replied"
+
+        
+    # Email Agent Monitoring
+    email_monitoring_enabled: bool = False
+    last_response_check: Optional[datetime] = None
+    response_check_count: int = 0
+
     
     # Follow-up tracking
     last_follow_up: Optional[datetime] = None

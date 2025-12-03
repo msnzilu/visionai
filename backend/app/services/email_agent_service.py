@@ -333,6 +333,7 @@ class EmailAgentService:
                         "applied_date": datetime.utcnow(),
                         "email_sent_via": "gmail",
                         "gmail_message_id": gmail_result.get("id"),
+                        "gmail_thread_id": gmail_result.get("threadId"),
                         "email_sent_at": datetime.utcnow(),
                         "recipient_email": recipient_email,
                         "email_subject": email_data["subject"],
@@ -410,25 +411,42 @@ class EmailAgentService:
             
             gmail_auth = GmailAuth(**user.get("gmail_auth"))
             
-            # Get recent applications
+            # Calculate the cutoff date
+            cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+            
+            # Get recent applications sent via email
             applications = await db.applications.find({
                 "user_id": ObjectId(user_id),
                 "email_sent_via": "gmail",
-                "gmail_message_id": {"$exists": True}
+                "gmail_message_id": {"$exists": True},
+                "email_sent_at": {"$gte": cutoff_date}
             }).to_list(length=100)
             
             responses = []
             
             # Check for responses to each application
             for app in applications:
-                gmail_message_id = app.get("gmail_message_id")
                 recipient_email = app.get("recipient_email")
+                email_sent_at = app.get("email_sent_at")
                 
-                if not recipient_email:
+                if not recipient_email or not email_sent_at:
                     continue
                 
-                # Search for emails from the recipient
-                query = f"from:{recipient_email}"
+                # Extract domain from recipient email for broader matching
+                domain = recipient_email.split('@')[-1] if '@' in recipient_email else None
+                
+                # Build search query - look for emails from the recipient or their domain
+                # that were received after we sent the application
+                after_timestamp = int(email_sent_at.timestamp())
+                
+                # Search for emails from the specific address
+                query = f"from:{recipient_email} after:{after_timestamp}"
+                
+                # Also search from the domain if available (catches replies from different addresses)
+                if domain:
+                    query = f"(from:{recipient_email} OR from:@{domain}) after:{after_timestamp}"
+                
+                logger.info(f"Searching for responses with query: {query}")
                 messages = gmail_service.list_messages(
                     auth=gmail_auth,
                     query=query,
@@ -442,7 +460,8 @@ class EmailAgentService:
                         {
                             "$set": {
                                 "response_received": True,
-                                "response_at": datetime.utcnow(),
+                                "response_count": len(messages),
+                                "last_response_at": datetime.utcnow(),
                                 "updated_at": datetime.utcnow()
                             }
                         }
@@ -451,11 +470,15 @@ class EmailAgentService:
                     responses.append({
                         "application_id": str(app["_id"]),
                         "job_id": str(app.get("job_id")),
+                        "company_name": app.get("company_name"),
+                        "job_title": app.get("job_title"),
                         "response_count": len(messages),
                         "detected_at": datetime.utcnow().isoformat()
                     })
+                    
+                    logger.info(f"Found {len(messages)} response(s) for application {app['_id']}")
             
-            logger.info(f"Monitored {len(applications)} applications, found {len(responses)} responses")
+            logger.info(f"Monitored {len(applications)} applications, found {len(responses)} with responses")
             return responses
             
         except Exception as e:
