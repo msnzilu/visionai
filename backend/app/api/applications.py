@@ -4,7 +4,7 @@ Complete implementation with all endpoints
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
-from fastapi import status as http_status
+from fastapi import status
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
@@ -235,7 +235,7 @@ async def list_applications(
     except Exception as e:
         logger.error(f"Error listing applications: {str(e)}")
         raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve applications"
         )
 
@@ -273,6 +273,107 @@ async def get_application_stats(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve statistics"
+        )
+
+
+# ==================== AGGREGATION ENDPOINTS ====================
+
+@router.get("/follow-ups/needed")
+async def get_follow_ups_needed(
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db = Depends(get_database)
+):
+    """Get applications needing follow-up"""
+    try:
+        tracking_service = ApplicationTrackingService(db)
+        applications = await tracking_service.get_applications_needing_follow_up(
+            user_id=str(current_user["_id"])
+        )
+        
+        # Convert ObjectIds to strings
+        for app in applications:
+            app["_id"] = str(app["_id"])
+            if app.get("job_id"):
+                app["job_id"] = str(app["job_id"])
+        
+        return {
+            "applications": applications,
+            "count": len(applications)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting follow-ups: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/upcoming-interviews")
+async def get_upcoming_interviews(
+    days_ahead: int = Query(7, ge=1, le=30),
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db = Depends(get_database)
+):
+    """Get upcoming interviews"""
+    try:
+        tracking_service = ApplicationTrackingService(db)
+        interviews = await tracking_service.get_upcoming_interviews(
+            user_id=str(current_user["_id"]),
+            days_ahead=days_ahead
+        )
+        
+        # Convert ObjectIds to strings
+        for interview in interviews:
+            interview["_id"] = str(interview["_id"])
+            if interview.get("job_id"):
+                interview["job_id"] = str(interview["job_id"])
+        
+        return {
+            "interviews": interviews,
+            "count": len(interviews),
+            "days_ahead": days_ahead
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting interviews: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/by-status/{status}")
+async def get_applications_by_status(
+    status: ApplicationStatus,
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db = Depends(get_database)
+):
+    """Get applications filtered by status"""
+    try:
+        tracking_service = ApplicationTrackingService(db)
+        applications = await tracking_service.get_applications_by_status(
+            user_id=str(current_user["_id"]),
+            status=status.value
+        )
+        
+        # Convert ObjectIds to strings
+        for app in applications:
+            app["_id"] = str(app["_id"])
+            if app.get("job_id"):
+                app["job_id"] = str(app["job_id"])
+        
+        return {
+            "applications": applications,
+            "count": len(applications),
+            "status": status.value
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting by status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
         )
 
 
@@ -908,107 +1009,6 @@ async def add_communication(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to add communication"
-        )
-
-
-# ==================== AGGREGATION ENDPOINTS ====================
-
-@router.get("/follow-ups/needed")
-async def get_follow_ups_needed(
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
-    db = Depends(get_database)
-):
-    """Get applications needing follow-up"""
-    try:
-        tracking_service = ApplicationTrackingService(db)
-        applications = await tracking_service.get_applications_needing_follow_up(
-            user_id=str(current_user["_id"])
-        )
-        
-        # Convert ObjectIds to strings
-        for app in applications:
-            app["_id"] = str(app["_id"])
-            if app.get("job_id"):
-                app["job_id"] = str(app["job_id"])
-        
-        return {
-            "applications": applications,
-            "count": len(applications)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting follow-ups: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-
-@router.get("/upcoming-interviews")
-async def get_upcoming_interviews(
-    days_ahead: int = Query(7, ge=1, le=30),
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
-    db = Depends(get_database)
-):
-    """Get upcoming interviews"""
-    try:
-        tracking_service = ApplicationTrackingService(db)
-        interviews = await tracking_service.get_upcoming_interviews(
-            user_id=str(current_user["_id"]),
-            days_ahead=days_ahead
-        )
-        
-        # Convert ObjectIds to strings
-        for interview in interviews:
-            interview["_id"] = str(interview["_id"])
-            if interview.get("job_id"):
-                interview["job_id"] = str(interview["job_id"])
-        
-        return {
-            "interviews": interviews,
-            "count": len(interviews),
-            "days_ahead": days_ahead
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting interviews: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-
-@router.get("/by-status/{status}")
-async def get_applications_by_status(
-    status: ApplicationStatus,
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
-    db = Depends(get_database)
-):
-    """Get applications filtered by status"""
-    try:
-        tracking_service = ApplicationTrackingService(db)
-        applications = await tracking_service.get_applications_by_status(
-            user_id=str(current_user["_id"]),
-            status=status.value
-        )
-        
-        # Convert ObjectIds to strings
-        for app in applications:
-            app["_id"] = str(app["_id"])
-            if app.get("job_id"):
-                app["job_id"] = str(app["job_id"])
-        
-        return {
-            "applications": applications,
-            "count": len(applications),
-            "status": status.value
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting by status: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
         )
 
 

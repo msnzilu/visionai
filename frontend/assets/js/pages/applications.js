@@ -570,8 +570,10 @@ async function loadSavedJobs() {
         const res = await fetch(`${API_BASE_URL}/api/v1/jobs/saved/me?page=1&size=20`, {
             headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
         });
+
         if (!res.ok) throw new Error('Failed');
-        const jobs = await res.json();
+        const data = await res.json();
+        const jobs = data.jobs || data; // Handle both {jobs: [...]} and direct array
         const container = document.getElementById('savedJobsList');
         if (!container) return;
 
@@ -601,12 +603,14 @@ async function loadSavedJobs() {
             </div>
         `).join('');
     } catch (error) {
+        console.error('Saved jobs error:', error);
         const container = document.getElementById('savedJobsList');
         if (container) {
-            container.innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
+            container.innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load saved jobs</p></div>';
         }
     }
 }
+
 
 async function unsaveJob(jobId) {
     if (!confirm('Remove this job?')) return;
