@@ -9,6 +9,7 @@ class QuickApplyManager {
         this.API_BASE_URL = window.location.origin;
         this.currentJobId = null;
         this.currentJobData = null;
+        this.isSubmitting = false; // Prevent double submissions
     }
 
     /**
@@ -43,7 +44,11 @@ class QuickApplyManager {
      */
     async loadPrefillData(jobId) {
         try {
-            const token = localStorage.getItem('access_token');
+            const token = CVision.Utils.getToken();
+
+            if (!token) {
+                throw new Error('Please log in to continue');
+            }
 
             const response = await fetch(
                 `${this.API_BASE_URL}/api/v1/browser-automation/quick-apply/prefill?job_id=${jobId}`,
@@ -98,7 +103,11 @@ class QuickApplyManager {
      */
     async loadUserDocuments() {
         try {
-            const token = localStorage.getItem('access_token');
+            const token = CVision.Utils.getToken();
+
+            if (!token) {
+                throw new Error('Please log in to continue');
+            }
 
             const response = await fetch(
                 `${this.API_BASE_URL}/api/v1/documents/`,
@@ -151,20 +160,37 @@ class QuickApplyManager {
     async submitApplication(event) {
         event.preventDefault();
 
+        console.log('[QuickApply] Submit application called');
+
+        // Prevent double submissions
+        if (this.isSubmitting) {
+            console.log('[QuickApply] Already submitting, ignoring duplicate request');
+            return;
+        }
+
         try {
+            this.isSubmitting = true; // Lock submissions
+
             const form = event.target;
             const submitBtn = document.getElementById('quickApplySubmitBtn');
             const loading = document.getElementById('quickApplyLoading');
 
+            console.log('[QuickApply] Form:', form);
+            console.log('[QuickApply] Submit button:', submitBtn);
+
             // Validate form
             if (!form.checkValidity()) {
                 form.reportValidity();
+                console.log('[QuickApply] Form validation failed');
+                this.isSubmitting = false; // Unlock on validation failure
                 return;
             }
 
             // Show loading state
             submitBtn.disabled = true;
             loading.classList.remove('hidden');
+
+            console.log('[QuickApply] Collecting form data...');
 
             // Collect form data
             const formData = new FormData(form);
@@ -191,7 +217,11 @@ class QuickApplyManager {
             };
 
             // Submit to backend
-            const token = localStorage.getItem('access_token');
+            const token = CVision.Utils.getToken();
+
+            if (!token) {
+                throw new Error('Please log in to continue');
+            }
 
             const response = await fetch(
                 `${this.API_BASE_URL}/api/v1/browser-automation/quick-apply/submit`,
@@ -242,6 +272,7 @@ class QuickApplyManager {
             const loading = document.getElementById('quickApplyLoading');
             submitBtn.disabled = false;
             loading.classList.add('hidden');
+            this.isSubmitting = false; // Always unlock after completion
         }
     }
 
@@ -295,13 +326,27 @@ function closeQuickApplyForm() {
     quickApplyManager.closeQuickApplyForm();
 }
 
-// Form submission handler
-document.addEventListener('DOMContentLoaded', () => {
+// Form submission handler - attach when form is loaded
+function attachFormHandler() {
     const form = document.getElementById('quickApplyForm');
     if (form) {
-        form.addEventListener('submit', (e) => quickApplyManager.submitApplication(e));
+        console.log('[QuickApply] Attaching form submit handler');
+        form.addEventListener('submit', (e) => {
+            console.log('[QuickApply] Form submit event triggered');
+            quickApplyManager.submitApplication(e);
+        });
+    } else {
+        console.log('[QuickApply] Form not found, will retry...');
+        // Retry after a short delay if form not found
+        setTimeout(attachFormHandler, 100);
     }
-});
+}
+
+// Try to attach handler on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', attachFormHandler);
+
+// Also try to attach after a delay to handle dynamic loading
+setTimeout(attachFormHandler, 500);
 
 // Export for module usage
 if (typeof module !== 'undefined' && module.exports) {

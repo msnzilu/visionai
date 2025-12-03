@@ -500,14 +500,22 @@ async function setFollowUp(appId) {
 }
 
 async function loadUpcomingInterviews() {
+    const container = document.getElementById('interviewsList');
+    if (!container) return;
+
     try {
         const res = await fetch(`${API_BASE_URL}/api/v1/applications/upcoming-interviews?days_ahead=30`, {
             headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
         });
-        if (!res.ok) throw new Error('Failed');
+
+        // Handle 400 errors gracefully (likely no interviews scheduled)
+        if (res.status === 400 || !res.ok) {
+            console.log('No interviews found or endpoint returned error:', res.status);
+            container.innerHTML = '<div class="bg-white rounded-lg border p-12 text-center"><p class="text-gray-600">No upcoming interviews</p></div>';
+            return;
+        }
+
         const data = await res.json();
-        const container = document.getElementById('interviewsList');
-        if (!container) return;
 
         if (!data.interviews || data.interviews.length === 0) {
             container.innerHTML = '<div class="bg-white rounded-lg border p-12 text-center"><p class="text-gray-600">No upcoming interviews</p></div>';
@@ -522,10 +530,8 @@ async function loadUpcomingInterviews() {
             </div>
         `).join('');
     } catch (error) {
-        const container = document.getElementById('interviewsList');
-        if (container) {
-            container.innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load</p></div>';
-        }
+        console.error('Load interviews error:', error);
+        container.innerHTML = '<div class="bg-white rounded-lg border p-12 text-center"><p class="text-gray-600">No upcoming interviews</p></div>';
     }
 }
 

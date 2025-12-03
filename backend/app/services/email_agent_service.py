@@ -64,8 +64,8 @@ class EmailAgentService:
             
             # Extract personal info from CV or user profile
             personal_info = cv_data.get("personal_info", {}) if cv_data else {}
-            profile = user.get("profile", {})
-            profile_personal = profile.get("personal_info", {})
+            profile = user.get("profile", {}) or {}
+            profile_personal = profile.get("personal_info", {}) if profile else {}
             
             # Build form data with fallbacks
             form_data = {
@@ -120,32 +120,35 @@ class EmailAgentService:
             }
             
             # Add experience summary if available
-            if cv_data and cv_data.get("experience"):
+            if cv_data and isinstance(cv_data, dict) and cv_data.get("experience"):
                 experiences = cv_data.get("experience", [])
-                if experiences:
+                if experiences and isinstance(experiences, list):
                     # Get years of experience
-                    total_years = sum(exp.get("years", 0) for exp in experiences)
+                    total_years = sum(exp.get("years", 0) for exp in experiences if isinstance(exp, dict))
                     form_data["years_of_experience"] = total_years
                     
                     # Get current/most recent position
                     if experiences:
                         latest_exp = experiences[0]
-                        form_data["current_position"] = latest_exp.get("title", "")
-                        form_data["current_company"] = latest_exp.get("company", "")
+                        if isinstance(latest_exp, dict):
+                            form_data["current_position"] = latest_exp.get("title", "")
+                            form_data["current_company"] = latest_exp.get("company", "")
             
             # Add education if available
-            if cv_data and cv_data.get("education"):
+            if cv_data and isinstance(cv_data, dict) and cv_data.get("education"):
                 education = cv_data.get("education", [])
-                if education:
+                if education and isinstance(education, list):
                     latest_edu = education[0]
-                    form_data["education_level"] = latest_edu.get("degree", "")
-                    form_data["university"] = latest_edu.get("institution", "")
+                    if isinstance(latest_edu, dict):
+                        form_data["education_level"] = latest_edu.get("degree", "")
+                        form_data["university"] = latest_edu.get("institution", "")
             
             # Add skills
-            if cv_data and cv_data.get("skills"):
+            if cv_data and isinstance(cv_data, dict) and cv_data.get("skills"):
                 skills = cv_data.get("skills", {})
-                form_data["skills"] = skills.get("technical", []) + skills.get("soft", [])
-            elif profile.get("skills"):
+                if isinstance(skills, dict):
+                    form_data["skills"] = skills.get("technical", []) + skills.get("soft", [])
+            elif profile and isinstance(profile, dict) and profile.get("skills"):
                 form_data["skills"] = profile.get("skills", [])
             
             logger.info(f"Extracted form data for user {user_id}")
