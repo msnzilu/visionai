@@ -6,7 +6,7 @@ Handles form prefilling, email composition, and application tracking via Gmail
 
 import logging
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 from bson import ObjectId
 
 from app.database import get_database
@@ -407,6 +407,7 @@ class EmailAgentService:
             # Get user and Gmail auth
             user = await db.users.find_one({"_id": ObjectId(user_id)})
             if not user or not user.get("gmail_auth"):
+                logger.warning(f"User {user_id} not found or Gmail not connected")
                 return []
             
             gmail_auth = GmailAuth(**user.get("gmail_auth"))
@@ -416,73 +417,113 @@ class EmailAgentService:
             
             # Get recent applications sent via email
             applications = await db.applications.find({
-                "user_id": ObjectId(user_id),
-                "email_sent_via": "gmail",
-                "gmail_message_id": {"$exists": True},
-                "email_sent_at": {"$gte": cutoff_date}
+                "user_id": user_id,  # Already a string from the function parameter
+                "source": "auto_apply",  # Only check email-sent applications
+                "recipient_email": {"$exists": True},
+                "email_sent_at": {"$exists": True, "$gte": cutoff_date}
             }).to_list(length=100)
+            
+            logger.info(f"Found {len(applications)} applications to check for responses")
             
             responses = []
             
             # Check for responses to each application
             for app in applications:
-                recipient_email = app.get("recipient_email")
-                email_sent_at = app.get("email_sent_at")
-                
-                if not recipient_email or not email_sent_at:
-                    continue
-                
-                # Extract domain from recipient email for broader matching
-                domain = recipient_email.split('@')[-1] if '@' in recipient_email else None
-                
-                # Build search query - look for emails from the recipient or their domain
-                # that were received after we sent the application
-                after_timestamp = int(email_sent_at.timestamp())
-                
-                # Search for emails from the specific address
-                query = f"from:{recipient_email} after:{after_timestamp}"
-                
-                # Also search from the domain if available (catches replies from different addresses)
-                if domain:
-                    query = f"(from:{recipient_email} OR from:@{domain}) after:{after_timestamp}"
-                
-                logger.info(f"Searching for responses with query: {query}")
-                messages = gmail_service.list_messages(
-                    auth=gmail_auth,
-                    query=query,
-                    max_results=10
-                )
-                
-                if messages:
-                    # Update application status
-                    await db.applications.update_one(
-                        {"_id": app["_id"]},
-                        {
-                            "$set": {
-                                "response_received": True,
-                                "response_count": len(messages),
-                                "last_response_at": datetime.utcnow(),
-                                "updated_at": datetime.utcnow()
+                try:
+                    recipient_email = app.get("recipient_email")
+                    email_sent_at = app.get("email_sent_at")
+                    gmail_thread_id = app.get("gmail_thread_id")
+                    
+                    if not recipient_email or not email_sent_at:
+                        logger.debug(f"Skipping app {app.get('_id')}: missing recipient or send date")
+                        continue
+                    
+                    messages = []
+                    
+                    # Strategy 1: Search by thread ID (most reliable if available)
+                    if gmail_thread_id:
+                        try:
+                            logger.info(f"Searching thread {gmail_thread_id} for responses")
+                            # Get all messages in the thread
+                            thread_messages = gmail_service.list_messages(
+                                auth=gmail_auth,
+                                query=f"rfc822msgid:{gmail_thread_id}",
+                                max_results=20
+                            )
+                            
+                            # Filter to only messages received AFTER we sent (exclude our own sent message)
+                            if thread_messages:
+                                for msg in thread_messages:
+                                    # Get message details to check date
+                                    msg_details = gmail_service.get_message(gmail_auth, msg.get('id'))
+                                    if msg_details:
+                                        # Check if this message is newer than our sent email
+                                        internal_date = int(msg_details.get('internalDate', 0)) / 1000
+                                        msg_date = datetime.fromtimestamp(internal_date)
+                                        if msg_date > email_sent_at:
+                                            messages.append(msg)
+                        except Exception as thread_error:
+                            logger.warning(f"Thread search failed: {thread_error}, falling back to sender search")
+                    
+                    # Strategy 2: Search by sender email/domain and date (fallback or primary if no thread)
+                    if not messages:
+                        # Extract domain from recipient email
+                        domain = recipient_email.split('@')[-1] if '@' in recipient_email else None
+                        
+                        # Format date for Gmail API (YYYY/MM/DD format)
+                        after_date = email_sent_at.strftime('%Y/%m/%d')
+                        
+                        # Build search query
+                        # Search for emails from the recipient address or domain, received after we sent
+                        if domain:
+                            # Search both specific email and domain (catches replies from different addresses at same company)
+                            query = f"from:({recipient_email} OR @{domain}) after:{after_date}"
+                        else:
+                            query = f"from:{recipient_email} after:{after_date}"
+                        
+                        logger.info(f"Searching for responses with query: {query}")
+                        messages = gmail_service.list_messages(
+                            auth=gmail_auth,
+                            query=query,
+                            max_results=10
+                        )
+                    
+                    if messages:
+                        logger.info(f"Found {len(messages)} response(s) for application {app.get('_id')}")
+                        
+                        # Update application status
+                        await db.applications.update_one(
+                            {"_id": app["_id"]},
+                            {
+                                "$set": {
+                                    "response_received": True,
+                                    "response_count": len(messages),
+                                    "last_response_at": datetime.utcnow(),
+                                    "updated_at": datetime.utcnow()
+                                }
                             }
-                        }
-                    )
-                    
-                    responses.append({
-                        "application_id": str(app["_id"]),
-                        "job_id": str(app.get("job_id")),
-                        "company_name": app.get("company_name"),
-                        "job_title": app.get("job_title"),
-                        "response_count": len(messages),
-                        "detected_at": datetime.utcnow().isoformat()
-                    })
-                    
-                    logger.info(f"Found {len(messages)} response(s) for application {app['_id']}")
+                        )
+                        
+                        responses.append({
+                            "application_id": str(app["_id"]),
+                            "job_id": str(app.get("job_id", "")),
+                            "company_name": app.get("company_name"),
+                            "job_title": app.get("job_title"),
+                            "response_count": len(messages),
+                            "detected_at": datetime.utcnow().isoformat()
+                        })
+                    else:
+                        logger.debug(f"No responses found for application {app.get('_id')}")
+                        
+                except Exception as app_error:
+                    logger.error(f"Error checking application {app.get('_id')}: {app_error}")
+                    continue
             
             logger.info(f"Monitored {len(applications)} applications, found {len(responses)} with responses")
             return responses
             
         except Exception as e:
-            logger.error(f"Error monitoring responses: {str(e)}")
+            logger.error(f"Error monitoring responses: {str(e)}", exc_info=True)
             return []
 
 

@@ -356,16 +356,23 @@ function displayApplications(applications) {
 
 function getStatusBadge(status) {
     const colors = {
-        pending: 'bg-gray-100 text-gray-800',
+        draft: 'bg-gray-100 text-gray-700',
+        submitted: 'bg-blue-100 text-blue-700',
         applied: 'bg-blue-100 text-blue-800',
-        screening: 'bg-indigo-100 text-indigo-800',
-        interview: 'bg-purple-100 text-purple-800',
-        offer: 'bg-green-100 text-green-800',
-        accepted: 'bg-green-600 text-white',
+        under_review: 'bg-indigo-100 text-indigo-800',
+        interview_scheduled: 'bg-purple-100 text-purple-800',
+        interview_completed: 'bg-purple-200 text-purple-900',
+        second_round: 'bg-violet-100 text-violet-800',
+        final_round: 'bg-violet-200 text-violet-900',
+        offer_received: 'bg-green-100 text-green-800',
+        offer_accepted: 'bg-green-600 text-white',
+        offer_declined: 'bg-yellow-100 text-yellow-800',
         rejected: 'bg-red-100 text-red-800',
-        withdrawn: 'bg-gray-100 text-gray-800'
+        withdrawn: 'bg-gray-200 text-gray-700',
+        on_hold: 'bg-orange-100 text-orange-800',
+        archived: 'bg-gray-300 text-gray-600'
     };
-    return `<span class="status-badge ${colors[status] || colors.pending}">${formatEnumValue(status)}</span>`;
+    return `<span class="status-badge ${colors[status] || colors.draft}">${formatEnumValue(status)}</span>`;
 }
 
 function getPriorityBadge(priority) {
@@ -397,61 +404,226 @@ function closeModal() {
 }
 
 async function updateStatus(appId) {
-    const status = prompt('Enter status:\napplied / submitted / under_review / interview_scheduled / offer_received / offer_accepted / rejected / withdrawn');
-    if (!status) return;
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/status`, {
-            method: 'PUT',
-            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status, notes: '' })
+    showActionModal('status', appId);
+}
+
+function showActionModal(actionType, appId) {
+    const modalContent = document.getElementById('applicationModalContent');
+    if (!modalContent) return;
+
+    let formHTML = '';
+
+    if (actionType === 'status') {
+        formHTML = `
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-4">Update Application Status</h2>
+                <form id="actionForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">New Status</label>
+                        <select id="statusInput" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            <option value="">Select status...</option>
+                            <option value="draft">Draft</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="applied">Applied</option>
+                            <option value="under_review">Under Review</option>
+                            <option value="interview_scheduled">Interview Scheduled</option>
+                            <option value="interview_completed">Interview Completed</option>
+                            <option value="second_round">Second Round</option>
+                            <option value="final_round">Final Round</option>
+                            <option value="offer_received">Offer Received</option>
+                            <option value="offer_accepted">Offer Accepted</option>
+                            <option value="offer_declined">Offer Declined</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="withdrawn">Withdrawn</option>
+                            <option value="on_hold">On Hold</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
+                        <textarea id="notesInput" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Add any notes about this status change..."></textarea>
+                    </div>
+                    <div class="flex gap-3 justify-end w-full mt-4">
+                        <button type="button" onclick="closeModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex-shrink-0">Cancel</button>
+                        <button type="submit" class="px-6 py-2 rounded-lg flex-shrink-0 text-white" style="background-color: var(--primary-600);">Update Status</button>
+                    </div>
+                </form>
+            </div>
+        `;
+    } else if (actionType === 'interview') {
+        formHTML = `
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-4">Schedule Interview</h2>
+                <form id="actionForm" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                            <input type="date" id="dateInput" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                            <input type="time" id="timeInput" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Interview Type</label>
+                        <select id="typeInput" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            <option value="phone_screening">Phone Screening</option>
+                            <option value="video_call">Video Call</option>
+                            <option value="in_person">In Person</option>
+                            <option value="technical">Technical</option>
+                            <option value="behavioral">Behavioral</option>
+                            <option value="panel">Panel</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Location (optional)</label>
+                        <input type="text" id="locationInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Meeting link or physical location">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
+                        <textarea id="notesInput" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Preparation notes, topics to cover, etc."></textarea>
+                    </div>
+                    <div class="flex gap-3 justify-end w-full mt-4">
+                        <button type="button" onclick="closeModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex-shrink-0">Cancel</button>
+                        <button type="submit" class="px-6 py-2 rounded-lg flex-shrink-0 text-white" style="background-color: var(--primary-600);">Schedule Interview</button>
+                    </div>
+                </form>
+            </div>
+        `;
+    } else if (actionType === 'followup') {
+        formHTML = `
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-4">Set Follow-up Reminder</h2>
+                <form id="actionForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Follow-up Date</label>
+                        <input type="date" id="dateInput" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
+                        <textarea id="notesInput" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="What do you want to follow up about?"></textarea>
+                    </div>
+                    <div class="flex gap-3 justify-end w-full mt-4">
+                        <button type="button" onclick="closeModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex-shrink-0">Cancel</button>
+                        <button type="submit" class="px-6 py-2 rounded-lg flex-shrink-0 text-white" style="background-color: var(--primary-600);">Set Reminder</button>
+                    </div>
+                </form>
+            </div>
+        `;
+    }
+
+    modalContent.innerHTML = formHTML;
+
+    // Attach form submit handler
+    const form = document.getElementById('actionForm');
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await handleActionSubmit(actionType, appId);
         });
-        if (!res.ok) throw new Error('Failed');
-        CVision.Utils.showAlert('Status updated', 'success');
-        closeModal();
-        loadApplications();
-        loadStats();
+    }
+
+    // Show modal
+    const modal = document.getElementById('applicationModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+async function handleActionSubmit(actionType, appId) {
+    try {
+        if (actionType === 'status') {
+            const status = document.getElementById('statusInput').value;
+            const notes = document.getElementById('notesInput').value;
+
+            if (!status) {
+                InlineMessage.error('Please select a status');
+                return;
+            }
+
+            const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/status`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, notes })
+            });
+
+            if (!res.ok) throw new Error('Failed to update status');
+
+            InlineMessage.success('Status updated successfully');
+            closeModal();
+            loadApplications();
+            loadStats();
+
+        } else if (actionType === 'interview') {
+            const date = document.getElementById('dateInput').value;
+            const time = document.getElementById('timeInput').value;
+            const type = document.getElementById('typeInput').value;
+            const location = document.getElementById('locationInput').value;
+            const notes = document.getElementById('notesInput').value;
+
+            if (!date || !time) {
+                InlineMessage.error('Please provide date and time');
+                return;
+            }
+
+            const interviewDate = new Date(`${date}T${time}`);
+
+            const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/schedule-interview`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    interview_date: interviewDate.toISOString(),
+                    interview_type: type,
+                    location: location || null,
+                    notes: notes || ''
+                })
+            });
+
+            if (!res.ok) throw new Error('Failed to schedule interview');
+
+            InlineMessage.success('Interview scheduled successfully');
+            closeModal();
+            loadApplications();
+
+        } else if (actionType === 'followup') {
+            const date = document.getElementById('dateInput').value;
+            const notes = document.getElementById('notesInput').value;
+
+            if (!date) {
+                InlineMessage.error('Please provide a follow-up date');
+                return;
+            }
+
+            const followUpDate = new Date(date);
+
+            const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/set-follow-up`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    follow_up_date: followUpDate.toISOString(),
+                    notes: notes || ''
+                })
+            });
+
+            if (!res.ok) throw new Error('Failed to set follow-up');
+
+            InlineMessage.success('Follow-up reminder set successfully');
+            closeModal();
+            loadApplications();
+        }
     } catch (error) {
-        CVision.Utils.showAlert('Failed to update', 'error');
+        console.error('Action error:', error);
+        InlineMessage.error(error.message || 'Failed to complete action');
     }
 }
 
 async function scheduleInterview(appId) {
-    const dateStr = prompt('Interview date/time (YYYY-MM-DD HH:MM):');
-    if (!dateStr) return;
-    const type = prompt('Type (phone/video/onsite):', 'phone');
-    const location = prompt('Location (optional):');
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/schedule-interview`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ interview_date: new Date(dateStr).toISOString(), interview_type: type || 'phone', location: location || null, notes: '' })
-        });
-        if (!res.ok) throw new Error('Failed');
-        CVision.Utils.showAlert('Interview scheduled', 'success');
-        closeModal();
-        loadApplications();
-    } catch (error) {
-        CVision.Utils.showAlert('Failed to schedule', 'error');
-    }
+    showActionModal('interview', appId);
 }
 
 async function setFollowUp(appId) {
-    const dateStr = prompt('Follow-up date (YYYY-MM-DD):');
-    if (!dateStr) return;
-    const notes = prompt('Notes (optional):');
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/set-follow-up`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ follow_up_date: new Date(dateStr).toISOString(), notes: notes || '' })
-        });
-        if (!res.ok) throw new Error('Failed');
-        CVision.Utils.showAlert('Follow-up set', 'success');
-        closeModal();
-        loadApplications();
-    } catch (error) {
-        CVision.Utils.showAlert('Failed to set follow-up', 'error');
-    }
+    showActionModal('followup', appId);
 }
 
 async function loadUpcomingInterviews() {
