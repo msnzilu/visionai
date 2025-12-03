@@ -48,6 +48,8 @@ class EmailAgentService:
             if not user:
                 raise ValueError(f"User {user_id} not found")
             
+            logger.info(f"Extracting form data for user {user_id}")
+            
             # Get CV data if not provided
             if not cv_data:
                 cv_doc = await db.documents.find_one(
@@ -61,24 +63,65 @@ class EmailAgentService:
                 
                 if cv_doc:
                     cv_data = cv_doc.get("parsed_data", {})
+                    logger.info(f"Found CV document with parsed_data keys: {list(cv_data.keys()) if cv_data else 'None'}")
+                else:
+                    logger.warning(f"No CV document found for user {user_id}")
             
             # Extract personal info from CV or user profile
             personal_info = cv_data.get("personal_info", {}) if cv_data else {}
             profile = user.get("profile", {}) or {}
             profile_personal = profile.get("personal_info", {}) if profile else {}
             
+            logger.debug(f"CV personal_info: {personal_info}")
+            logger.debug(f"Profile personal_info: {profile_personal}")
+            
+            # Try to extract name from user's full_name if not in CV
+            first_name = (
+                personal_info.get("first_name") or 
+                profile_personal.get("first_name") or 
+                user.get("first_name", "")
+            )
+            
+            last_name = (
+                personal_info.get("last_name") or 
+                profile_personal.get("last_name") or 
+                user.get("last_name", "")
+            )
+            
+            # If still empty, try to extract from full_name
+            if not first_name and not last_name:
+                full_name = user.get("full_name", "")
+                if full_name:
+                    name_parts = full_name.strip().split()
+                    if len(name_parts) >= 2:
+                        first_name = name_parts[0]
+                        last_name = " ".join(name_parts[1:])
+                    elif len(name_parts) == 1:
+                        first_name = name_parts[0]
+                    logger.info(f"Extracted name from full_name: {first_name} {last_name}")
+            
+            # If still empty, try to extract from email
+            if not first_name and not last_name:
+                email = user.get("email", "")
+                if email and "@" in email:
+                    email_name = email.split("@")[0]
+                    # Try to split common email patterns like firstname.lastname or firstname_lastname
+                    if "." in email_name:
+                        parts = email_name.split(".")
+                        first_name = parts[0].capitalize()
+                        last_name = parts[1].capitalize() if len(parts) > 1 else ""
+                    elif "_" in email_name:
+                        parts = email_name.split("_")
+                        first_name = parts[0].capitalize()
+                        last_name = parts[1].capitalize() if len(parts) > 1 else ""
+                    else:
+                        first_name = email_name.capitalize()
+                    logger.info(f"Extracted name from email: {first_name} {last_name}")
+            
             # Build form data with fallbacks
             form_data = {
-                "first_name": (
-                    personal_info.get("first_name") or 
-                    profile_personal.get("first_name") or 
-                    user.get("first_name", "")
-                ),
-                "last_name": (
-                    personal_info.get("last_name") or 
-                    profile_personal.get("last_name") or 
-                    user.get("last_name", "")
-                ),
+                "first_name": first_name,
+                "last_name": last_name,
                 "email": user.get("email", ""),
                 "phone": (
                     personal_info.get("phone") or 
@@ -151,7 +194,10 @@ class EmailAgentService:
             elif profile and isinstance(profile, dict) and profile.get("skills"):
                 form_data["skills"] = profile.get("skills", [])
             
-            logger.info(f"Extracted form data for user {user_id}")
+            # Count how many fields have actual values
+            populated_fields = sum(1 for v in form_data.values() if v)
+            logger.info(f"Extracted form data for user {user_id}: {populated_fields}/{len(form_data)} fields populated")
+            
             return form_data
             
         except Exception as e:

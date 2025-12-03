@@ -62,12 +62,15 @@ async def prefill_quick_apply_form(
             )
         
         # Extract form data from CV
+        logger.info(f"Extracting form data from CV for user {user_id}")
         form_data = await email_agent_service.extract_form_data_from_cv(user_id)
+        logger.info(f"Extracted form data keys: {list(form_data.keys())}")
+        logger.debug(f"Form data values: {form_data}")
         
         # Determine recipient email (from job posting or company)
         recipient_email = job.get("contact_email") or job.get("recruiter_email")
         
-        return QuickApplyPrefillResponse(
+        response_data = QuickApplyPrefillResponse(
             success=True,
             form_data=form_data,
             job_title=job.get("title", ""),
@@ -75,6 +78,9 @@ async def prefill_quick_apply_form(
             recipient_email=recipient_email,
             message="Form data loaded successfully"
         )
+        
+        logger.info(f"Returning prefill response with {len(form_data)} fields")
+        return response_data
         
     except HTTPException:
         raise

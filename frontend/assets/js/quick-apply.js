@@ -16,24 +16,38 @@ class QuickApplyManager {
      * Open quick apply form for a job
      */
     async openQuickApplyForm(jobId) {
+        console.log('[QuickApply] ========== OPENING QUICK APPLY FORM ==========');
+        console.log('[QuickApply] Job ID:', jobId);
+
         try {
             this.currentJobId = jobId;
 
             // Show modal
+            console.log('[QuickApply] Looking for modal element...');
             const modal = document.getElementById('quickApplyModal');
             if (!modal) {
+                console.error('[QuickApply] Modal element not found!');
                 throw new Error('Quick apply form not loaded. Please refresh the page.');
             }
+            console.log('[QuickApply] Modal found, showing...');
             modal.classList.remove('hidden');
 
             // Load prefill data
+            console.log('[QuickApply] Loading prefill data...');
             await this.loadPrefillData(jobId);
+            console.log('[QuickApply] Prefill data loaded successfully');
 
             // Load user documents
+            console.log('[QuickApply] Loading user documents...');
             await this.loadUserDocuments();
+            console.log('[QuickApply] User documents loaded successfully');
+
+            console.log('[QuickApply] ========== FORM READY ==========');
 
         } catch (error) {
-            console.error('Error opening quick apply form:', error);
+            console.error('[QuickApply] ========== ERROR ==========');
+            console.error('[QuickApply] Error opening quick apply form:', error);
+            console.error('[QuickApply] Error stack:', error.stack);
             this.showError('Failed to load application form. Please try again.');
             this.closeQuickApplyForm();
         }
@@ -43,31 +57,39 @@ class QuickApplyManager {
      * Load and prefill form data from backend
      */
     async loadPrefillData(jobId) {
+        console.log('[QuickApply] === loadPrefillData START ===');
         try {
             const token = CVision.Utils.getToken();
+            console.log('[QuickApply] Token exists:', !!token);
 
             if (!token) {
                 throw new Error('Please log in to continue');
             }
 
-            const response = await fetch(
-                `${this.API_BASE_URL}/api/v1/browser-automation/quick-apply/prefill?job_id=${jobId}`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+            const url = `${this.API_BASE_URL}/api/v1/browser-automation/quick-apply/prefill?job_id=${jobId}`;
+            console.log('[QuickApply] Fetching from:', url);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
-            );
+            });
+
+            console.log('[QuickApply] Response status:', response.status, response.statusText);
 
             if (!response.ok) {
                 const error = await response.json();
+                console.error('[QuickApply] Server error response:', error);
                 throw new Error(error.detail || 'Failed to load form data');
             }
 
             const data = await response.json();
             this.currentJobData = data;
+
+            console.log('[QuickApply] Received prefill data:', data);
+            console.log('[QuickApply] Form data to populate:', data.form_data);
 
             // Update job title in modal
             document.getElementById('quickApplyJobTitle').textContent =
@@ -80,16 +102,49 @@ class QuickApplyManager {
             const form = document.getElementById('quickApplyForm');
             const formData = data.form_data;
 
+            if (!formData) {
+                console.warn('[QuickApply] No form data received from backend');
+                return;
+            }
+
+            console.log('[QuickApply] Populating form fields...');
+            let populatedCount = 0;
+            let skippedCount = 0;
+
             Object.keys(formData).forEach(key => {
                 const input = form.querySelector(`[name="${key}"]`);
-                if (input && formData[key]) {
-                    input.value = formData[key];
+                const value = formData[key];
+
+                if (!input) {
+                    console.debug(`[QuickApply] No input found for field: ${key}`);
+                    skippedCount++;
+                    return;
+                }
+
+                // Populate field even if value is empty string (but not null/undefined)
+                if (value !== null && value !== undefined) {
+                    input.value = value;
+                    console.log(`[QuickApply] ✓ Populated ${key}: "${value}"`);
+                    populatedCount++;
+                } else {
+                    console.debug(`[QuickApply] ✗ Skipped ${key}: value is ${value}`);
+                    skippedCount++;
                 }
             });
 
+            console.log(`[QuickApply] Form population complete: ${populatedCount} fields populated, ${skippedCount} skipped`);
+
             // Set recipient email if available
             if (data.recipient_email) {
-                form.querySelector('[name="recipient_email"]').value = data.recipient_email;
+                const recipientInput = form.querySelector('[name="recipient_email"]');
+                if (recipientInput) {
+                    recipientInput.value = data.recipient_email;
+                    console.log('[QuickApply] ✓ Set recipient email:', data.recipient_email);
+                } else {
+                    console.warn('[QuickApply] Recipient email input not found');
+                }
+            } else {
+                console.warn('[QuickApply] No recipient email provided');
             }
 
         } catch (error) {
