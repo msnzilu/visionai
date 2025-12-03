@@ -242,6 +242,8 @@ class QuickApplyManager {
                 } else if (response.status === 400) {
                     const error = await response.json();
                     throw new Error(error.detail || 'Invalid application data. Please check your inputs.');
+                } else if (response.status === 409) {
+                    throw new Error('You have already applied to this job.');
                 } else if (response.status === 404) {
                     throw new Error('Job not found. It may have been removed.');
                 } else {

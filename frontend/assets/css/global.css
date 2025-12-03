@@ -11,7 +11,7 @@
   --primary-500: #667eea;
   --primary-600: #5a67d8;
   --primary-700: #4c51bf;
-  
+
   /* Gradients */
   --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --gradient-secondary: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
@@ -99,18 +99,33 @@ body {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Error Messages */
 .error-message {
   font-size: 0.875rem;
   margin-top: 0.25rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  transition: opacity 0.2s ease, max-height 0.2s ease;
 }
 
 .error-message.hidden {
   display: none;
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  padding: 0;
 }
 
 /* Toast animations */
@@ -157,6 +172,7 @@ body {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -328,11 +344,11 @@ a {
   .auth-container {
     padding: 1rem;
   }
-  
+
   .auth-card {
     padding: 1.5rem;
   }
-  
+
   .feature-card {
     padding: 1rem;
   }

@@ -3,7 +3,8 @@ Job application management API routes with Phase 5 integration
 Complete implementation with all endpoints
 """
 
-from fastapi import APIRouter, HTTPException, status, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
+from fastapi import status as http_status
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
@@ -234,7 +235,7 @@ async def list_applications(
     except Exception as e:
         logger.error(f"Error listing applications: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve applications"
         )
 

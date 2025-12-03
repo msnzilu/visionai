@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,6 +29,7 @@
         }
     </script>
 </head>
+
 <body class="bg-gray-50 font-sans">
     <!-- Header Navigation -->
     <div id="navbar-container"></div>
@@ -43,13 +45,15 @@
                 <!-- Profile Card -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <div class="text-center">
-                        <div class="w-24 h-24 bg-gradient-to-br from-primary-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <div
+                            class="w-24 h-24 bg-gradient-to-br from-primary-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
                             <span class="text-3xl font-bold text-white" id="userInitial">U</span>
                         </div>
                         <h2 class="text-xl font-bold text-gray-900" id="userName">Loading...</h2>
-                        <p class="text-sm text-gray-500" id="userEmail">email@example.com</p>
+                        <p class="text-sm text-gray-500" id="userEmail"></p>
                         <div class="mt-4">
-                            <span class="px-4 py-2 bg-primary-100 text-primary-700 text-sm font-medium rounded-full" id="subscriptionBadge">Free</span>
+                            <span class="px-4 py-2 bg-primary-100 text-primary-700 text-sm font-medium rounded-full"
+                                id="subscriptionBadge"></span>
                         </div>
                     </div>
                 </div>
@@ -67,7 +71,7 @@
                                 <div class="bg-primary-500 h-2 rounded-full" id="searchesBar" style="width: 0%"></div>
                             </div>
                         </div>
-                        
+
                         <div>
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-600">Generations</span>
@@ -77,7 +81,7 @@
                                 <div class="bg-purple-500 h-2 rounded-full" id="generationsBar" style="width: 0%"></div>
                             </div>
                         </div>
-                        
+
                         <div class="pt-2 border-t border-gray-200">
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Total Applications</span>
@@ -85,8 +89,9 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <button onclick="upgradeAccount()" class="w-full mt-4 btn-gradient text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
+
+                    <button onclick="upgradeAccount()"
+                        class="w-full mt-4 btn-gradient text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
                         Upgrade Account
                     </button>
                 </div>
@@ -95,27 +100,42 @@
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Links</h3>
                     <div class="space-y-2">
-                        <a href="documents.html" class="flex items-center p-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                            <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        <a href="documents.html"
+                            class="flex items-center p-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                            <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
                             </svg>
                             My Documents
                         </a>
-                        <a href="jobs.html" class="flex items-center p-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                            <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        <a href="jobs.html"
+                            class="flex items-center p-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                            <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
                             Search Jobs
                         </a>
-                        <a href="applications.html" class="flex items-center p-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                            <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        <a href="applications.html"
+                            class="flex items-center p-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                            <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                </path>
                             </svg>
                             My Applications
                         </a>
-                        <a href="referrals.html" class="flex items-center p-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                            <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        <a href="referrals.html"
+                            class="flex items-center p-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                            <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                                </path>
                             </svg>
                             Referrals
                         </a>
@@ -132,32 +152,42 @@
                         <div class="grid md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                                <input type="text" id="fullName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="John Doe">
+                                <input type="text" id="fullName"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    placeholder="John Doe">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                                <input type="email" id="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" disabled>
+                                <input type="email" id="email"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" disabled>
                             </div>
                         </div>
-                        
+
                         <div class="grid md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                                <input type="tel" id="phone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="+1 (555) 123-4567">
+                                <input type="tel" id="phone"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    placeholder="+1 (555) 123-4567">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                                <input type="text" id="location" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="City, Country">
+                                <input type="text" id="location"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    placeholder="City, Country">
                             </div>
                         </div>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">LinkedIn Profile</label>
-                            <input type="url" id="linkedin" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="https://linkedin.com/in/username">
+                            <input type="url" id="linkedin"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                placeholder="https://linkedin.com/in/username">
                         </div>
-                        
+
                         <div class="flex justify-end">
-                            <button type="submit" class="px-6 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors">
+                            <button type="submit"
+                                class="px-6 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors">
                                 Save Changes
                             </button>
                         </div>
@@ -170,38 +200,44 @@
                     <form id="generationPrefsForm" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Default CV Template</label>
-                            <select id="defaultTemplate" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <select id="defaultTemplate"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                                 <option value="professional">Professional</option>
                                 <option value="modern">Modern</option>
                                 <option value="minimal">Minimal</option>
                                 <option value="creative">Creative</option>
                             </select>
                         </div>
-                        
+
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Default Cover Letter Tone</label>
-                            <select id="defaultTone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Default Cover Letter
+                                Tone</label>
+                            <select id="defaultTone"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                                 <option value="professional">Professional</option>
                                 <option value="enthusiastic">Enthusiastic</option>
                                 <option value="conversational">Conversational</option>
                                 <option value="formal">Formal</option>
                             </select>
                         </div>
-                        
+
                         <div class="space-y-3">
                             <label class="flex items-center">
-                                <input type="checkbox" id="autoGenerateCover" class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                                <input type="checkbox" id="autoGenerateCover"
+                                    class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
                                 <span class="ml-2 text-sm text-gray-700">Automatically generate cover letters</span>
                             </label>
-                            
+
                             <label class="flex items-center">
-                                <input type="checkbox" id="notifyGeneration" class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                                <input type="checkbox" id="notifyGeneration"
+                                    class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
                                 <span class="ml-2 text-sm text-gray-700">Email me when documents are ready</span>
                             </label>
                         </div>
-                        
+
                         <div class="flex justify-end">
-                            <button type="submit" class="px-6 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors">
+                            <button type="submit"
+                                class="px-6 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors">
                                 Save Preferences
                             </button>
                         </div>
@@ -219,8 +255,11 @@
                     <div id="recentGenerations" class="space-y-3">
                         <!-- Will be populated by JS -->
                         <div class="text-center py-8 text-gray-500">
-                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
                             </svg>
                             <p class="text-sm">No generated documents yet</p>
                         </div>
@@ -233,32 +272,37 @@
                     <div class="space-y-4">
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 mb-2">Change Password</h4>
-                            <button onclick="showChangePassword()" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                            <button onclick="showChangePassword()"
+                                class="text-sm text-primary-600 hover:text-primary-700 font-medium">
                                 Update Password →
                             </button>
                         </div>
-                        
+
                         <div class="pt-4 border-t border-gray-200">
                             <h4 class="text-sm font-medium text-gray-900 mb-2">Email Notifications</h4>
                             <div class="space-y-2">
                                 <label class="flex items-center">
-                                    <input type="checkbox" id="emailJobMatches" checked class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                                    <input type="checkbox" id="emailJobMatches" checked
+                                        class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
                                     <span class="ml-2 text-sm text-gray-700">Job matches</span>
                                 </label>
                                 <label class="flex items-center">
-                                    <input type="checkbox" id="emailApplications" checked class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                                    <input type="checkbox" id="emailApplications" checked
+                                        class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
                                     <span class="ml-2 text-sm text-gray-700">Application updates</span>
                                 </label>
                                 <label class="flex items-center">
-                                    <input type="checkbox" id="emailWeekly" class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                                    <input type="checkbox" id="emailWeekly"
+                                        class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
                                     <span class="ml-2 text-sm text-gray-700">Weekly summary</span>
                                 </label>
                             </div>
                         </div>
-                        
+
                         <div class="pt-4 border-t border-gray-200">
                             <h4 class="text-sm font-medium text-red-600 mb-2">Danger Zone</h4>
-                            <button onclick="deleteAccount()" class="text-sm text-red-600 hover:text-red-700 font-medium">
+                            <button onclick="deleteAccount()"
+                                class="text-sm text-red-600 hover:text-red-700 font-medium">
                                 Delete Account
                             </button>
                         </div>
@@ -287,9 +331,10 @@
                 window.location.href = '../login.html';
                 return;
             }
-            
+
             initializeProfile();
         });
     </script>
 </body>
+
 </html>

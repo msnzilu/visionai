@@ -108,17 +108,13 @@ async function handleLogin() {
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const loginButton = document.getElementById('loginButton');
-    const formError = document.getElementById('formError');
 
     if (!emailInput || !passwordInput) {
         return;
     }
 
     // Clear previous errors
-    if (formError) {
-        formError.classList.add('hidden');
-    }
-    clearFieldErrors();
+    InlineMessage.clear();
 
     // Get form values
     const email = emailInput.value.trim();
@@ -170,12 +166,7 @@ async function handleLogin() {
         console.error('Login error:', error);
 
         const errorMessage = error.message || 'Login failed. Please try again.';
-        CVision.Utils.showAlert(errorMessage, 'error');
-
-        if (formError) {
-            formError.textContent = errorMessage;
-            formError.classList.remove('hidden');
-        }
+        InlineMessage.error(errorMessage);
 
     } finally {
         if (loginButton) {
@@ -189,7 +180,6 @@ async function handleRegister() {
     const passwordInput = document.getElementById('password');
     const termsInput = document.getElementById('terms');
     const registerButton = document.getElementById('registerButton');
-    const formError = document.getElementById('formError');
 
     if (!emailInput || !passwordInput) {
         console.error('Register form inputs not found');
@@ -197,10 +187,7 @@ async function handleRegister() {
     }
 
     // Clear previous errors
-    if (formError) {
-        formError.classList.add('hidden');
-    }
-    clearFieldErrors();
+    InlineMessage.clear();
 
     // Get form values
     const email = emailInput.value.trim();
@@ -218,7 +205,7 @@ async function handleRegister() {
             setButtonLoading(registerButton, true);
         }
 
-        // Make register request (without full_name as per your updated API)
+        // Make register request
         const response = await CVision.API.register({
             email: email,
             password: password
@@ -239,12 +226,7 @@ async function handleRegister() {
         console.error('Registration error:', error);
 
         const errorMessage = error.message || 'Registration failed. Please try again.';
-        CVision.Utils.showAlert(errorMessage, 'error');
-
-        if (formError) {
-            formError.textContent = errorMessage;
-            formError.classList.remove('hidden');
-        }
+        InlineMessage.error(errorMessage);
 
     } finally {
         if (registerButton) {
@@ -254,74 +236,61 @@ async function handleRegister() {
 }
 
 function validateLoginForm(email, password) {
-    let isValid = true;
+    let errors = [];
 
     // Validate email
     if (!email) {
-        showFieldError('emailError', 'Email is required');
-        isValid = false;
+        errors.push('Email is required');
     } else if (!isValidEmail(email)) {
-        showFieldError('emailError', 'Please enter a valid email address');
-        isValid = false;
+        errors.push('Please enter a valid email address');
     }
 
     // Validate password
     if (!password) {
-        showFieldError('passwordError', 'Password is required');
-        isValid = false;
+        errors.push('Password is required');
     }
 
-    return isValid;
+    if (errors.length > 0) {
+        InlineMessage.error(errors.join('. '));
+        return false;
+    }
+
+    return true;
 }
 
 function validateRegisterForm(email, password, termsAccepted) {
-    let isValid = true;
+    let errors = [];
 
     // Validate email
     if (!email) {
-        showFieldError('emailError', 'Email is required');
-        isValid = false;
+        errors.push('Email is required');
     } else if (!isValidEmail(email)) {
-        showFieldError('emailError', 'Please enter a valid email address');
-        isValid = false;
+        errors.push('Please enter a valid email address');
     }
 
     // Validate password
     if (!password) {
-        showFieldError('passwordError', 'Password is required');
-        isValid = false;
+        errors.push('Password is required');
     } else if (password.length < 6) {
-        showFieldError('passwordError', 'Password must be at least 6 characters long');
-        isValid = false;
+        errors.push('Password must be at least 6 characters long');
     }
 
     // Validate terms
     if (!termsAccepted) {
-        showFieldError('termsError', 'You must agree to the Terms of Service');
-        isValid = false;
+        errors.push('You must agree to the Terms of Service');
     }
 
-    return isValid;
+    if (errors.length > 0) {
+        InlineMessage.error(errors.join('. '));
+        return false;
+    }
+
+    return true;
 }
 
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
-}
-
-function showFieldError(elementId, message) {
-    const errorElement = document.getElementById(elementId);
-    if (errorElement) {
-        errorElement.textContent = message;
-        errorElement.classList.remove('hidden');
-    }
-}
-
-function clearFieldErrors() {
-    const errorElements = document.querySelectorAll('.error-message');
-    errorElements.forEach(element => {
-        element.classList.add('hidden');
-    });
 }
 
 function setButtonLoading(button, loading) {
@@ -364,8 +333,7 @@ async function handleGoogleLogin() {
 
     } catch (error) {
         console.error('Google login error:', error);
-        CVision.Utils.showAlert('Google login failed. Please try again.', 'error');
-        InlineMessage.error('Google login failed. Please try again...', {
+        InlineMessage.error('Google login failed. Please try again.', {
             autoHide: true,
             autoHideDelay: 4000
         });
@@ -399,8 +367,7 @@ async function handleLinkedInLogin() {
 
     } catch (error) {
         console.error('LinkedIn login error:', error);
-        CVision.Utils.showAlert('LinkedIn login failed. Please try again.', 'error');
-        InlineMessage.error('LinkedIn login failed. Please try again....', {
+        InlineMessage.error('LinkedIn login failed. Please try again.', {
             autoHide: true,
             autoHideDelay: 4000
         });

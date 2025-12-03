@@ -9,7 +9,7 @@ class InlineMessage {
 
     static show(message, type = 'info', options = {}) {
         this.addStyles();
-        
+
         const config = {
             autoHide: true,
             autoHideDelay: 5000,
@@ -21,7 +21,7 @@ class InlineMessage {
         const container = this.getContainer(config.container);
         const id = `msg-${++this.messageId}`;
         const messageEl = this.createElement(message, type, id, config);
-        
+
         container.insertBefore(messageEl, container.firstChild);
 
         // Auto-hide success/info messages
@@ -76,7 +76,7 @@ class InlineMessage {
 
         const targetEl = typeof selector === 'string' ? document.querySelector(selector) : selector;
         let container = targetEl.querySelector('.message-container');
-        
+
         if (!container) {
             container = document.createElement('div');
             container.className = 'message-container';
@@ -91,9 +91,9 @@ class InlineMessage {
         const el = document.createElement('div');
         el.id = id;
         el.className = `inline-message inline-message--${type}`;
-        
+
         const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
-        
+
         el.innerHTML = `
             <span class="inline-message__icon">${icons[type]}</span>
             <span class="inline-message__text">${message}</span>
@@ -102,7 +102,7 @@ class InlineMessage {
 
         el.style.opacity = '0';
         el.style.transform = 'translateY(-10px)';
-        
+
         setTimeout(() => {
             el.style.transition = 'all 0.3s ease';
             el.style.opacity = '1';
@@ -114,10 +114,15 @@ class InlineMessage {
 
     static addStyles() {
         if (this.stylesAdded) return;
-        
+
         const style = document.createElement('style');
         style.textContent = `
-            .message-container { margin: 16px 0; }
+            .message-container { 
+                margin: 16px 0; 
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+            }
             .inline-message {
                 display: flex;
                 align-items: center;
@@ -129,9 +134,23 @@ class InlineMessage {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                 font-size: 14px;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
             }
-            .inline-message__icon { font-weight: bold; font-size: 16px; }
-            .inline-message__text { flex: 1; }
+            .inline-message__icon { 
+                font-weight: bold; 
+                font-size: 16px;
+                flex-shrink: 0;
+            }
+            .inline-message__text { 
+                flex: 1;
+                min-width: 0;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+            }
             .inline-message__close {
                 background: none;
                 border: none;
@@ -139,6 +158,7 @@ class InlineMessage {
                 cursor: pointer;
                 opacity: 0.6;
                 padding: 4px;
+                flex-shrink: 0;
             }
             .inline-message__close:hover { opacity: 1; }
             .inline-message--success {

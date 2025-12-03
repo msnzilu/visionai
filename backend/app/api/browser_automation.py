@@ -132,37 +132,38 @@ async def submit_quick_apply(
         
         # Check if application already exists
         existing_app = await db.applications.find_one({
-            "user_id": ObjectId(user_id),
-            "job_id": ObjectId(submission.job_id)
+            "user_id": user_id,
+            "job_id": submission.job_id
         })
         
         if existing_app:
             raise HTTPException(
-                status_code=400,
+                status_code=409,
                 detail="You have already applied to this job"
             )
         
         # Create application record
         application_doc = {
-            "user_id": ObjectId(user_id),
-            "job_id": ObjectId(submission.job_id),
-            "status": "pending",
-            "source": "email_agent",
+            "user_id": user_id,
+            "job_id": submission.job_id,
+            "status": "applied",
+            "source": "auto_apply",
             "job_title": job.get("title"),
             "company_name": job.get("company_name"),
             "location": job.get("location"),
             "form_data": submission.form_data.dict(),
             "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.utcnow(),
+            "deleted_at": None
         }
         
-        result = await db.applications.insert_one(application_doc)
-        application_id = str(result.inserted_id)
-        
-        logger.info(f"Created application record: {application_id}")
-        
-        # Send application via Gmail in background
         try:
+            result = await db.applications.insert_one(application_doc)
+            application_id = str(result.inserted_id)
+            
+            logger.info(f"Created application record: {application_id}")
+            
+            # Send application via Gmail in background
             send_result = await email_agent_service.send_application_via_gmail(
                 user_id=user_id,
                 job_id=submission.job_id,
@@ -190,16 +191,15 @@ async def submit_quick_apply(
                     error=send_result.get("error"),
                     message="Failed to send application email"
                 )
+
+        except Exception as db_error:
+            if "duplicate key error" in str(db_error):
+                raise HTTPException(
+                    status_code=409,
+                    detail="You have already applied to this job"
+                )
+            raise db_error
                 
-        except Exception as send_error:
-            logger.error(f"Error sending email: {str(send_error)}")
-            return QuickApplySubmissionResponse(
-                success=False,
-                application_id=application_id,
-                error=str(send_error),
-                message="Application created but email sending failed"
-            )
-        
     except HTTPException:
         raise
     except Exception as e:
@@ -226,7 +226,7 @@ async def get_application_status(
         # Get application
         application = await db.applications.find_one({
             "_id": ObjectId(application_id),
-            "user_id": ObjectId(user_id)
+            "user_id": user_id
         })
         
         if not application:

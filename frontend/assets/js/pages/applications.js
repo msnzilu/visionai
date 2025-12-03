@@ -442,7 +442,7 @@ function closeModal() {
 }
 
 async function updateStatus(appId) {
-    const status = prompt('Enter status (pending/applied/screening/interview/offer/accepted/rejected/withdrawn):');
+    const status = prompt('Enter status:\napplied / submitted / under_review / interview_scheduled / offer_received / offer_accepted / rejected / withdrawn');
     if (!status) return;
     try {
         const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/status`, {

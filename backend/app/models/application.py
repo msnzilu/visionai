@@ -14,6 +14,7 @@ from .common import TimeStampedModel, SoftDeleteModel, FileInfo, Priority
 class ApplicationStatus(str, Enum):
     DRAFT = "draft"
     SUBMITTED = "submitted"
+    APPLIED = "applied"
     UNDER_REVIEW = "under_review"
     INTERVIEW_SCHEDULED = "interview_scheduled"
     INTERVIEW_COMPLETED = "interview_completed"
