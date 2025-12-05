@@ -54,7 +54,7 @@ class EmailAgentService:
             if not cv_data:
                 cv_doc = await db.documents.find_one(
                     {
-                        "user_id": ObjectId(user_id),
+                        "user_id": user_id,  # user_id is already a string, not ObjectId
                         "document_type": "cv",
                         "is_active": True
                     },
@@ -62,8 +62,8 @@ class EmailAgentService:
                 )
                 
                 if cv_doc:
-                    cv_data = cv_doc.get("parsed_data", {})
-                    logger.info(f"Found CV document with parsed_data keys: {list(cv_data.keys()) if cv_data else 'None'}")
+                    cv_data = cv_doc.get("cv_data", {})
+                    logger.info(f"Found CV document with cv_data keys: {list(cv_data.keys()) if cv_data else 'None'}")
                 else:
                     logger.warning(f"No CV document found for user {user_id}")
             
@@ -75,18 +75,32 @@ class EmailAgentService:
             logger.debug(f"CV personal_info: {personal_info}")
             logger.debug(f"Profile personal_info: {profile_personal}")
             
-            # Try to extract name from user's full_name if not in CV
-            first_name = (
-                personal_info.get("first_name") or 
-                profile_personal.get("first_name") or 
-                user.get("first_name", "")
-            )
+            # Extract name - OpenAI returns "name" field, not first_name/last_name
+            cv_name = personal_info.get("name", "")
             
-            last_name = (
-                personal_info.get("last_name") or 
-                profile_personal.get("last_name") or 
-                user.get("last_name", "")
-            )
+            # Try to split CV name into first/last
+            first_name = ""
+            last_name = ""
+            
+            if cv_name:
+                name_parts = cv_name.strip().split()
+                if len(name_parts) >= 2:
+                    first_name = name_parts[0]
+                    last_name = " ".join(name_parts[1:])
+                elif len(name_parts) == 1:
+                    first_name = name_parts[0]
+                logger.info(f"Extracted name from CV: {first_name} {last_name}")
+            
+            # Fallback to profile or user fields
+            if not first_name and not last_name:
+                first_name = (
+                    profile_personal.get("first_name") or 
+                    user.get("first_name", "")
+                )
+                last_name = (
+                    profile_personal.get("last_name") or 
+                    user.get("last_name", "")
+                )
             
             # If still empty, try to extract from full_name
             if not first_name and not last_name:
@@ -118,6 +132,21 @@ class EmailAgentService:
                         first_name = email_name.capitalize()
                     logger.info(f"Extracted name from email: {first_name} {last_name}")
             
+            # Extract location - OpenAI returns "location" field like "City, State/Country"
+            cv_location = personal_info.get("location", "")
+            city = ""
+            state = ""
+            
+            if cv_location:
+                # Try to parse location like "San Francisco, CA" or "New York, NY, USA"
+                location_parts = [p.strip() for p in cv_location.split(",")]
+                if len(location_parts) >= 2:
+                    city = location_parts[0]
+                    state = location_parts[1]
+                elif len(location_parts) == 1:
+                    city = location_parts[0]
+                logger.info(f"Extracted location from CV: city={city}, state={state}")
+            
             # Build form data with fallbacks
             form_data = {
                 "first_name": first_name,
@@ -128,36 +157,21 @@ class EmailAgentService:
                     profile_personal.get("phone") or 
                     user.get("phone", "")
                 ),
-                "address": (
-                    personal_info.get("address") or 
-                    profile_personal.get("address", "")
-                ),
-                "city": (
-                    personal_info.get("city") or 
-                    profile_personal.get("city", "")
-                ),
-                "state": (
-                    personal_info.get("state") or 
-                    profile_personal.get("state", "")
-                ),
-                "country": (
-                    personal_info.get("country") or 
-                    profile_personal.get("country", "")
-                ),
-                "postal_code": (
-                    personal_info.get("postal_code") or 
-                    profile_personal.get("postal_code", "")
-                ),
+                "address": profile_personal.get("address", ""),  # Not in OpenAI output
+                "city": city or profile_personal.get("city", ""),
+                "state": state or profile_personal.get("state", ""),
+                "country": profile_personal.get("country", ""),  # Not in OpenAI output
+                "postal_code": profile_personal.get("postal_code", ""),  # Not in OpenAI output
                 "linkedin_url": (
-                    personal_info.get("linkedin_url") or 
+                    personal_info.get("linkedin") or  # OpenAI uses "linkedin" not "linkedin_url"
                     profile_personal.get("linkedin_url", "")
                 ),
                 "portfolio_url": (
-                    personal_info.get("portfolio_url") or 
+                    personal_info.get("portfolio") or  # OpenAI uses "portfolio" not "portfolio_url"
                     profile_personal.get("portfolio_url", "")
                 ),
                 "github_url": (
-                    personal_info.get("github_url") or 
+                    personal_info.get("github") or  # OpenAI uses "github" not "github_url"
                     profile_personal.get("github_url", "")
                 ),
             }

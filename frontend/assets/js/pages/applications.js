@@ -645,17 +645,156 @@ async function loadUpcomingInterviews() {
         const data = await res.json();
 
         if (!data.interviews || data.interviews.length === 0) {
-            container.innerHTML = '<div class="bg-white rounded-lg border p-12 text-center"><p class="text-gray-600">No upcoming interviews</p></div>';
+            container.innerHTML = `
+                <div class="bg-white rounded-lg border p-12 text-center">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No Upcoming Interviews</h3>
+                    <p class="text-gray-600">Schedule interviews from your applications</p>
+                </div>
+            `;
             return;
         }
-        container.innerHTML = data.interviews.map(i => `
-            <div class="bg-white rounded-lg border p-6">
-                <h3 class="text-lg font-semibold">${i.job_title}</h3>
-                <p class="text-gray-600">${i.company_name}</p>
-                <p class="text-sm text-gray-500 mt-2">${formatDateTime(i.interview_date)}</p>
-                <p class="text-sm text-gray-500">${i.location || 'Location TBD'}</p>
-            </div>
-        `).join('');
+        container.innerHTML = data.interviews.map(i => {
+            const interviewDate = new Date(i.interview_date);
+            const now = new Date();
+            const hoursUntil = Math.floor((interviewDate - now) / (1000 * 60 * 60));
+            const daysUntil = Math.floor(hoursUntil / 24);
+            const isUrgent = hoursUntil <= 24 && hoursUntil > 0;
+            const isPast = hoursUntil < 0;
+
+            // Format time until interview
+            let timeUntilText = '';
+            let timeUntilColor = 'text-gray-600';
+            if (isPast) {
+                timeUntilText = 'Past interview';
+                timeUntilColor = 'text-gray-400';
+            } else if (hoursUntil < 1) {
+                timeUntilText = 'Starting soon!';
+                timeUntilColor = 'text-red-600 font-semibold';
+            } else if (hoursUntil < 24) {
+                timeUntilText = `In ${hoursUntil} hour${hoursUntil !== 1 ? 's' : ''}`;
+                timeUntilColor = 'text-orange-600 font-semibold';
+            } else if (daysUntil === 1) {
+                timeUntilText = 'Tomorrow';
+                timeUntilColor = 'text-yellow-600 font-medium';
+            } else if (daysUntil <= 7) {
+                timeUntilText = `In ${daysUntil} days`;
+                timeUntilColor = 'text-blue-600';
+            } else {
+                timeUntilText = `In ${daysUntil} days`;
+                timeUntilColor = 'text-gray-600';
+            }
+
+            // Get interview type badge
+            const typeColors = {
+                'phone_screening': 'bg-blue-100 text-blue-700',
+                'video_call': 'bg-purple-100 text-purple-700',
+                'in_person': 'bg-green-100 text-green-700',
+                'technical': 'bg-orange-100 text-orange-700',
+                'behavioral': 'bg-pink-100 text-pink-700',
+                'panel': 'bg-indigo-100 text-indigo-700'
+            };
+            const typeColor = typeColors[i.interview_type] || 'bg-gray-100 text-gray-700';
+
+            // Get interview type icon
+            const typeIcons = {
+                'phone_screening': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>',
+                'video_call': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>',
+                'in_person': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>',
+                'technical': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>',
+                'behavioral': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>',
+                'panel': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>'
+            };
+            const typeIcon = typeIcons[i.interview_type] || '';
+
+            const borderClass = isUrgent ? 'border-l-4 border-l-orange-500' : isPast ? 'border-l-4 border-l-gray-300' : 'border-l-4 border-l-blue-500';
+
+            return `
+                <div class="bg-white rounded-lg border ${borderClass} p-6 hover:shadow-lg transition-all duration-200 ${isPast ? 'opacity-75' : ''}">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <h3 class="text-xl font-bold text-gray-900">${i.job_title}</h3>
+                                ${isUrgent ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 animate-pulse">Urgent</span>' : ''}
+                            </div>
+                            <p class="text-gray-700 font-medium text-lg">${i.company_name}</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${typeColor}">
+                                ${typeIcon}
+                                ${formatEnumValue(i.interview_type)}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 font-medium uppercase">Date & Time</p>
+                                <p class="text-sm font-semibold text-gray-900">${formatDateTime(i.interview_date)}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-3">
+                            <div class="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 font-medium uppercase">Time Until</p>
+                                <p class="text-sm font-semibold ${timeUntilColor}">${timeUntilText}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${i.location ? `
+                        <div class="flex items-start gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                            <svg class="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <div class="flex-1">
+                                <p class="text-xs text-gray-500 font-medium uppercase mb-1">Location</p>
+                                <p class="text-sm text-gray-900">${i.location}</p>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${i.notes ? `
+                        <div class="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                            <p class="text-xs text-blue-600 font-medium uppercase mb-1">Notes</p>
+                            <p class="text-sm text-gray-700">${i.notes}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+                        <button onclick="viewApplicationDetails('${i.application_id || i._id}')" 
+                                class="flex-1 min-w-[140px] px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            View Details
+                        </button>
+                        <button onclick="addToCalendar('${i.job_title}', '${i.company_name}', '${i.interview_date}', '${i.location || ''}')" 
+                                class="flex-1 min-w-[140px] px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            Add to Calendar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
     } catch (error) {
         console.error('Load interviews error:', error);
         container.innerHTML = '<div class="bg-white rounded-lg border p-12 text-center"><p class="text-gray-600">No upcoming interviews</p></div>';
@@ -783,6 +922,56 @@ function formatDate(dateString) {
 function formatDateTime(dateString) {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+// Add interview to calendar
+function addToCalendar(jobTitle, companyName, interviewDate, location) {
+    try {
+        const date = new Date(interviewDate);
+        const endDate = new Date(date.getTime() + 60 * 60 * 1000); // 1 hour duration
+
+        // Format dates for .ics file (YYYYMMDDTHHMMSSZ)
+        const formatICSDate = (d) => {
+            return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        };
+
+        const icsContent = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//CVision//Interview Calendar//EN',
+            'BEGIN:VEVENT',
+            `UID:${Date.now()}@cvision.app`,
+            `DTSTAMP:${formatICSDate(new Date())}`,
+            `DTSTART:${formatICSDate(date)}`,
+            `DTEND:${formatICSDate(endDate)}`,
+            `SUMMARY:Interview: ${jobTitle} at ${companyName}`,
+            `DESCRIPTION:Interview for ${jobTitle} position at ${companyName}`,
+            location ? `LOCATION:${location}` : '',
+            'STATUS:CONFIRMED',
+            'BEGIN:VALARM',
+            'TRIGGER:-PT1H',
+            'ACTION:DISPLAY',
+            'DESCRIPTION:Interview reminder',
+            'END:VALARM',
+            'END:VEVENT',
+            'END:VCALENDAR'
+        ].filter(line => line).join('\r\n');
+
+        // Create and download .ics file
+        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `interview-${companyName.replace(/\s+/g, '-')}.ics`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
+        InlineMessage.success('Calendar event downloaded! Open the file to add to your calendar.');
+    } catch (error) {
+        console.error('Calendar error:', error);
+        InlineMessage.error('Failed to create calendar event');
+    }
 }
 
 // Modal event listeners

@@ -166,7 +166,7 @@ class Interview(BaseModel):
 
 class ApplicationTimeline(BaseModel):
     """Application timeline event"""
-    event_type: str  # status_change, communication, interview, document_upload, etc.
+    event_type: Optional[str] = None  # status_change, communication, interview, document_upload, etc.
     status_from: Optional[ApplicationStatus] = None
     status_to: Optional[ApplicationStatus] = None
     description: str

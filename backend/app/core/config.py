@@ -177,7 +177,7 @@ class Settings(BaseSettings):
         Path(self.ML_MODEL_PATH).mkdir(parents=True, exist_ok=True)
     
     class Config:
-        env_file = ".env"
+        # env_file removed - Docker loads .env via docker-compose.yml
         case_sensitive = True
         extra = "ignore"
         populate_by_name = True  # Allow using alias names
