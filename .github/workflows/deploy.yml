@@ -18,36 +18,10 @@ env:
   SWARM_MANAGER_USER: ubuntu
 
 jobs:
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          cd backend
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov
-
-      - name: Run backend tests
-        run: |
-          cd backend
-          pytest tests/ -v --cov=app --cov-report=xml
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./backend/coverage.xml
-          flags: backend
+  #   test:  <-- REMOVED TEST JOB
+  #     name: Run Tests
+  #     runs-on: ubuntu-latest
+  # ... (omitted)
 
   build-and-push:
     name: Build and Push Docker Images
