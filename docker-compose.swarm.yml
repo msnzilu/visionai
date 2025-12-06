@@ -1,4 +1,3 @@
-
 services:
   # Frontend Service
   frontend:
@@ -10,20 +9,25 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        failure_action: pause
+        failure_action: rollback
         order: start-first
       restart_policy:
         condition: on-failure
         delay: 5s
+        max_attempts: 3
       resources:
         reservations:
           memory: 64M
+        limits:
+          memory: 256M
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.frontend.rule=Host(`visionsai.store`)"
+        - "traefik.http.routers.frontend.entrypoints=web"
         - "traefik.http.services.frontend.loadbalancer.server.port=80"
+        - "traefik.docker.network=visionai_app-network"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
       interval: 45s
       timeout: 10s
       retries: 3
@@ -36,11 +40,17 @@ services:
       - app-network
     environment:
       - DEBUG=false
-      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_URL=mongodb://mongodb:27017/job_platform
       - REDIS_URL=redis://redis:6379
       - DATABASE_NAME=job_platform
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # Read secrets from files
+      - OPENAI_API_KEY_FILE=/run/secrets/OPENAI_API_KEY
+      - STRIPE_SECRET_KEY_FILE=/run/secrets/STRIPE_SECRET_KEY
+      - JWT_SECRET_KEY_FILE=/run/secrets/JWT_SECRET_KEY
+      - GOOGLE_CLIENT_ID_FILE=/run/secrets/GOOGLE_CLIENT_ID
+      - GOOGLE_CLIENT_SECRET_FILE=/run/secrets/GOOGLE_CLIENT_SECRET
     secrets:
       - OPENAI_API_KEY
       - STRIPE_SECRET_KEY
@@ -55,25 +65,27 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        failure_action: pause
+        failure_action: rollback
         order: start-first
       restart_policy:
         condition: on-failure
-        delay: 5s
+        delay: 10s
+        max_attempts: 3
       resources:
         reservations:
           memory: 256M
+        limits:
+          memory: 1G
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.backend.rule=Host(`visionsai.store`) && PathPrefix(`/api`)"
+        - "traefik.http.routers.backend.entrypoints=web"
         - "traefik.http.services.backend.loadbalancer.server.port=8000"
-    depends_on:
-      - mongodb
-      - redis
+        - "traefik.docker.network=visionai_app-network"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
-      timeout: 20s
+      timeout: 10s
       retries: 5
       start_period: 120s
 
@@ -95,9 +107,9 @@ services:
         reservations:
           memory: 128M
         limits:
-          memory: 512M # Prevent it from eating all swap
+          memory: 512M
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")' --quiet || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -106,7 +118,7 @@ services:
   # Redis Service (Local)
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 100mb --maxmemory-policy allkeys-lru
     networks:
       - app-network
     volumes:
@@ -138,10 +150,13 @@ services:
       - app-network
     environment:
       - DEBUG=false
-      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_URL=mongodb://mongodb:27017/job_platform
       - REDIS_URL=redis://redis:6379
+      - DATABASE_NAME=job_platform
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - OPENAI_API_KEY_FILE=/run/secrets/OPENAI_API_KEY
+      - STRIPE_SECRET_KEY_FILE=/run/secrets/STRIPE_SECRET_KEY
     secrets:
       - OPENAI_API_KEY
       - STRIPE_SECRET_KEY
@@ -153,15 +168,18 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        failure_action: pause
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
       resources:
         reservations:
           memory: 256M
-    depends_on:
-      - mongodb
-      - redis
+        limits:
+          memory: 768M
     healthcheck:
-      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping"]
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
       interval: 60s
       timeout: 20s
       retries: 3
@@ -175,36 +193,50 @@ services:
       - app-network
     environment:
       - DEBUG=false
-      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_URL=mongodb://mongodb:27017/job_platform
       - REDIS_URL=redis://redis:6379
+      - DATABASE_NAME=job_platform
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
       - logs:/app/logs
+      - celery-beat:/app/celerybeat-schedule
     deploy:
       replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
       resources:
         reservations:
-          memory: 32M
-    depends_on:
-      - mongodb
-      - redis
+          memory: 64M
+        limits:
+          memory: 256M
 
   # Traefik Reverse Proxy
   traefik:
     image: traefik:v3.2
     command:
       - "--api.dashboard=true"
-      - "--providers.swarm=true"
-      - "--providers.swarm.exposedbydefault=false"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.swarmMode=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=visionai_app-network"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.email=admin@visionsai.store"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=INFO"
     ports:
-      - "80:80"
-      - "443:443"
+      - target: 80
+        published: 80
+        mode: host
+      - target: 443
+        published: 443
+        mode: host
     networks:
       - app-network
     volumes:
@@ -215,14 +247,19 @@ services:
       placement:
         constraints:
           - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
       resources:
         reservations:
-          memory: 32M
+          memory: 64M
+        limits:
+          memory: 256M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.traefik.rule=Host(`visionsai.store`) && PathPrefix(`/traefik`)"
-        - "traefik.http.routers.traefik.service=api@internal"
-        - "traefik.http.routers.traefik.middlewares=auth"
+        - "traefik.http.routers.dashboard.rule=Host(`visionsai.store`) && PathPrefix(`/traefik`)"
+        - "traefik.http.routers.dashboard.service=api@internal"
+        - "traefik.http.routers.dashboard.entrypoints=web"
 
 networks:
   app-network:
@@ -233,6 +270,8 @@ volumes:
   uploads:
     driver: local
   logs:
+    driver: local
+  celery-beat:
     driver: local
   traefik-certificates:
     driver: local
