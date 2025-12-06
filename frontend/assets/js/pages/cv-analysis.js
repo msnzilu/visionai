@@ -18,7 +18,8 @@ async function initializeCVAnalysis() {
 // Load CV analysis
 async function loadCVAnalysis() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+        // Fetch CV documents from documents API
+        const response = await fetch(`${API_BASE_URL}/api/v1/documents/`, {
             headers: {
                 'Authorization': `Bearer ${CVision.Utils.getToken()}`
             }
@@ -35,15 +36,33 @@ async function loadCVAnalysis() {
         }
 
         const data = await response.json();
-        cvData = data.cv_parsed;
+
+        // Get the most recent CV document
+        if (!data.documents || data.documents.length === 0) {
+            showEmptyState();
+            return;
+        }
+
+        // Get the first (most recent) document
+        const cvDocument = data.documents[0];
+        cvData = cvDocument.cv_data;
 
         if (!cvData || Object.keys(cvData).length === 0) {
             showEmptyState();
             return;
         }
 
+        // Fetch user info for personal details
+        const userResponse = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            }
+        });
+
+        const userData = await userResponse.json();
+
         // Load all sections
-        loadPersonalInfo(data);
+        loadPersonalInfo(userData, cvData);
         loadProfessionalSummary(cvData);
         loadSkills(cvData);
         loadExperience(cvData);
@@ -64,31 +83,34 @@ async function loadCVAnalysis() {
 }
 
 // Load personal information
-function loadPersonalInfo(data) {
+function loadPersonalInfo(userData, cvData) {
+    // Extract personal info from CV data
+    const personalInfo = cvData.personal_info || {};
+
     const html = `
         <div class="data-row">
             <span class="data-label">Full Name</span>
-            <span class="data-value">${data.full_name || 'Not provided'}</span>
+            <span class="data-value">${userData.full_name || personalInfo.name || 'Not provided'}</span>
         </div>
         <div class="data-row">
             <span class="data-label">Email</span>
-            <span class="data-value">${data.email || 'Not provided'}</span>
+            <span class="data-value">${userData.email || personalInfo.email || 'Not provided'}</span>
         </div>
         <div class="data-row">
             <span class="data-label">Phone</span>
-            <span class="data-value">${cvData.phone || 'Not provided'}</span>
+            <span class="data-value">${personalInfo.phone || 'Not provided'}</span>
         </div>
         <div class="data-row">
             <span class="data-label">Location</span>
-            <span class="data-value">${cvData.location || 'Not provided'}</span>
+            <span class="data-value">${personalInfo.location || 'Not provided'}</span>
         </div>
         <div class="data-row">
             <span class="data-label">Experience</span>
-            <span class="data-value">${cvData.years_of_experience || 0} years</span>
+            <span class="data-value">${cvData.experience ? cvData.experience.length : 0} roles</span>
         </div>
         <div class="data-row">
             <span class="data-label">Education</span>
-            <span class="data-value">${cvData.education_level || 'Not provided'}</span>
+            <span class="data-value">${cvData.education && cvData.education.length > 0 ? cvData.education[0].degree : 'Not provided'}</span>
         </div>
     `;
     document.getElementById('personalInfo').innerHTML = html;
@@ -106,23 +128,64 @@ function loadProfessionalSummary(cvData) {
 
 // Load skills
 function loadSkills(cvData) {
-    const skills = cvData.skills || [];
+    let skillsArray = [];
+    const skillsData = cvData.skills || [];
 
-    if (skills.length === 0) {
+    // Handle both array and object formats
+    if (Array.isArray(skillsData)) {
+        skillsArray = skillsData;
+    } else if (typeof skillsData === 'object') {
+        // Flatten categorized skills (technical, soft, languages)
+        if (skillsData.technical) skillsArray.push(...skillsData.technical);
+        if (skillsData.soft) skillsArray.push(...skillsData.soft);
+        if (skillsData.languages) skillsArray.push(...skillsData.languages);
+    }
+
+    if (skillsArray.length === 0) {
         document.getElementById('skillsSection').innerHTML = `
-            <p style="color: #6b7280;">No skills found in CV. Please upload a detailed CV.</p>
+            <p style="color: #6b7280;">No skills found in CV.</p>
         `;
         return;
     }
 
+    const maxInitialSkills = 12;
+    const hasMore = skillsArray.length > maxInitialSkills;
+    const initialSkills = hasMore ? skillsArray.slice(0, maxInitialSkills) : skillsArray;
+    const remainingSkills = hasMore ? skillsArray.slice(maxInitialSkills) : [];
+
     const html = `
-        <div class="skills-grid">
-            ${skills.map(skill => `
+        <div class="skills-grid" id="skillsGridInitial">
+            ${initialSkills.map(skill => `
                 <div class="skill-badge">${skill}</div>
             `).join('')}
         </div>
+        ${hasMore ? `
+            <div class="skills-grid" id="skillsGridMore" style="display: none; margin-top: 0.75rem;">
+                ${remainingSkills.map(skill => `
+                    <div class="skill-badge">${skill}</div>
+                `).join('')}
+            </div>
+            <button onclick="toggleSkills()" id="skillsToggleBtn" class="btn-upload" style="margin-top: 1rem;">
+                Show ${remainingSkills.length} More Skills
+            </button>
+        ` : ''}
     `;
     document.getElementById('skillsSection').innerHTML = html;
+}
+
+// Toggle skills visibility
+function toggleSkills() {
+    const moreSection = document.getElementById('skillsGridMore');
+    const btn = document.getElementById('skillsToggleBtn');
+
+    if (moreSection.style.display === 'none') {
+        moreSection.style.display = 'grid';
+        btn.textContent = 'Show Less';
+    } else {
+        moreSection.style.display = 'none';
+        const hiddenCount = moreSection.querySelectorAll('.skill-badge').length;
+        btn.textContent = `Show ${hiddenCount} More Skills`;
+    }
 }
 
 // Load experience
@@ -136,17 +199,29 @@ function loadExperience(cvData) {
         return;
     }
 
-    const html = experience.map(exp => `
-        <div class="experience-item">
-            <div class="experience-title">${exp.title || exp.position || 'Position'}</div>
-            <div class="experience-company">${exp.company || 'Company'}</div>
-            <div class="experience-duration">
-                ${exp.start_date || 'Start'} - ${exp.end_date || exp.is_current ? 'Present' : 'End'}
-                ${exp.duration ? `(${exp.duration})` : ''}
+    const html = experience.map(exp => {
+        // Get description from achievements array or description field
+        let description = '';
+        if (exp.achievements && Array.isArray(exp.achievements) && exp.achievements.length > 0) {
+            description = '<ul style="margin: 0.5rem 0; padding-left: 1.5rem;">' +
+                exp.achievements.map(achievement => `<li>${achievement}</li>`).join('') +
+                '</ul>';
+        } else {
+            description = exp.description || '';
+        }
+
+        return `
+            <div class="experience-item">
+                <div class="experience-title">${exp.title || 'Position'}</div>
+                <div class="experience-company">${exp.company || 'Company'}</div>
+                <div class="experience-duration">
+                    ${exp.start_date || 'Start'} - ${exp.end_date || 'Present'}
+                    ${exp.duration ? `(${exp.duration})` : ''}
+                </div>
+                <div class="experience-description">${description}</div>
             </div>
-            <div class="experience-description">${exp.description || exp.responsibilities || ''}</div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     document.getElementById('experienceSection').innerHTML = html;
 }
@@ -164,7 +239,12 @@ async function loadRecommendedRoles(cvData) {
         return;
     }
 
-    const html = roles.map(role => {
+    const maxInitialRoles = 3;
+    const hasMore = roles.length > maxInitialRoles;
+    const initialRoles = hasMore ? roles.slice(0, maxInitialRoles) : roles;
+    const remainingRoles = hasMore ? roles.slice(maxInitialRoles) : [];
+
+    const renderRole = (role) => {
         const matchClass = role.match >= 80 ? 'match-high' :
             role.match >= 60 ? 'match-medium' : 'match-low';
 
@@ -182,15 +262,56 @@ async function loadRecommendedRoles(cvData) {
                 </div>
             </div>
         `;
-    }).join('');
+    };
+
+    const html = `
+        <div id="rolesInitial">
+            ${initialRoles.map(renderRole).join('')}
+        </div>
+        ${hasMore ? `
+            <div id="rolesMore" style="display: none;">
+                ${remainingRoles.map(renderRole).join('')}
+            </div>
+            <button onclick="toggleRoles()" id="rolesToggleBtn" class="btn-upload" style="margin-top: 1rem;">
+                Show ${remainingRoles.length} More ${remainingRoles.length === 1 ? 'Role' : 'Roles'}
+            </button>
+        ` : ''}
+    `;
 
     document.getElementById('recommendedRoles').innerHTML = html;
 }
 
+// Toggle roles visibility
+function toggleRoles() {
+    const moreSection = document.getElementById('rolesMore');
+    const btn = document.getElementById('rolesToggleBtn');
+
+    if (moreSection.style.display === 'none') {
+        moreSection.style.display = 'block';
+        btn.textContent = 'Show Less';
+    } else {
+        moreSection.style.display = 'none';
+        const hiddenCount = moreSection.querySelectorAll('.role-card').length;
+        btn.textContent = `Show ${hiddenCount} More ${hiddenCount === 1 ? 'Role' : 'Roles'}`;
+    }
+}
+
 // Generate role recommendations based on CV
 function generateRoleRecommendations(cvData) {
-    const skills = (cvData.skills || []).map(s => s.toLowerCase());
-    const experience = cvData.years_of_experience || 0;
+    // Extract skills from both array and object formats
+    let skillsArray = [];
+    const skillsData = cvData.skills || [];
+
+    if (Array.isArray(skillsData)) {
+        skillsArray = skillsData;
+    } else if (typeof skillsData === 'object') {
+        if (skillsData.technical) skillsArray.push(...skillsData.technical);
+        if (skillsData.soft) skillsArray.push(...skillsData.soft);
+        if (skillsData.languages) skillsArray.push(...skillsData.languages);
+    }
+
+    const skills = skillsArray.map(s => s.toLowerCase());
+    const experience = cvData.experience ? cvData.experience.length : 0;
 
     const roleTemplates = [
         {
@@ -270,11 +391,22 @@ function generateRoleRecommendations(cvData) {
 
 // Update stats
 function updateStats(cvData) {
-    const skills = cvData.skills || [];
-    const experience = cvData.years_of_experience || 0;
+    // Count skills from both array and object formats
+    let skillsCount = 0;
+    const skillsData = cvData.skills || [];
+
+    if (Array.isArray(skillsData)) {
+        skillsCount = skillsData.length;
+    } else if (typeof skillsData === 'object') {
+        if (skillsData.technical) skillsCount += skillsData.technical.length;
+        if (skillsData.soft) skillsCount += skillsData.soft.length;
+        if (skillsData.languages) skillsCount += skillsData.languages.length;
+    }
+
+    const experience = cvData.experience ? cvData.experience.length : 0;
     const roles = generateRoleRecommendations(cvData);
 
-    document.getElementById('totalSkills').textContent = skills.length;
+    document.getElementById('totalSkills').textContent = skillsCount;
     document.getElementById('yearsExp').textContent = experience;
     document.getElementById('matchingRoles').textContent = roles.length;
     document.getElementById('statsBar').style.display = 'flex';
@@ -293,13 +425,55 @@ function showEmptyState() {
             <div class="empty-state">
                 <div class="empty-state-icon">📄</div>
                 <h3>No CV Data Available</h3>
-                <p>Upload your CV to get AI-powered analysis and job recommendations</p>
+                <p>Please upload your CV from your profile to get AI-powered analysis and job recommendations</p>
                 <button class="btn-upload" onclick="window.location.href='/pages/profile.html'">
-                    Upload CV
+                    Go to Profile
                 </button>
             </div>
         `;
     });
+}
+
+// Upload CV function
+async function uploadCV(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        // Show loading state
+        const sections = ['personalInfo', 'professionalSummary', 'skillsSection', 'experienceSection', 'recommendedRoles'];
+        sections.forEach(id => {
+            document.getElementById(id).innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing your CV...</p>
+                </div>
+            `;
+        });
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+
+        // Reload the analysis after successful upload
+        await loadCVAnalysis();
+
+    } catch (error) {
+        console.error('Error uploading CV:', error);
+        alert('Failed to upload CV. Please try again.');
+        showEmptyState();
+    }
 }
 
 // Show error

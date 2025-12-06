@@ -1,5 +1,5 @@
 // Self-contained Navbar Module - FIXED to use access_token
-const CVisionNavbar = (function() {
+const CVisionNavbar = (function () {
     const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
     const TOKEN_KEY = 'access_token'; // FIXED: Use correct token key
     let pollingInterval = null;
@@ -10,22 +10,44 @@ const CVisionNavbar = (function() {
         return localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token'); // Fallback for backwards compatibility
     }
 
+    let isInitialized = false;
+
     // Initialize navbar
     async function init(pageTitle = '') {
-        
+        console.log('CVisionNavbar.init() called, isInitialized:', isInitialized);
+
+        // Check if navbar HTML elements exist
+        const navbarExists = document.getElementById('notificationBtn') !== null;
+        console.log('CVisionNavbar: navbar HTML exists:', navbarExists);
+
+        if (!navbarExists) {
+            console.log('CVisionNavbar: Navbar HTML not loaded yet, skipping initialization');
+            return;
+        }
+
+        // Prevent duplicate initialization
+        if (isInitialized) {
+            console.log('CVisionNavbar: Already initialized, skipping');
+            return;
+        }
+
         // Check if token exists
         const token = getToken();
         if (!token) {
+            console.log('CVisionNavbar: No token found');
             showLoggedOutState();
             return;
         }
-        
-        
+
+        console.log('CVisionNavbar: Initializing navbar...');
         setupEventListeners();
         await loadUserInfo();
         await loadNotifications();
         startPolling();
         setActiveLink();
+
+        isInitialized = true;
+        console.log('CVisionNavbar: Initialization complete');
     }
 
     // Show logged out state
@@ -33,7 +55,7 @@ const CVisionNavbar = (function() {
         const userFullName = document.getElementById('userFullName');
         const userEmail = document.getElementById('userEmail');
         const userInitials = document.getElementById('userInitials');
-        
+
         if (userFullName) userFullName.textContent = 'Not logged in';
         if (userEmail) userEmail.textContent = 'Please log in';
         if (userInitials) userInitials.textContent = '?';
@@ -53,28 +75,41 @@ const CVisionNavbar = (function() {
 
     // Setup all event listeners
     function setupEventListeners() {
+        console.log('CVisionNavbar: Setting up event listeners');
         const notificationBtn = document.getElementById('notificationBtn');
         const notificationDropdown = document.getElementById('notificationDropdown');
-        
+        console.log('CVisionNavbar: notificationBtn found:', !!notificationBtn);
+        console.log('CVisionNavbar: notificationDropdown found:', !!notificationDropdown);
+
         if (notificationBtn) {
             notificationBtn.addEventListener('click', (e) => {
+                console.log('CVisionNavbar: Notification button clicked!');
                 e.stopPropagation();
                 notificationDropdown?.classList.toggle('show');
                 document.getElementById('userDropdown')?.classList.remove('show');
                 document.getElementById('mobileMenu')?.classList.remove('show');
             });
+            console.log('CVisionNavbar: Notification click listener attached');
+        } else {
+            console.warn('CVisionNavbar: notificationBtn element not found!');
         }
 
         const userMenuBtn = document.getElementById('userMenuBtn');
         const userDropdown = document.getElementById('userDropdown');
-        
+        console.log('CVisionNavbar: userMenuBtn found:', !!userMenuBtn);
+        console.log('CVisionNavbar: userDropdown found:', !!userDropdown);
+
         if (userMenuBtn) {
             userMenuBtn.addEventListener('click', (e) => {
+                console.log('CVisionNavbar: User menu button clicked!');
                 e.stopPropagation();
                 userDropdown?.classList.toggle('show');
                 notificationDropdown?.classList.remove('show');
                 document.getElementById('mobileMenu')?.classList.remove('show');
             });
+            console.log('CVisionNavbar: User menu click listener attached');
+        } else {
+            console.warn('CVisionNavbar: userMenuBtn element not found!');
         }
 
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
@@ -107,7 +142,7 @@ const CVisionNavbar = (function() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
                 method: 'GET',
-                headers: { 
+                headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
@@ -122,12 +157,12 @@ const CVisionNavbar = (function() {
                     localStorage.removeItem(TOKEN_KEY);
                     localStorage.removeItem('cvision_user');
                     showLoggedOutState();
-                    
+
                     // Optionally redirect to login
                     // window.location.href = '/login.html';
                     return;
                 }
-                
+
                 // Try to get error details
                 let errorDetail = 'Unknown error';
                 try {
@@ -136,26 +171,26 @@ const CVisionNavbar = (function() {
                 } catch (e) {
                     errorDetail = await response.text();
                 }
-                
+
                 throw new Error(`Failed to load user info: ${response.status} - ${errorDetail}`);
             }
 
             const data = await response.json();
-            
+
             // Handle both direct response and nested user object
             const user = data.user || data;
             userInfo = user;
-            
-            
+
+
             // Update UI with user information
             updateUserDisplay(user);
-            
+
             // Store user info for other components
             localStorage.setItem('cvision_user', JSON.stringify(user));
-            
-            
+
+
         } catch (error) {
-            
+
             // Show error in UI
             const userFullName = document.getElementById('userFullName');
             if (userFullName) {
@@ -174,10 +209,10 @@ const CVisionNavbar = (function() {
         // Update full name
         const fullNameEl = document.getElementById('userFullName');
         if (fullNameEl) {
-            const fullName = user.full_name || 
-                            `${user.first_name || ''} ${user.last_name || ''}`.trim() || 
-                            user.email || 
-                            'User';
+            const fullName = user.full_name ||
+                `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
+                user.email ||
+                'User';
             fullNameEl.textContent = fullName;
             fullNameEl.style.color = ''; // Reset color
         }
@@ -191,10 +226,10 @@ const CVisionNavbar = (function() {
         // Update initials
         const initialsEl = document.getElementById('userInitials');
         if (initialsEl) {
-            const fullName = user.full_name || 
-                            `${user.first_name || ''} ${user.last_name || ''}`.trim() || 
-                            user.email || 
-                            'User';
+            const fullName = user.full_name ||
+                `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
+                user.email ||
+                'User';
             const initials = fullName
                 .split(' ')
                 .filter(n => n.length > 0)
@@ -210,7 +245,7 @@ const CVisionNavbar = (function() {
         if (tierEl) {
             const tier = user.subscription_tier || 'free';
             tierEl.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
-            
+
             // Update tier badge color based on tier
             tierEl.className = 'hidden sm:inline-block px-3 py-1 text-xs font-medium rounded-full';
             switch (tier.toLowerCase()) {
@@ -249,7 +284,7 @@ const CVisionNavbar = (function() {
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/v1/notifications/?limit=10&unread_only=false`, {
-                headers: { 
+                headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
@@ -271,7 +306,7 @@ const CVisionNavbar = (function() {
     function displayNotifications(notifications) {
         const container = document.getElementById('notificationsList');
         if (!container) return;
-        
+
         if (!notifications || notifications.length === 0) {
             container.innerHTML = `
                 <div class="text-center py-12 text-gray-500">
@@ -288,7 +323,7 @@ const CVisionNavbar = (function() {
             const isUnread = !notif.is_read;
             const timeAgo = formatTime(notif.created_at);
             const icon = getIcon(notif.type);
-            
+
             return `
                 <div class="notification-item ${isUnread ? 'unread' : ''} px-4 py-3 cursor-pointer" 
                      onclick="CVisionNavbar.markAsRead('${notif.id}')">
@@ -310,7 +345,7 @@ const CVisionNavbar = (function() {
     function updateBadge(notifications) {
         const unreadCount = notifications.filter(n => !n.is_read).length;
         const badge = document.getElementById('notificationBadge');
-        
+
         if (badge) {
             if (unreadCount > 0) {
                 badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
@@ -337,7 +372,7 @@ const CVisionNavbar = (function() {
         const date = new Date(dateString);
         const now = new Date();
         const seconds = Math.floor((now - date) / 1000);
-        
+
         if (seconds < 60) return 'Just now';
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
         if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
@@ -353,7 +388,7 @@ const CVisionNavbar = (function() {
         try {
             await fetch(`${API_BASE_URL}/api/v1/notifications/${notificationId}/read`, {
                 method: 'PUT',
-                headers: { 
+                headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
@@ -372,7 +407,7 @@ const CVisionNavbar = (function() {
         try {
             await fetch(`${API_BASE_URL}/api/v1/notifications/mark-all-read`, {
                 method: 'PUT',
-                headers: { 
+                headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
@@ -418,9 +453,23 @@ const CVisionNavbar = (function() {
     };
 })();
 
-// Auto-initialize when DOM is ready
+
+// Smart auto-initialization: only proceed if navbar HTML is loaded
+function autoInit() {
+    const navbarExists = document.getElementById('notificationBtn') !== null;
+    if (navbarExists) {
+        console.log('Auto-init: Navbar HTML found, initializing...');
+        CVisionNavbar.init();
+    } else {
+        console.log('Auto-init: Navbar HTML not found yet, will retry...');
+        // Retry after a short delay
+        setTimeout(autoInit, 100);
+    }
+}
+
+// Start auto-initialization when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => CVisionNavbar.init());
+    document.addEventListener('DOMContentLoaded', autoInit);
 } else {
-    CVisionNavbar.init();
+    autoInit();
 }

@@ -232,16 +232,27 @@
     <script src="/assets/js/pages/dashboard.js"></script>
     <script src="/assets/js/components/navbar.js" defer></script>
     <script defer>
-        // Load navbar component
+        // Load navbar component with proper initialization
         fetch('/components/navbar.html')
             .then(response => response.text())
             .then(html => {
-                document.getElementById('navbar-container').innerHTML = html;
-                // Optionally set page title
-                if (window.CVisionNavbar) {
-                    CVisionNavbar.init('Dashboard');
-                }
-            });
+                const container = document.getElementById('navbar-container');
+                container.innerHTML = html;
+
+                // Use requestAnimationFrame to ensure DOM has updated
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        // Double RAF ensures DOM is fully updated
+                        if (window.CVisionNavbar) {
+                            console.log('Dashboard: Navbar HTML inserted, calling init()');
+                            CVisionNavbar.init('Dashboard');
+                        } else {
+                            console.error('Dashboard: CVisionNavbar not available');
+                        }
+                    });
+                });
+            })
+            .catch(err => console.error('Dashboard: Failed to load navbar:', err));
 
         // Your page-specific JavaScript
         document.addEventListener('DOMContentLoaded', () => {
