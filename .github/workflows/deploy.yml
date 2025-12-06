@@ -165,6 +165,10 @@ jobs:
             }
 
             # Create secrets from env vars
+            # Remove legacy lowercase secrets to prevent conflicts
+            docker secret rm openai_api_key 2>/dev/null || true
+            docker secret rm stripe_api_key 2>/dev/null || true
+            
             create_secret "OPENAI_API_KEY" "${OPENAI_API_KEY}"
             create_secret "STRIPE_SECRET_KEY" "${STRIPE_SECRET_KEY}"
             create_secret "JWT_SECRET_KEY" "${JWT_SECRET_KEY}"
