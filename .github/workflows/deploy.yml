@@ -122,24 +122,34 @@ jobs:
           echo "::add-mask::$PASSWORD"
           echo "ECR_PASSWORD=$PASSWORD" >> $GITHUB_OUTPUT
 
+      - name: Prepare Secrets
+        run: |
+          cat <<EOF > .env.secrets
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_API_KEY }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET }}
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          ECR_PASSWORD=${{ steps.ecr-login.outputs.ECR_PASSWORD }}
+          EOF
+
       - name: Deploy to Swarm
         env:
           IMAGE_TAG: ${{ steps.set-tag.outputs.IMAGE_TAG }}
-          ECR_PASSWORD: ${{ steps.ecr-login.outputs.ECR_PASSWORD }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
         run: |
-          # Copy docker-compose file to manager
+          # Copy files to manager
           scp -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
-            docker-compose.swarm.yml \
+            docker-compose.swarm.yml .env.secrets \
             ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }}:/tmp/
 
           # Deploy stack
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
             ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }} << 'EOF'
+            
+            # Load secrets
+            set -a
+            source /tmp/.env.secrets
+            set +a
             
             # Helper function to create secret if missing
             create_secret() {
@@ -151,7 +161,6 @@ jobs:
                 echo "$value" | docker secret create "$name" -
               else
                 echo "Secret $name already exists (skipping)"
-                # Optional: Update usage if needed (Swarm secrets are immutable, need rotation for updates)
               fi
             }
 
@@ -226,6 +235,9 @@ jobs:
               exit 1
             fi
             echo "Deployment successful!"
+            
+            # Cleanup secrets file
+            rm -f /tmp/.env.secrets
           EOF
 
       - name: Verify deployment
