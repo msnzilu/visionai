@@ -11,14 +11,14 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        failure_action: rollback
+        failure_action: pause
         order: start-first
       restart_policy:
         condition: on-failure
         delay: 5s
       resources:
         reservations:
-          memory: 32M
+          memory: 64M
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.frontend.rule=Host(`visionsai.store`)"
@@ -56,14 +56,14 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        failure_action: rollback
+        failure_action: pause
         order: start-first
       restart_policy:
         condition: on-failure
         delay: 5s
       resources:
         reservations:
-          memory: 128M
+          memory: 256M
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.backend.rule=Host(`visionsai.store`) && PathPrefix(`/api`)"
@@ -154,10 +154,10 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        failure_action: rollback
+        failure_action: pause
       resources:
         reservations:
-          memory: 128M
+          memory: 256M
     depends_on:
       - mongodb
       - redis
