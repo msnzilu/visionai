@@ -203,9 +203,17 @@ jobs:
           ssh -i ~/.ssh/swarm_key \
             ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }} << 'EOF'
             
-            # Check all services are running
-            echo "=== Service Status ==="
-            docker service ls --filter "label=com.docker.stack.namespace=visionai"
+            # Check stack tasks (running/failed)
+            echo "=== Stack Tasks ==="
+            docker stack ps visionai --no-trunc
+
+            # Check node status
+            echo "=== Node Status ==="
+            docker node ls
+            
+            # Check disk space
+            echo "=== Disk Space ==="
+            df -h
             
             # Check service logs for errors
             echo "=== Recent Backend Logs ==="
@@ -214,10 +222,14 @@ jobs:
             echo "=== Recent Traefik Logs ==="
             docker service logs --tail 50 visionai_traefik
             
-            # Verify health endpoints
-            echo "=== Health Check ==="
+            # Verify internal health (bypass firewall/DNS)
+            echo "=== Internal Health Check ==="
+            curl -v -k --connect-timeout 10 https://127.0.0.1/api/v1/health || echo "Internal Check Failed"
+
+            # Verify health endpoints (external)
+            echo "=== External Health Check ==="
             sleep 10
-            curl -f https://webtestingdomain.online/api/v1/health || exit 1
+            curl -f --connect-timeout 10 https://webtestingdomain.online/api/v1/health || exit 1
             
             echo "All services are healthy!"
           EOF
