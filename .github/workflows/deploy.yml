@@ -45,6 +45,12 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Ensure ECR Repository Exists
+        run: |
+          REPO_NAME=visionai-${{ matrix.service }}
+          aws ecr describe-repositories --repository-names ${REPO_NAME} --region ${{ env.AWS_REGION }} || \
+          aws ecr create-repository --repository-name ${REPO_NAME} --region ${{ env.AWS_REGION }}
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -92,12 +98,6 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Ensure ECR Repository Exists
-        run: |
-          REPO_NAME=visionai-${{ matrix.service }}
-          aws ecr describe-repositories --repository-names ${REPO_NAME} --region ${{ env.AWS_REGION }} || \
-          aws ecr create-repository --repository-name ${REPO_NAME} --region ${{ env.AWS_REGION }}
 
       - name: Set up SSH key
         run: |
