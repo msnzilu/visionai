@@ -191,6 +191,11 @@ jobs:
             # Login to ECR
             echo "${ECR_PASSWORD}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             
+            # Pull images explicitly to ensure they exist and verify auth
+            echo "Pulling images..."
+            docker pull ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG}
+            docker pull ${ECR_REGISTRY}/visionai-frontend:${IMAGE_TAG}
+            
             # Deploy stack with rolling update
             docker stack deploy \
               --compose-file /tmp/docker-compose.swarm.yml \
