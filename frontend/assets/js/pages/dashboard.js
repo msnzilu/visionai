@@ -1,6 +1,5 @@
 const API_BASE_URL = `${CONFIG.API_BASE_URL}`;
 
-
 document.addEventListener('DOMContentLoaded', function () {
 
     if (!CVision.Utils.isAuthenticated()) {
@@ -10,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     initializeDashboard();
 });
+
+// Automation State
+let automationEnabled = false;
 
 async function initializeDashboard() {
     CVision.initUserInfo();
@@ -29,6 +31,10 @@ async function initializeDashboard() {
     await loadUserProfile();
     await loadDocuments();
     await loadSavedJobs();
+
+    // Initialize automation status
+    await loadAutomationStatus();
+
     setupFileUpload();
 }
 
@@ -471,27 +477,207 @@ function showGmailConnectedAlert(user) {
     const alertsContainer = document.getElementById('alerts');
     if (!alertsContainer) return;
 
-    // Get Gmail email from user data
     const gmailEmail = user.email || 'your Gmail account';
 
-    alertsContainer.innerHTML = `
-        <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-4 rounded-r shadow-sm">
-            <div class="flex items-start">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="ml-3 flex-1">
-                    <h3 class="text-sm font-medium text-green-800">Gmail Connected - Email Agent Active</h3>
-                    <div class="mt-2 text-sm text-green-700">
-                        <p>Applications will be sent and tracked from: <strong>${gmailEmail}</strong></p>
-                        <p class="mt-1 text-xs">All job applications will be automatically sent via email and tracked in your applications page.</p>
-                    </div>
-                </div>
+    // Toggle button HTML (inline styles to match cv-analysis look)
+    const toggleHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem; background: white; border-radius: 8px; border: 1px solid #e5e7eb; cursor: pointer; margin-left: auto;" onclick="toggleAutomation()">
+            <div>
+                <div style="font-weight: bold; font-size: 0.85rem; color: #1f2937;">Automate Applications</div>
+                <div style="font-size: 0.7rem; color: #6b7280;" id="automationStatus">Click to enable</div>
+            </div>
+            <div id="automationToggle" style="position: relative; width: 40px; height: 22px; background: rgba(0,0,0,0.1); border-radius: 11px; transition: all 0.3s; flex-shrink: 0;">
+                <div id="automationSlider" style="position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></div>
             </div>
         </div>
     `;
+
+    alertsContainer.innerHTML = `
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-4 rounded-r shadow-sm">
+            <div class="flex items-center flex-wrap gap-4">
+                <div class="flex items-center flex-1 min-w-[250px]">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-green-800">Gmail Connected - Email Agent Active</h3>
+                        <div class="text-sm text-green-700">
+                            <p>Tracking: <strong>${gmailEmail}</strong></p>
+                        </div>
+                    </div>
+                </div>
+                ${toggleHTML}
+            </div>
+        </div>
+    `;
+
+    // Re-apply automation status visual state if it was loaded
+    updateAutomationUI();
+}
+
+// ============================================================================
+// Automation Logic (Ported from cv-analysis.js)
+// ============================================================================
+
+async function toggleAutomation() {
+    const userTier = document.getElementById('userTier')?.textContent?.toLowerCase() || 'free';
+
+    if ((userTier.includes('free') && !automationEnabled)) {
+        showPremiumModal();
+        return;
+    }
+
+    const panel = document.getElementById('automationPanel');
+
+    if (!automationEnabled) {
+        // Opening settings to enable
+        if (panel) panel.style.display = 'block';
+    } else {
+        // Disabling
+        if (panel) panel.style.display = 'none';
+        await disableAutomation();
+    }
+}
+
+function updateAutomationUI() {
+    const toggle = document.getElementById('automationToggle');
+    const slider = document.getElementById('automationSlider');
+    const status = document.getElementById('automationStatus');
+    const panel = document.getElementById('automationPanel');
+
+    if (!toggle || !slider || !status) return;
+
+    if (automationEnabled) {
+        toggle.style.background = '#10b981';
+        slider.style.left = '20px'; // Adjusted for 40px width
+        status.textContent = 'Active';
+        if (panel) panel.style.display = 'block';
+    } else {
+        toggle.style.background = 'rgba(0,0,0,0.1)';
+        slider.style.left = '2px';
+        status.textContent = 'Click to enable';
+        if (panel) panel.style.display = 'none';
+    }
+}
+
+async function loadAutomationStatus() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auto-apply/status`, {
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+
+        if (!response.ok) {
+            if (response.status !== 404) console.warn(`HTTP error! status: ${response.status}`);
+            return;
+        }
+
+        const data = await response.json();
+        automationEnabled = data.enabled;
+
+        // Update UI
+        updateAutomationUI();
+
+        if (automationEnabled && data) {
+            const maxSlider = document.getElementById('maxAppsSlider');
+            const minSlider = document.getElementById('minScoreSlider');
+            const maxVal = document.getElementById('maxAppsValue');
+            const minVal = document.getElementById('minScoreValue');
+
+            if (maxSlider && data.max_daily_applications) {
+                maxSlider.value = data.max_daily_applications;
+                if (maxVal) maxVal.textContent = data.max_daily_applications;
+            }
+            if (minSlider && data.min_match_score) {
+                minSlider.value = Math.round(data.min_match_score * 100);
+                if (minVal) minVal.textContent = Math.round(data.min_match_score * 100);
+            }
+        }
+
+    } catch (error) {
+        console.log('Could not load automation status:', error.message);
+    }
+}
+
+async function saveAutomationSettings() {
+    const maxApps = parseInt(document.getElementById('maxAppsSlider').value);
+    const minScore = parseInt(document.getElementById('minScoreSlider').value) / 100;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auto-apply/enable`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                max_daily_applications: maxApps,
+                min_match_score: minScore
+            })
+        });
+
+        if (response.ok) {
+            CVision.Utils.showAlert('Automation Enabled! System is now working.', 'success');
+            automationEnabled = true;
+            updateAutomationUI();
+
+            // Scroll to top to see alert
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            const error = await response.json();
+            CVision.Utils.showAlert('Error: ' + (error.detail || 'Failed to enable'), 'error');
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        CVision.Utils.showAlert('Error saving settings', 'error');
+    }
+}
+
+async function disableAutomation() {
+    try {
+        await fetch(`${API_BASE_URL}/api/v1/auto-apply/disable`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+
+        automationEnabled = false;
+        updateAutomationUI();
+        CVision.Utils.showAlert('Automation disabled', 'info');
+    } catch (error) {
+        console.error('Error disabling automation:', error);
+    }
+}
+
+function updateSliderValue(type, value) {
+    if (type === 'maxApps') {
+        const el = document.getElementById('maxAppsValue');
+        if (el) el.textContent = value;
+    } else if (type === 'minScore') {
+        const el = document.getElementById('minScoreValue');
+        if (el) el.textContent = value;
+    }
+}
+
+// Premium Modal Functions
+function showPremiumModal() {
+    const modal = document.getElementById('premiumModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.style.pointerEvents = 'auto';
+    }
+}
+
+function closePremiumModal() {
+    const modal = document.getElementById('premiumModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.style.pointerEvents = 'none';
+    }
+}
+
+function upgradeNow() {
+    window.location.href = 'pages/subscription.html';
 }
 
 async function connectGmail() {
