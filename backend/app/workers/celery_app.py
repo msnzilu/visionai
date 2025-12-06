@@ -13,7 +13,11 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
     include=[
         'app.workers.job_scraper',
-        'app.workers.email_sender'
+        'app.workers.email_sender',
+        'app.workers.email_monitor',
+        'app.workers.notification_scheduler',
+        'app.workers.email_campaigns',
+        'app.workers.auto_apply'
     ]
 )
 
@@ -49,6 +53,39 @@ celery_app.conf.beat_schedule = {
     'clean-expired-cache': {
         'task': 'app.workers.job_scraper.clean_cache_task',
         'schedule': crontab(hour=3, minute=0),
+        'args': ()
+    },
+    # Email monitoring tasks
+    'scan-all-inboxes': {
+        'task': 'app.workers.email_monitor.scan_all_inboxes',
+        'schedule': crontab(minute='*/30'),  # Every 30 minutes
+        'args': ()
+    },
+    'scan-recent-applications': {
+        'task': 'app.workers.email_monitor.scan_recent_applications',
+        'schedule': crontab(minute='*/15'),  # Every 15 minutes
+        'args': ()
+    },
+    'retry-failed-emails': {
+        'task': 'app.workers.email_sender.retry_failed_emails',
+        'schedule': crontab(hour=3, minute=30),  # Daily at 3:30 AM
+        'args': ()
+    },
+    # Email campaign tasks (Customer Journey Automation)
+    'send-daily-job-digest': {
+        'task': 'app.workers.email_campaigns.send_daily_job_digest',
+        'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
+        'args': ()
+    },
+    'send-weekly-summary': {
+        'task': 'app.workers.email_campaigns.send_weekly_summary',
+        'schedule': crontab(day_of_week=1, hour=10, minute=0),  # Monday 10 AM
+        'args': ()
+    },
+    # Full automation - Auto-apply to matching jobs
+    'auto-apply-to-jobs': {
+        'task': 'app.workers.auto_apply.auto_apply_to_matching_jobs',
+        'schedule': crontab(hour='*/6'),  # Every 6 hours
         'args': ()
     },
 }

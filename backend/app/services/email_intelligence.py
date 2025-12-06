@@ -94,8 +94,16 @@ class EmailIntelligenceService:
                 }
                 
                 if new_status and new_status != app.get("status"):
+                    old_status = app.get("status", "unknown")
                     update_data["status"] = new_status
-                    # TODO: Add notification here
+                    
+                    # Trigger status notification email
+                    from app.workers.email_campaigns import send_status_notification
+                    send_status_notification.delay(
+                        str(app["_id"]),
+                        old_status,
+                        new_status
+                    )
                 
                 await collection.update_one(
                     {"_id": app["_id"]},
