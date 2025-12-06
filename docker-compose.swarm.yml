@@ -168,7 +168,7 @@ services:
       - FRONTEND_URL=https://visionsai.store
     volumes:
       - logs:/app/logs
-      - celery-beat:/app/celerybeat-schedule
+      - celery-beat:/app/celerybeat
     deploy:
       replicas: 1
       restart_policy:
