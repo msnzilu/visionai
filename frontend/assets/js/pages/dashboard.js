@@ -191,26 +191,6 @@ async function loadUserProfile() {
     }
 }
 
-
-// async function loadUserProfile() {
-//     try {
-//         const response = await CVision.API.getProfile();
-//         if (response.success) {
-//             const user = response.data.user;
-//             document.getElementById('userTier').textContent = 
-//                 `${user.subscription_tier.charAt(0).toUpperCase() + user.subscription_tier.slice(1)}`;
-
-
-//             if (user.usage_stats) {
-//                 document.getElementById('searchesUsed').textContent = user.usage_stats.monthly_searches || 0;
-//                 document.getElementById('applicationsCount').textContent = user.usage_stats.total_applications || 0;
-//             }
-//         }
-//     } catch (error) {
-//         console.error('Error loading user profile:', error);
-//     }
-// }
-
 async function loadDocuments() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/documents/`, {
@@ -354,6 +334,10 @@ function upgradeAccount() {
 
 function viewProfile() {
     window.location.href = 'pages/profile.html';
+}
+
+function viewCVAnalysis() {
+    window.location.href = 'pages/cv-analysis.html';
 }
 
 function logout() {
