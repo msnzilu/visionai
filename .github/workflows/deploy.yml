@@ -152,8 +152,20 @@ jobs:
             create_secret "GOOGLE_CLIENT_ID" "${GOOGLE_CLIENT_ID}"
             create_secret "GOOGLE_CLIENT_SECRET" "${GOOGLE_CLIENT_SECRET}"
             
-            # Prune previous images to free space
+            # Check disk space before cleanup
+            echo "=== Disk Space Before Cleanup ==="
+            df -h
+            docker system df
+
+            # Aggressive cleanup
+            echo "Cleaning up..."
             docker system prune -af --volumes
+            sudo apt-get clean
+            sudo rm -rf /var/lib/apt/lists/*
+            
+            # Check disk space after cleanup
+            echo "=== Disk Space After Cleanup ==="
+            df -h
 
             # Set environment variables for stack deploy
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
@@ -197,7 +209,10 @@ jobs:
             
             # Check service logs for errors
             echo "=== Recent Backend Logs ==="
-            docker service logs --tail 20 visionai_backend
+            docker service logs --tail 50 visionai_backend
+            
+            echo "=== Recent Traefik Logs ==="
+            docker service logs --tail 50 visionai_traefik
             
             # Verify health endpoints
             echo "=== Health Check ==="
