@@ -127,7 +127,7 @@ jobs:
           cat <<EOF > .env.secrets
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           STRIPE_SECRET_KEY=${{ secrets.STRIPE_API_KEY }}
-          JWT_SECRET_KEY=${{ secrets.JWT_SECRET }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           ECR_PASSWORD=${{ steps.ecr-login.outputs.ECR_PASSWORD }}
@@ -166,25 +166,19 @@ jobs:
 
             # Create secrets from env vars
             create_secret "OPENAI_API_KEY" "${OPENAI_API_KEY}"
-           create_secret "STRIPE_SECRET_KEY" "${STRIPE_SECRET_KEY}"
-            create_secret "JWT_SECRET_KEY" "${JWT_SECRET}"
+            create_secret "STRIPE_SECRET_KEY" "${STRIPE_SECRET_KEY}"
+            create_secret "JWT_SECRET_KEY" "${JWT_SECRET_KEY}"
             create_secret "GOOGLE_CLIENT_ID" "${GOOGLE_CLIENT_ID}"
             create_secret "GOOGLE_CLIENT_SECRET" "${GOOGLE_CLIENT_SECRET}"
             
-            # Check disk space before cleanup
-            echo "=== Disk Space Before Cleanup ==="
+            # Check disk space before deploy
+            echo "=== Disk Space ==="
             df -h
             docker system df
 
-            # Aggressive cleanup
-            echo "Cleaning up..."
-            docker system prune -af --volumes
-            sudo apt-get clean
-            sudo rm -rf /var/lib/apt/lists/*
-            
-            # Check disk space after cleanup
-            echo "=== Disk Space After Cleanup ==="
-            df -h
+            # Verify secrets exist
+            echo "=== Secrets Verification ==="
+            docker secret ls
 
             # Set environment variables for stack deploy
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
