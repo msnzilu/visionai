@@ -152,6 +152,9 @@ jobs:
             create_secret "GOOGLE_CLIENT_ID" "${GOOGLE_CLIENT_ID}"
             create_secret "GOOGLE_CLIENT_SECRET" "${GOOGLE_CLIENT_SECRET}"
             
+            # Prune previous images to free space
+            docker system prune -af --volumes
+
             # Set environment variables for stack deploy
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
             export IMAGE_TAG=${{ steps.set-tag.outputs.IMAGE_TAG }}
