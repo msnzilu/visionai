@@ -122,7 +122,22 @@ function loadProfessionalSummary(cvData) {
         'No professional summary available. Upload your CV to get AI-generated insights.';
 
     // Split into sentences (handle multiple sentence endings)
-    const sentences = summary.match(/[^.!?]+[.!?]+/g) || [summary];
+    let sentences = summary.match(/[^.!?]+[.!?]+/g);
+
+    // Fallback: if no proper sentences detected, split by character chunks
+    if (!sentences || sentences.length <= 1) {
+        const words = summary.split(' ');
+        sentences = [];
+        let chunk = '';
+        for (const word of words) {
+            chunk += word + ' ';
+            if (chunk.length >= 150) {
+                sentences.push(chunk.trim());
+                chunk = '';
+            }
+        }
+        if (chunk.trim()) sentences.push(chunk.trim());
+    }
 
     const maxInitialSentences = 5;
     const hasMore = sentences.length > maxInitialSentences;
