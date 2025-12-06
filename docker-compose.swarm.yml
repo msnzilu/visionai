@@ -177,8 +177,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     secrets:
-      - openai_api_key
-      - stripe_api_key
+      - OPENAI_API_KEY
+      - STRIPE_SECRET_KEY
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs
