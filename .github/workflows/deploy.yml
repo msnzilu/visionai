@@ -166,7 +166,7 @@ jobs:
 
             # Create secrets from env vars
             create_secret "OPENAI_API_KEY" "${OPENAI_API_KEY}"
-            create_secret "STRIPE_SECRET_KEY" "${STRIPE_API_KEY}"
+           create_secret "STRIPE_SECRET_KEY" "${STRIPE_SECRET_KEY}"
             create_secret "JWT_SECRET_KEY" "${JWT_SECRET}"
             create_secret "GOOGLE_CLIENT_ID" "${GOOGLE_CLIENT_ID}"
             create_secret "GOOGLE_CLIENT_SECRET" "${GOOGLE_CLIENT_SECRET}"
