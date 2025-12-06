@@ -112,7 +112,8 @@ jobs:
           if [ "${{ github.ref }}" == "refs/heads/production" ]; then
             echo "IMAGE_TAG=production" >> $GITHUB_OUTPUT
           else
-            echo "IMAGE_TAG=main-${{ github.sha }}" >> $GITHUB_OUTPUT
+            # Use short SHA (7 chars) to match docker/metadata-action defaults
+            echo "IMAGE_TAG=main-$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
           fi
 
       - name: Get ECR Login Password
