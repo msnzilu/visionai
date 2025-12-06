@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Single Node Deployment Script
-# Deploys Vision.AI to webtestingdomain.online (13.51.158.58)
+# Deploys Vision.AI to visionsai.store (13.51.158.58)
 
 set -e
 

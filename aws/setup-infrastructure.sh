@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 PROJECT_NAME="visionai"
-DOMAIN="webtestingdomain.online"
+DOMAIN="visionsai.store"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 VPC_CIDR="10.0.0.0/16"
 KEY_NAME="${PROJECT_NAME}-swarm-key"

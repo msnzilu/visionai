@@ -228,7 +228,7 @@ jobs:
             # Verify health endpoints (external)
             echo "=== External Health Check ==="
             sleep 10
-            curl -f --connect-timeout 10 https://webtestingdomain.online/api/v1/health || exit 1
+            curl -f --connect-timeout 10 https://visionsai.store/api/v1/health || exit 1
             
             echo "All services are healthy!"
           EOF
@@ -265,7 +265,7 @@ jobs:
       - name: Send notification
         run: |
           if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ Deployment to webtestingdomain.online successful!"
+            echo "✅ Deployment to visionsai.store successful!"
           else
             echo "❌ Deployment failed!"
           fi

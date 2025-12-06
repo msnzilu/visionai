@@ -21,7 +21,7 @@ services:
           memory: 32M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.frontend.rule=Host(`webtestingdomain.online`)"
+        - "traefik.http.routers.frontend.rule=Host(`visionsai.store`)"
         - "traefik.http.services.frontend.loadbalancer.server.port=80"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
@@ -66,7 +66,7 @@ services:
           memory: 128M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.backend.rule=Host(`webtestingdomain.online`) && PathPrefix(`/api`)"
+        - "traefik.http.routers.backend.rule=Host(`visionsai.store`) && PathPrefix(`/api`)"
         - "traefik.http.services.backend.loadbalancer.server.port=8000"
     depends_on:
       - mongodb
@@ -201,7 +201,7 @@ services:
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=admin@webtestingdomain.online"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@visionsai.store"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
@@ -221,7 +221,7 @@ services:
           memory: 32M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.traefik.rule=Host(`webtestingdomain.online`) && PathPrefix(`/traefik`)"
+        - "traefik.http.routers.traefik.rule=Host(`visionsai.store`) && PathPrefix(`/traefik`)"
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.routers.traefik.middlewares=auth"
 
