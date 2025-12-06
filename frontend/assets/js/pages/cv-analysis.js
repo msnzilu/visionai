@@ -140,18 +140,18 @@ function loadProfessionalSummary(cvData) {
     }
 
     const maxInitialSentences = 5;
-    const hasMore = sentences.length > maxInitialSentences;
+    const hasMore = summary.length > 200;
 
     if (hasMore) {
-        const initialText = sentences.slice(0, maxInitialSentences).join(' ');
-        const remainingText = sentences.slice(maxInitialSentences).join(' ');
+        const initialText = summary.substring(0, 200).trim() + '...';;
+        const remainingText = summary.substring(200).trim();
 
         const html = `
             <p id="summaryInitial" style="color: #4b5563; line-height: 1.8;">${initialText}</p>
             <p id="summaryMore" style="color: #4b5563; line-height: 1.8; display: none; margin-top: 0.5rem;">${remainingText}</p>
-            <button onclick="toggleSummary()" id="summaryToggleBtn" class="btn-upload" style="margin-top: 1rem; padding: 0.5rem 1rem; font-size: 0.875rem;">
-                Show More
-            </button>
+            <div onclick="toggleSummary()" id="summaryToggleBtn" style="color: #667eea; cursor: pointer; margin-top: 0.75rem; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                <span>Show More</span> <span id="summaryArrow">▼</span>
+            </div>
         `;
         document.getElementById('professionalSummary').innerHTML = html;
     } else {
@@ -214,9 +214,9 @@ function loadSkills(cvData) {
                     <div class="skill-badge">${skill}</div>
                 `).join('')}
             </div>
-            <button onclick="toggleSkills()" id="skillsToggleBtn" class="btn-upload" style="margin-top: 1rem;">
-                Show ${remainingSkills.length} More Skills
-            </button>
+            <div onclick="toggleSkills()" id="skillsToggleBtn" style="color: #667eea; cursor: pointer; margin-top: 0.75rem; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                <span>Show ${remainingSkills.length} More Skills</span> <span id="skillsArrow">▼</span>
+            </div>
         ` : ''}
     `;
     document.getElementById('skillsSection').innerHTML = html;
@@ -253,15 +253,36 @@ function loadExperience(cvData) {
     const initialExp = hasMore ? experience.slice(0, maxInitialExp) : experience;
     const remainingExp = hasMore ? experience.slice(maxInitialExp) : [];
 
-    const renderExperience = (exp) => {
+    const renderExperience = (exp, index) => {
         // Get description from achievements array or description field
-        let description = '';
+        let fullDescription = '';
         if (exp.achievements && Array.isArray(exp.achievements) && exp.achievements.length > 0) {
-            description = '<ul style="margin: 0.5rem 0; padding-left: 1.5rem;">' +
+            fullDescription = '<ul style="margin: 0.5rem 0; padding-left: 1.5rem;">' +
                 exp.achievements.map(achievement => `<li>${achievement}</li>`).join('') +
                 '</ul>';
         } else {
-            description = exp.description || '';
+            fullDescription = exp.description || '';
+        }
+
+        // Truncate description to 200 characters
+        const maxChars = 200;
+        const hasMoreDesc = fullDescription.length > maxChars;
+
+        let descriptionHtml = '';
+        if (hasMoreDesc) {
+            const shortDesc = fullDescription.substring(0, maxChars).trim() + '...';
+            const remainingDesc = fullDescription.substring(maxChars).trim();
+            descriptionHtml = `
+                <div class="experience-description">
+                    <span id="expDesc${index}">${shortDesc}</span>
+                    <span id="expDescMore${index}" style="display: none;">${remainingDesc}</span>
+                    <div onclick="toggleExpDesc(${index})" id="expDescBtn${index}" style="color: #667eea; cursor: pointer; margin-top: 0.5rem; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                        <span>Show More</span> <span id="expDescArrow${index}">▼</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            descriptionHtml = `<div class="experience-description">${fullDescription}</div>`;
         }
 
         return `
@@ -272,26 +293,40 @@ function loadExperience(cvData) {
                     ${exp.start_date || 'Start'} - ${exp.end_date || 'Present'}
                     ${exp.duration ? `(${exp.duration})` : ''}
                 </div>
-                <div class="experience-description">${description}</div>
+                ${descriptionHtml}
             </div>
         `;
     };
 
     const html = `
         <div id="experienceInitial">
-            ${initialExp.map(renderExperience).join('')}
+            ${initialExp.map((exp, idx) => renderExperience(exp, idx)).join('')}
         </div>
         ${hasMore ? `
             <div id="experienceMore" style="display: none;">
-                ${remainingExp.map(renderExperience).join('')}
+                ${remainingExp.map((exp, idx) => renderExperience(exp, initialExp.length + idx)).join('')}
             </div>
-            <button onclick="toggleExperience()" id="experienceToggleBtn" class="btn-upload" style="margin-top: 1rem;">
-                Show ${remainingExp.length} More ${remainingExp.length === 1 ? 'Role' : 'Roles'}
-            </button>
+            <div onclick="toggleExperience()" id="experienceToggleBtn" style="color: #667eea; cursor: pointer; margin-top: 0.75rem; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                <span>Show ${remainingExp.length} More ${remainingExp.length === 1 ? 'Role' : 'Roles'}</span> <span id="experienceArrow">▼</span>
+            </div>
         ` : ''}
     `;
 
     document.getElementById('experienceSection').innerHTML = html;
+}
+
+// Toggle individual experience description
+function toggleExpDesc(index) {
+    const moreSection = document.getElementById(`expDescMore${index}`);
+    const btn = document.getElementById(`expDescBtn${index}`);
+
+    if (moreSection.style.display === 'none') {
+        moreSection.style.display = 'inline';
+        btn.textContent = 'Show Less';
+    } else {
+        moreSection.style.display = 'none';
+        btn.textContent = 'Show More';
+    }
 }
 
 // Toggle experience visibility
@@ -355,9 +390,9 @@ async function loadRecommendedRoles(cvData) {
             <div id="rolesMore" style="display: none;">
                 ${remainingRoles.map(renderRole).join('')}
             </div>
-            <button onclick="toggleRoles()" id="rolesToggleBtn" class="btn-upload" style="margin-top: 1rem;">
-                Show ${remainingRoles.length} More ${remainingRoles.length === 1 ? 'Role' : 'Roles'}
-            </button>
+            <div onclick="toggleRoles()" id="rolesToggleBtn" style="color: #667eea; cursor: pointer; margin-top: 0.75rem; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                <span>Show ${remainingRoles.length} More ${remainingRoles.length === 1 ? 'Role' : 'Roles'}</span> <span id="rolesArrow">▼</span>
+            </div>
         ` : ''}
     `;
 
