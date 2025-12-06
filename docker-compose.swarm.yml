@@ -1,0 +1,288 @@
+version: '3.8'
+
+services:
+  # Frontend Service
+  frontend:
+    image: ${ECR_REGISTRY}/visionai:frontend-${IMAGE_TAG:-latest}
+    networks:
+      - app-network
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        reservations:
+          memory: 32M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.frontend.rule=Host(`webtestingdomain.online`)"
+        - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 45s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Backend API Service
+  backend:
+    image: ${ECR_REGISTRY}/visionai:backend-${IMAGE_TAG:-latest}
+    networks:
+      - app-network
+    environment:
+      - DEBUG=false
+      - MONGODB_URL=mongodb://mongodb:27017
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_NAME=job_platform
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    secrets:
+      - OPENAI_API_KEY
+      - STRIPE_SECRET_KEY
+      - JWT_SECRET_KEY
+      - GOOGLE_CLIENT_ID
+      - GOOGLE_CLIENT_SECRET
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        reservations:
+          memory: 128M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.backend.rule=Host(`webtestingdomain.online`) && PathPrefix(`/api`)"
+        - "traefik.http.services.backend.loadbalancer.server.port=8000"
+    depends_on:
+      - mongodb
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 120s
+
+  # Browser Automation Service
+  automation:
+    image: ${ECR_REGISTRY}/visionai:automation-${IMAGE_TAG:-latest}
+    networks:
+      - app-network
+    environment:
+      - NODE_ENV=production
+      - HEADLESS=true
+      - BACKEND_URL=http://backend:8000
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        reservations:
+          memory: 256M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.automation.rule=Host(`webtestingdomain.online`) && PathPrefix(`/automation`)"
+        - "traefik.http.services.automation.loadbalancer.server.port=3001"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 120s
+
+  # MongoDB Service (Local)
+  mongodb:
+    image: mongo:7.0
+    networks:
+      - app-network
+    volumes:
+      - mongodb_data:/data/db
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 512M # Prevent it from eating all swap
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis Service (Local)
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    networks:
+      - app-network
+    volumes:
+      - redis_data:/data
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        reservations:
+          memory: 32M
+        limits:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Celery Worker
+  celery-worker:
+    image: ${ECR_REGISTRY}/visionai:backend-${IMAGE_TAG:-latest}
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1
+    networks:
+      - app-network
+    environment:
+      - DEBUG=false
+      - MONGODB_URL=mongodb://mongodb:27017
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    secrets:
+      - openai_api_key
+      - stripe_api_key
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      resources:
+        reservations:
+          memory: 128M
+    depends_on:
+      - mongodb
+      - redis
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 90s
+
+  # Celery Beat
+  celery-beat:
+    image: ${ECR_REGISTRY}/visionai:backend-${IMAGE_TAG:-latest}
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    networks:
+      - app-network
+    environment:
+      - DEBUG=false
+      - MONGODB_URL=mongodb://mongodb:27017
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - logs:/app/logs
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          memory: 32M
+    depends_on:
+      - mongodb
+      - redis
+
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker.swarmMode=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@webtestingdomain.online"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - app-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certificates:/letsencrypt
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        reservations:
+          memory: 32M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik.rule=Host(`webtestingdomain.online`) && PathPrefix(`/traefik`)"
+        - "traefik.http.routers.traefik.service=api@internal"
+        - "traefik.http.routers.traefik.middlewares=auth"
+
+networks:
+  app-network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  uploads:
+    driver: local
+  logs:
+    driver: local
+  traefik-certificates:
+    driver: local
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+secrets:
+  OPENAI_API_KEY:
+    external: true
+  STRIPE_SECRET_KEY:
+    external: true
+  JWT_SECRET_KEY:
+    external: true
+  GOOGLE_CLIENT_ID:
+    external: true
+  GOOGLE_CLIENT_SECRET:
+    external: true

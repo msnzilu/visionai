@@ -178,6 +178,8 @@ class Settings(BaseSettings):
     
     class Config:
         # env_file removed - Docker loads .env via docker-compose.yml
+        env_file_encoding = 'utf-8'
+        secrets_dir = "/run/secrets"
         case_sensitive = True
         extra = "ignore"
         populate_by_name = True  # Allow using alias names
