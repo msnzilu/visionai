@@ -367,7 +367,7 @@ async function loadRecommendedRoles(cvData) {
             role.match >= 60 ? 'match-medium' : 'match-low';
 
         return `
-            <div class="role-card" onclick="searchRole('${role.title}')">
+            <div class="role-card">
                 <div class="role-header">
                     <div class="role-title">${role.title}</div>
                     <div class="match-badge ${matchClass}">${role.match}% Match</div>
@@ -377,6 +377,14 @@ async function loadRecommendedRoles(cvData) {
                     ${role.requirements.map(req => `
                         <span class="requirement-tag ${req.matched ? 'matched' : ''}">${req.skill}</span>
                     `).join('')}
+                </div>
+                <div style="display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap;">
+                    <button onclick="event.stopPropagation(); searchRole('${role.title.replace(/'/g, "\\'")}');" style="flex: 1; min-width: 120px; padding: 0.625rem 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        Search Jobs
+                    </button>
                 </div>
             </div>
         `;
@@ -530,9 +538,95 @@ function updateStats(cvData) {
     document.getElementById('statsBar').style.display = 'flex';
 }
 
-// Search for role
+// Search for role with filters
 function searchRole(roleTitle) {
-    window.location.href = `/pages/jobs.html?search=${encodeURIComponent(roleTitle)}`;
+    // Build URL with search query
+    let url = `/pages/jobs.html?search=${encodeURIComponent(roleTitle)}`;
+
+    // Add common filters based on role type
+    // Most tech roles prefer full-time and remote/hybrid options
+    const techRoles = ['Software Engineer', 'Developer', 'Data Scientist', 'DevOps Engineer'];
+    const isTechRole = techRoles.some(role => roleTitle.includes(role));
+
+    if (isTechRole) {
+        // Add employment type filter (full_time)
+        url += '&employment_type=full_time';
+        // Add work arrangement filter (remote, hybrid)
+        url += '&work_arrangement=remote,hybrid';
+    }
+
+    // Product Manager and Designer roles
+    if (roleTitle.includes('Product Manager') || roleTitle.includes('Designer')) {
+        url += '&employment_type=full_time';
+        url += '&work_arrangement=remote,hybrid,on_site';
+    }
+
+    window.location.href = url;
+}
+
+
+// Handle CV upload from centralized button
+async function handleCVUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+        alert('Please upload a PDF or Word document (.pdf, .doc, .docx)');
+        return;
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB');
+        return;
+    }
+
+    try {
+        // Show loading state
+        const uploadBtn = event.target.previousElementSibling;
+        const originalText = uploadBtn.innerHTML;
+        uploadBtn.innerHTML = '<span>⏳</span> Uploading...';
+        uploadBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+
+        const data = await response.json();
+
+        // Show success message
+        uploadBtn.innerHTML = '<span>✅</span> Upload Successful!';
+
+        // Reload page after 1 second to show new CV data
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+
+    } catch (error) {
+        console.error('Error uploading CV:', error);
+        alert('Failed to upload CV. Please try again.');
+
+        // Reset button
+        const uploadBtn = event.target.previousElementSibling;
+        uploadBtn.innerHTML = '<span>📤</span> Upload New CV';
+        uploadBtn.disabled = false;
+    }
+
+    // Reset file input
+    event.target.value = '';
 }
 
 // Show empty state

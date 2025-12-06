@@ -14,32 +14,26 @@ const CVisionNavbar = (function () {
 
     // Initialize navbar
     async function init(pageTitle = '') {
-        console.log('CVisionNavbar.init() called, isInitialized:', isInitialized);
 
         // Check if navbar HTML elements exist
         const navbarExists = document.getElementById('notificationBtn') !== null;
-        console.log('CVisionNavbar: navbar HTML exists:', navbarExists);
 
         if (!navbarExists) {
-            console.log('CVisionNavbar: Navbar HTML not loaded yet, skipping initialization');
             return;
         }
 
         // Prevent duplicate initialization
         if (isInitialized) {
-            console.log('CVisionNavbar: Already initialized, skipping');
             return;
         }
 
         // Check if token exists
         const token = getToken();
         if (!token) {
-            console.log('CVisionNavbar: No token found');
             showLoggedOutState();
             return;
         }
 
-        console.log('CVisionNavbar: Initializing navbar...');
         setupEventListeners();
         await loadUserInfo();
         await loadNotifications();
@@ -47,7 +41,6 @@ const CVisionNavbar = (function () {
         setActiveLink();
 
         isInitialized = true;
-        console.log('CVisionNavbar: Initialization complete');
     }
 
     // Show logged out state
@@ -75,39 +68,30 @@ const CVisionNavbar = (function () {
 
     // Setup all event listeners
     function setupEventListeners() {
-        console.log('CVisionNavbar: Setting up event listeners');
         const notificationBtn = document.getElementById('notificationBtn');
         const notificationDropdown = document.getElementById('notificationDropdown');
-        console.log('CVisionNavbar: notificationBtn found:', !!notificationBtn);
-        console.log('CVisionNavbar: notificationDropdown found:', !!notificationDropdown);
 
         if (notificationBtn) {
             notificationBtn.addEventListener('click', (e) => {
-                console.log('CVisionNavbar: Notification button clicked!');
                 e.stopPropagation();
                 notificationDropdown?.classList.toggle('show');
                 document.getElementById('userDropdown')?.classList.remove('show');
                 document.getElementById('mobileMenu')?.classList.remove('show');
             });
-            console.log('CVisionNavbar: Notification click listener attached');
         } else {
             console.warn('CVisionNavbar: notificationBtn element not found!');
         }
 
         const userMenuBtn = document.getElementById('userMenuBtn');
         const userDropdown = document.getElementById('userDropdown');
-        console.log('CVisionNavbar: userMenuBtn found:', !!userMenuBtn);
-        console.log('CVisionNavbar: userDropdown found:', !!userDropdown);
 
         if (userMenuBtn) {
             userMenuBtn.addEventListener('click', (e) => {
-                console.log('CVisionNavbar: User menu button clicked!');
                 e.stopPropagation();
                 userDropdown?.classList.toggle('show');
                 notificationDropdown?.classList.remove('show');
                 document.getElementById('mobileMenu')?.classList.remove('show');
             });
-            console.log('CVisionNavbar: User menu click listener attached');
         } else {
             console.warn('CVisionNavbar: userMenuBtn element not found!');
         }
@@ -458,10 +442,8 @@ const CVisionNavbar = (function () {
 function autoInit() {
     const navbarExists = document.getElementById('notificationBtn') !== null;
     if (navbarExists) {
-        console.log('Auto-init: Navbar HTML found, initializing...');
         CVisionNavbar.init();
     } else {
-        console.log('Auto-init: Navbar HTML not found yet, will retry...');
         // Retry after a short delay
         setTimeout(autoInit, 100);
     }

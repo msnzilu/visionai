@@ -1,411 +1,109 @@
-// frontend/assets/js/quick-apply.js
 /**
- * Quick Apply Form - Email Agent Integration
- * Handles form prefilling, validation, and submission via email
+ * Reusable Quick Apply Module
+ * Shared between jobs.js and cv-analysis.js
  */
 
-class QuickApplyManager {
-    constructor() {
-        this.API_BASE_URL = window.location.origin;
-        this.currentJobId = null;
-        this.currentJobData = null;
-        this.isSubmitting = false; // Prevent double submissions
-    }
-
+const QuickApply = {
     /**
-     * Open quick apply form for a job
+     * Search for jobs and apply to the first match
      */
-    async openQuickApplyForm(jobId) {
-        console.log('[QuickApply] ========== OPENING QUICK APPLY FORM ==========');
-        console.log('[QuickApply] Job ID:', jobId);
-
+    async searchAndApply(roleTitle, cvId, coverLetterId = null, onProgress = null) {
         try {
-            this.currentJobId = jobId;
+            // Search for jobs
+            if (onProgress) onProgress('Searching jobs...');
 
-            // Show modal
-            console.log('[QuickApply] Looking for modal element...');
-            const modal = document.getElementById('quickApplyModal');
-            if (!modal) {
-                console.error('[QuickApply] Modal element not found!');
-                throw new Error('Quick apply form not loaded. Please refresh the page.');
-            }
-            console.log('[QuickApply] Modal found, showing...');
-            modal.classList.remove('hidden');
-
-            // Load prefill data
-            console.log('[QuickApply] Loading prefill data...');
-            await this.loadPrefillData(jobId);
-            console.log('[QuickApply] Prefill data loaded successfully');
-
-            // Load user documents
-            console.log('[QuickApply] Loading user documents...');
-            await this.loadUserDocuments();
-            console.log('[QuickApply] User documents loaded successfully');
-
-            console.log('[QuickApply] ========== FORM READY ==========');
-
-        } catch (error) {
-            console.error('[QuickApply] ========== ERROR ==========');
-            console.error('[QuickApply] Error opening quick apply form:', error);
-            console.error('[QuickApply] Error stack:', error.stack);
-            this.showError('Failed to load application form. Please try again.');
-            this.closeQuickApplyForm();
-        }
-    }
-
-    /**
-     * Load and prefill form data from backend
-     */
-    async loadPrefillData(jobId) {
-        console.log('[QuickApply] === loadPrefillData START ===');
-        try {
-            const token = CVision.Utils.getToken();
-            console.log('[QuickApply] Token exists:', !!token);
-
-            if (!token) {
-                throw new Error('Please log in to continue');
-            }
-
-            const url = `${this.API_BASE_URL}/api/v1/browser-automation/quick-apply/prefill?job_id=${jobId}`;
-            console.log('[QuickApply] Fetching from:', url);
-
-            const response = await fetch(url, {
+            const searchResponse = await fetch(`${CONFIG.API_BASE_URL}/api/v1/jobs/search`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CVision.Utils.getToken()}`
+                },
+                body: JSON.stringify({
+                    query: roleTitle,
+                    location: null,
+                    filters: null,
+                    page: 1,
+                    size: 5,
+                    sort_by: 'relevance',
+                    sort_order: 'desc'
+                })
             });
 
-            console.log('[QuickApply] Response status:', response.status, response.statusText);
-
-            if (!response.ok) {
-                const error = await response.json();
-                console.error('[QuickApply] Server error response:', error);
-                throw new Error(error.detail || 'Failed to load form data');
+            if (!searchResponse.ok) {
+                throw new Error('Failed to search for jobs');
             }
 
-            const data = await response.json();
-            this.currentJobData = data;
+            const searchData = await searchResponse.json();
 
-            console.log('[QuickApply] Received prefill data:', data);
-            console.log('[QuickApply] Form data to populate:', data.form_data);
-
-            // Update job title in modal
-            document.getElementById('quickApplyJobTitle').textContent =
-                `${data.job_title} at ${data.company_name}`;
-
-            // Set job ID
-            document.getElementById('quickApplyJobId').value = jobId;
-
-            // Prefill form fields
-            const form = document.getElementById('quickApplyForm');
-            const formData = data.form_data;
-
-            if (!formData) {
-                console.warn('[QuickApply] No form data received from backend');
-                return;
+            if (!searchData.jobs || searchData.jobs.length === 0) {
+                throw new Error(`No jobs found for "${roleTitle}"`);
             }
 
-            console.log('[QuickApply] Populating form fields...');
-            let populatedCount = 0;
-            let skippedCount = 0;
+            const firstJob = searchData.jobs[0];
 
-            Object.keys(formData).forEach(key => {
-                const input = form.querySelector(`[name="${key}"]`);
-                const value = formData[key];
+            // Apply to job
+            if (onProgress) onProgress('Sending application...');
 
-                if (!input) {
-                    console.debug(`[QuickApply] No input found for field: ${key}`);
-                    skippedCount++;
-                    return;
-                }
-
-                // Populate field even if value is empty string (but not null/undefined)
-                if (value !== null && value !== undefined) {
-                    input.value = value;
-                    console.log(`[QuickApply] ✓ Populated ${key}: "${value}"`);
-                    populatedCount++;
-                } else {
-                    console.debug(`[QuickApply] ✗ Skipped ${key}: value is ${value}`);
-                    skippedCount++;
-                }
+            const applyResponse = await fetch(`${CONFIG.API_BASE_URL}/api/v1/email-applications/apply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CVision.Utils.getToken()}`
+                },
+                body: JSON.stringify({
+                    job_id: firstJob._id || firstJob.id,
+                    cv_id: cvId,
+                    cover_letter: coverLetterId || null
+                })
             });
 
-            console.log(`[QuickApply] Form population complete: ${populatedCount} fields populated, ${skippedCount} skipped`);
+            const applyData = await applyResponse.json();
 
-            // Set recipient email if available
-            if (data.recipient_email) {
-                const recipientInput = form.querySelector('[name="recipient_email"]');
-                if (recipientInput) {
-                    recipientInput.value = data.recipient_email;
-                    console.log('[QuickApply] ✓ Set recipient email:', data.recipient_email);
-                } else {
-                    console.warn('[QuickApply] Recipient email input not found');
-                }
-            } else {
-                console.warn('[QuickApply] No recipient email provided');
+            if (!applyResponse.ok) {
+                throw new Error(applyData.detail || 'Failed to submit application');
             }
 
-        } catch (error) {
-            console.error('Error loading prefill data:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Load user's documents for selection
-     */
-    async loadUserDocuments() {
-        try {
-            const token = CVision.Utils.getToken();
-
-            if (!token) {
-                throw new Error('Please log in to continue');
-            }
-
-            const response = await fetch(
-                `${this.API_BASE_URL}/api/v1/documents/`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error('Failed to load documents');
-            }
-
-            const data = await response.json();
-            const documents = data.documents || data || [];
-
-            // Populate CV dropdown
-            const cvSelect = document.querySelector('[name="cv_document_id"]');
-            const clSelect = document.querySelector('[name="cover_letter_document_id"]');
-
-            cvSelect.innerHTML = '<option value="">Select your CV...</option>';
-            clSelect.innerHTML = '<option value="">None</option>';
-
-            documents.forEach(doc => {
-                const option = document.createElement('option');
-                option.value = doc._id || doc.id;
-                option.textContent = doc.filename || doc.original_filename;
-
-                if (doc.document_type === 'cv') {
-                    cvSelect.appendChild(option.cloneNode(true));
-                } else if (doc.document_type === 'cover_letter') {
-                    clSelect.appendChild(option.cloneNode(true));
-                }
-            });
-
-            // Auto-select first CV if available
-            if (cvSelect.options.length > 1) {
-                cvSelect.selectedIndex = 1;
-            }
-
-        } catch (error) {
-            console.error('Error loading documents:', error);
-        }
-    }
-
-    /**
-     * Submit quick apply form
-     */
-    async submitApplication(event) {
-        event.preventDefault();
-
-        console.log('[QuickApply] Submit application called');
-
-        // Prevent double submissions
-        if (this.isSubmitting) {
-            console.log('[QuickApply] Already submitting, ignoring duplicate request');
-            return;
-        }
-
-        try {
-            this.isSubmitting = true; // Lock submissions
-
-            const form = event.target;
-            const submitBtn = document.getElementById('quickApplySubmitBtn');
-            const loading = document.getElementById('quickApplyLoading');
-
-            console.log('[QuickApply] Form:', form);
-            console.log('[QuickApply] Submit button:', submitBtn);
-
-            // Validate form
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                console.log('[QuickApply] Form validation failed');
-                this.isSubmitting = false; // Unlock on validation failure
-                return;
-            }
-
-            // Show loading state
-            submitBtn.disabled = true;
-            loading.classList.remove('hidden');
-
-            console.log('[QuickApply] Collecting form data...');
-
-            // Collect form data
-            const formData = new FormData(form);
-            const submission = {
-                job_id: formData.get('job_id'),
-                recipient_email: formData.get('recipient_email'),
-                cv_document_id: formData.get('cv_document_id'),
-                cover_letter_document_id: formData.get('cover_letter_document_id') || null,
-                additional_message: formData.get('cover_letter') || null,
-                form_data: {
-                    first_name: formData.get('first_name'),
-                    last_name: formData.get('last_name'),
-                    email: formData.get('email'),
-                    phone: formData.get('phone') || null,
-                    address: formData.get('address') || null,
-                    city: formData.get('city') || null,
-                    state: formData.get('state') || null,
-                    postal_code: formData.get('postal_code') || null,
-                    linkedin_url: formData.get('linkedin_url') || null,
-                    portfolio_url: formData.get('portfolio_url') || null,
-                    github_url: formData.get('github_url') || null,
-                    cover_letter: formData.get('cover_letter') || null
-                }
+            return {
+                success: true,
+                job: firstJob,
+                message: `Application sent for ${firstJob.title} at ${firstJob.company_name}!`
             };
 
-            // Submit to backend
-            const token = CVision.Utils.getToken();
-
-            if (!token) {
-                throw new Error('Please log in to continue');
-            }
-
-            const response = await fetch(
-                `${this.API_BASE_URL}/api/v1/browser-automation/quick-apply/submit`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(submission)
-                }
-            );
-
-            // Check for HTTP errors
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('Your session has expired. Please refresh the page and try again.');
-                } else if (response.status === 400) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Invalid application data. Please check your inputs.');
-                } else if (response.status === 409) {
-                    throw new Error('You have already applied to this job.');
-                } else if (response.status === 404) {
-                    throw new Error('Job not found. It may have been removed.');
-                } else {
-                    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-                    throw new Error(error.detail || `Server error (${response.status}). Please try again.`);
-                }
-            }
-
-            const result = await response.json();
-
-            if (result.success) {
-                this.showSuccess('Application sent successfully! Check your Gmail sent folder.');
-                this.closeQuickApplyForm();
-
-                // Redirect to applications page to track the application
-                setTimeout(() => {
-                    window.location.href = '/pages/applications.html';
-                }, 1500);
-            } else {
-                throw new Error(result.error || result.message || 'Failed to send application');
-            }
-
         } catch (error) {
-            console.error('Error submitting application:', error);
-            this.showError(error.message || 'Failed to send application. Please try again.');
-        } finally {
-            const submitBtn = document.getElementById('quickApplySubmitBtn');
-            const loading = document.getElementById('quickApplyLoading');
-            submitBtn.disabled = false;
-            loading.classList.add('hidden');
-            this.isSubmitting = false; // Always unlock after completion
+            return {
+                success: false,
+                error: error.message
+            };
         }
-    }
+    },
 
     /**
-     * Close quick apply form
+     * Load user's CVs and cover letters
      */
-    closeQuickApplyForm() {
-        const modal = document.getElementById('quickApplyModal');
-        modal.classList.add('hidden');
+    async loadDocuments() {
+        try {
+            const [cvResponse, clResponse] = await Promise.all([
+                fetch(`${CONFIG.API_BASE_URL}/api/v1/documents/?document_type=cv`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                }),
+                fetch(`${CONFIG.API_BASE_URL}/api/v1/documents/?document_type=cover_letter`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                })
+            ]);
 
-        // Reset form
-        document.getElementById('quickApplyForm').reset();
-        this.currentJobId = null;
-        this.currentJobData = null;
-    }
+            const cvData = cvResponse.ok ? await cvResponse.json() : { documents: [] };
+            const clData = clResponse.ok ? await clResponse.json() : { documents: [] };
 
-    /**
-     * Show success message
-     */
-    showSuccess(message) {
-        // Use existing notification system if available
-        if (typeof showNotification === 'function') {
-            showNotification(message, 'success');
-        } else {
-            alert(message);
+            return {
+                cvs: cvData.documents || [],
+                coverLetters: clData.documents || []
+            };
+        } catch (error) {
+            console.error('Failed to load documents:', error);
+            return { cvs: [], coverLetters: [] };
         }
     }
+};
 
-    /**
-     * Show error message
-     */
-    showError(message) {
-        // Use existing notification system if available
-        if (typeof showNotification === 'function') {
-            showNotification(message, 'error');
-        } else {
-            alert(message);
-        }
-    }
-}
-
-// Initialize manager
-const quickApplyManager = new QuickApplyManager();
-
-// Global functions for HTML onclick handlers
-function openQuickApplyForm(jobId) {
-    quickApplyManager.openQuickApplyForm(jobId);
-}
-
-function closeQuickApplyForm() {
-    quickApplyManager.closeQuickApplyForm();
-}
-
-// Form submission handler - attach when form is loaded
-function attachFormHandler() {
-    const form = document.getElementById('quickApplyForm');
-    if (form) {
-        console.log('[QuickApply] Attaching form submit handler');
-        form.addEventListener('submit', (e) => {
-            console.log('[QuickApply] Form submit event triggered');
-            quickApplyManager.submitApplication(e);
-        });
-    } else {
-        console.log('[QuickApply] Form not found, will retry...');
-        // Retry after a short delay if form not found
-        setTimeout(attachFormHandler, 100);
-    }
-}
-
-// Try to attach handler on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', attachFormHandler);
-
-// Also try to attach after a delay to handle dynamic loading
-setTimeout(attachFormHandler, 500);
-
-// Export for module usage
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = QuickApplyManager;
-}
+// Make it globally available
+window.QuickApply = QuickApply;

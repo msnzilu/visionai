@@ -19,8 +19,100 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initializeJobSearch();
 
-    // Load existing jobs from database on page load
-    await loadJobsFromDB();
+    // Check for URL parameters to pre-fill search
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQuery = urlParams.get('search');
+    const searchLocation = urlParams.get('location');
+    const employmentType = urlParams.get('employment_type');
+    const workArrangement = urlParams.get('work_arrangement');
+
+    console.log('URL Parameters:', { searchQuery, searchLocation, employmentType, workArrangement });
+
+    if (searchQuery || searchLocation || employmentType || workArrangement) {
+        // Wait for DOM to be fully ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Pre-fill search fields from URL parameters
+        if (searchQuery) {
+            const searchInput = document.getElementById('searchQuery');
+            if (searchInput) {
+                searchInput.value = searchQuery;
+                console.log('Set search query to:', searchQuery);
+            } else {
+                console.error('Search query input not found');
+            }
+        }
+
+        if (searchLocation) {
+            const locationInput = document.getElementById('searchLocation');
+            if (locationInput) {
+                locationInput.value = searchLocation;
+                console.log('Set location to:', searchLocation);
+            }
+        }
+
+        // Pre-fill filter checkboxes
+        if (employmentType) {
+            const types = employmentType.split(',');
+            types.forEach(type => {
+                const checkbox = document.querySelector(`.employment-type[value="${type}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    console.log('Checked employment type:', type);
+                } else {
+                    console.warn('Employment type checkbox not found:', type);
+                }
+            });
+        }
+
+        if (workArrangement) {
+            const arrangements = workArrangement.split(',');
+            arrangements.forEach(arrangement => {
+                const checkbox = document.querySelector(`.work-arrangement[value="${arrangement}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    console.log('Checked work arrangement:', arrangement);
+                } else {
+                    console.warn('Work arrangement checkbox not found:', arrangement);
+                }
+            });
+        }
+
+        // Automatically trigger search
+        console.log('Triggering automatic search...');
+        setTimeout(async () => {
+            await performSearch();
+        }, 500);
+    } else {
+        // Load existing jobs from database on page load
+        await loadJobsFromDB();
+    }
+
+    // Check if quick apply was triggered from CV Analysis page (legacy support)
+    const quickApplyRole = sessionStorage.getItem('quickApplyRole');
+    if (quickApplyRole) {
+        // Clear the sessionStorage
+        sessionStorage.removeItem('quickApplyRole');
+
+        // Pre-fill search with role title
+        document.getElementById('searchQuery').value = quickApplyRole;
+
+        // Wait a moment for page to be ready, then trigger quick apply
+        setTimeout(async () => {
+            // Perform search first to find jobs matching the role
+            await performSearch();
+
+            // Wait for search results, then open quick apply modal if jobs found
+            setTimeout(() => {
+                if (currentJobs.length > 0) {
+                    // Open quick apply modal for the first matching job
+                    applyToJob(currentJobs[0]._id || currentJobs[0].id);
+                } else {
+                    CVision.Utils.showAlert(`No jobs found for "${quickApplyRole}". Try searching manually.`, 'info');
+                }
+            }, 1000);
+        }, 500);
+    }
 });
 
 function initializeJobSearch() {
@@ -329,10 +421,10 @@ function createJobCard(job) {
             <div class="flex justify-between items-start">
                 <div class="flex-1 cursor-pointer" onclick="showJobDetails('${job._id || job.id}')">
                     <h3 class="text-lg font-semibold text-gray-900 hover:text-primary-600">
-                        ${job.title}
+                        ${decodeHtmlEntities(job.title)}
                     </h3>
-                    <p class="text-gray-600 mt-1">${job.company_name}</p>
-                    <p class="text-gray-500 text-sm mt-1">${job.location}</p>
+                    <p class="text-gray-600 mt-1">${decodeHtmlEntities(job.company_name)}</p>
+                    <p class="text-gray-500 text-sm mt-1">${decodeHtmlEntities(job.location)}</p>
                 </div>
                 <button class="save-job-btn text-gray-400 hover:text-primary-600" onclick="event.stopPropagation(); saveJob('${job._id || job.id}')">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -346,12 +438,14 @@ function createJobCard(job) {
                 ${job.work_arrangement ? `<span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">${formatEnumValue(job.work_arrangement)}</span>` : ''}
             </div>
 
-            <p class="text-gray-600 mt-4 line-clamp-2">${job.description || 'No description available'}</p>
+
+            <p class="text-gray-600 mt-4 line-clamp-2">${job.description ? decodeHtmlEntities(job.description) : 'No description available'}</p>
+
 
             ${job.skills_required && job.skills_required.length > 0 ? `
                 <div class="mt-4 flex flex-wrap gap-2">
                     ${job.skills_required.slice(0, 5).map(skill =>
-        `<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">${skill}</span>`
+        `<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">${decodeHtmlEntities(skill)}</span>`
     ).join('')}
                     ${job.skills_required.length > 5 ? `
                         <span class="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs">+${job.skills_required.length - 5} more</span>
@@ -399,9 +493,9 @@ function showJobDetails(jobId) {
     const job = currentJobs.find(j => (j._id || j.id) === jobId);
     if (!job) return;
 
-    document.getElementById('modalTitle').textContent = job.title;
-    document.getElementById('modalCompany').textContent = job.company_name;
-    document.getElementById('modalLocation').textContent = job.location;
+    document.getElementById('modalTitle').textContent = decodeHtmlEntities(job.title);
+    document.getElementById('modalCompany').textContent = decodeHtmlEntities(job.company_name);
+    document.getElementById('modalLocation').textContent = decodeHtmlEntities(job.location);
 
     const content = document.getElementById('modalContent');
     content.innerHTML = `
@@ -425,14 +519,15 @@ function showJobDetails(jobId) {
 
         <div class="mt-4">
             <h4 class="font-semibold mb-2">Job Description</h4>
-            <p class="text-gray-700 whitespace-pre-line">${job.description || 'No description available'}</p>
+            <p class="text-gray-700 whitespace-pre-line">${job.description ? decodeHtmlEntities(job.description) : 'No description available'}</p>
+
         </div>
 
         ${job.requirements && job.requirements.length > 0 ? `
             <div class="mt-4">
                 <h4 class="font-semibold mb-2">Requirements</h4>
                 <ul class="list-disc list-inside space-y-1 text-gray-700">
-                    ${job.requirements.map(req => `<li>${req}</li>`).join('')}
+                    ${job.requirements.map(req => `<li>${decodeHtmlEntities(req)}</li>`).join('')}
                 </ul>
             </div>
         ` : ''}
@@ -442,7 +537,7 @@ function showJobDetails(jobId) {
                 <h4 class="font-semibold mb-2">Required Skills</h4>
                 <div class="flex flex-wrap gap-2">
                     ${job.skills_required.map(skill =>
-        `<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded">${skill}</span>`
+        `<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded">${decodeHtmlEntities(skill)}</span>`
     ).join('')}
                 </div>
             </div>
@@ -451,7 +546,8 @@ function showJobDetails(jobId) {
         ${job.salary_range ? `
             <div class="mt-4">
                 <h4 class="font-semibold mb-2">Salary Range</h4>
-                <p class="text-gray-700">${job.salary_range.min} - ${job.salary_range.max} ${job.salary_range.currency || 'USD'}</p>
+                <p class="text-gray-700">${job.salary_range.min} - ${job.salary_range.max} ${job.salary_range.currency ? job.salary_range.currency : 'USD'}</p>
+
             </div>
         ` : ''}
 
@@ -576,6 +672,14 @@ function showEmptyState() {
     document.getElementById('emptyState').classList.remove('hidden');
     document.getElementById('jobsContainer').innerHTML = '';
     document.getElementById('loadingState').classList.add('hidden');
+}
+
+// Helper function to decode HTML entities
+function decodeHtmlEntities(text) {
+    if (!text) return text;
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
 }
 
 function formatEnumValue(value) {
