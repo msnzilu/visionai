@@ -155,7 +155,7 @@ services:
   # Celery Beat
   celery-beat:
     image: ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG:-latest}
-    command: celery -A app.workers.celery_app beat --loglevel=info
+    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/app/celerybeat/schedule.db
     networks:
       - app-network
     environment:
