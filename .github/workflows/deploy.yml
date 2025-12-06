@@ -112,7 +112,6 @@ jobs:
           if [ "${{ github.ref }}" == "refs/heads/production" ]; then
             echo "IMAGE_TAG=production" >> $GITHUB_OUTPUT
           else
-            # Use short SHA (7 chars) to match docker/metadata-action defaults
             echo "IMAGE_TAG=main-$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
           fi
 
@@ -123,14 +122,147 @@ jobs:
           echo "::add-mask::$PASSWORD"
           echo "ECR_PASSWORD=$PASSWORD" >> $GITHUB_OUTPUT
 
-      - name: Prepare Secrets
+      - name: Create .env.production file
         run: |
-          cat <<EOF > .env.secrets
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-          STRIPE_SECRET_KEY=${{ secrets.STRIPE_API_KEY }}
+          cat <<'EOF' > .env.production
+          # Project Information
+          PROJECT_NAME=AI Job Application Platform
+          PROJECT_VERSION=1.0.0
+
+          # API Settings
+          HOST=0.0.0.0
+          PORT=8000
+          DEBUG=false
+          ENVIRONMENT=production
+
+          # Security
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
           JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          JWT_ALGORITHM=HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES=30
+          REFRESH_TOKEN_EXPIRE_MINUTES=10080
+          PASSWORD_RESET_TOKEN_EXPIRE_HOURS=24
+
+          # CORS
+          CORS_ORIGINS=["https://visionsai.store"]
+
+          # AWS
+          AWS_ACESS_KEY_SECRET=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          # Database
+          MONGODB_URL=mongodb://mongodb:27017
+          DATABASE_NAME=vision_ai
+
+          # Redis
+          REDIS_URL=redis://redis:6379/0
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          REDIS_DB=0
+          CACHE_TTL=3600
+
+          # OpenAI
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL=gpt-4
+          OPENAI_MAX_TOKENS=2000
+          OPENAI_TEMPERATURE=0.7
+
+          # Stripe
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_API_KEY }}
+          STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_BASIC_PRICE_ID=${{ secrets.STRIPE_BASIC_PRICE_ID }}
+          STRIPE_PREMIUM_PRICE_ID=${{ secrets.STRIPE_PREMIUM_PRICE_ID }}
+
+          # Email/SMTP
+          SMTP_HOST=smtp.gmail.com
+          SMTP_PORT=587
+          SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_TLS=true
+
+          MAIL_USERNAME=${{ secrets.SMTP_USERNAME }}
+          MAIL_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          MAIL_FROM=noreply@cvision.ai
+          MAIL_FROM_NAME=CVision AI
+          MAIL_PORT=587
+          MAIL_SERVER=smtp.gmail.com
+          MAIL_STARTTLS=true
+          MAIL_SSL_TLS=false
+          SUPPORT_EMAIL=support@cvision.ai
+          COMPANY_NAME=CVision AI
+
+          # OAuth
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI=https://visionsai.store/api/v1/auth/google/callback
+
+          LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          LINKEDIN_REDIRECT_URI=https://visionsai.store/auth/linkedin/callback
+
+          # Frontend
+          FRONTEND_URL=https://visionsai.store
+
+          # Job Boards
+          INDEED_PUBLISHER_ID=${{ secrets.INDEED_PUBLISHER_ID }}
+          INDEED_API_KEY=${{ secrets.INDEED_API_KEY }}
+
+          # File Upload
+          UPLOAD_DIR=uploads
+          MAX_FILE_SIZE=10485760
+          MAX_UPLOAD_SIZE=10485760
+
+          # Rate Limiting
+          RATE_LIMIT_REQUESTS=100
+          RATE_LIMIT_PERIOD=60
+
+          # Subscription Limits - Free
+          FREE_TIER_MONTHLY_ATTEMPTS=3
+          FREE_TIER_JOBS_PER_ATTEMPT=10
+
+          # Subscription Limits - Basic
+          BASIC_TIER_DAILY_ATTEMPTS=5
+          BASIC_TIER_MONTHLY_ATTEMPTS=100
+          BASIC_TIER_JOBS_PER_ATTEMPT=50
+          BASIC_TIER_PRICE=999
+
+          # Subscription Limits - Premium
+          PREMIUM_TIER_MONTHLY_ATTEMPTS=999999
+          PREMIUM_TIER_JOBS_PER_ATTEMPT=200
+          PREMIUM_TIER_PRICE=2999
+
+          # Referral System
+          REFERRALS_FOR_FREE_ATTEMPT=3
+          BASIC_REFERRAL_BONUS=10
+          PREMIUM_REFERRAL_BONUS=20
+
+          # Browser Automation
+          BROWSER_AUTOMATION_URL=http://automation:3000
+          AUTOMATION_SERVICE_TOKEN=${{ secrets.AUTOMATION_SERVICE_TOKEN }}
+
+          # Machine Learning
+          ML_MODEL_PATH=models
+          ML_TRAINING_DATA_PATH=data/training
+          ML_RETRAIN_INTERVAL_DAYS=30
+
+          # Scraping
+          SCRAPER_USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+          SCRAPER_DELAY_MIN=1
+          SCRAPER_DELAY_MAX=3
+
+          # Logging
+          LOG_LEVEL=INFO
+          LOG_FILE=logs/app.log
+
+          # Celery
+          CELERY_BROKER_URL=redis://redis:6379/0
+          CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+          # Webhooks
+          WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}
+
+          # ECR (for deployment)
           ECR_PASSWORD=${{ steps.ecr-login.outputs.ECR_PASSWORD }}
           EOF
 
@@ -140,41 +272,51 @@ jobs:
         run: |
           # Copy files to manager
           scp -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
-            docker-compose.swarm.yml .env.secrets \
+            docker-compose.swarm.yml .env.production \
             ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }}:/tmp/
 
           # Deploy stack
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
-            ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }} << 'EOF'
+            ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }} << 'ENDSSH'
             
-            # Load secrets
-            set -a
-            source /tmp/.env.secrets
-            set +a
-            
-            # Helper function to create secret if missing
-            create_secret() {
+            # Helper function to create secret from env file
+            create_secret_from_env() {
               local name=$1
               local value=$2
-              # Check if secret exists using docker inspect
+              
+              # Skip if value is empty
+              if [ -z "$value" ]; then
+                echo "Skipping empty secret: $name"
+                return
+              fi
+              
+              # Check if secret exists
               if ! docker secret inspect "$name" > /dev/null 2>&1; then
                 echo "Creating secret: $name"
-                echo "$value" | docker secret create "$name" -
+                echo -n "$value" | docker secret create "$name" -
               else
                 echo "Secret $name already exists (skipping)"
               fi
             }
 
-            # Create secrets from env vars
+            # Read .env.production and create secrets
+            echo "Creating Docker secrets from .env.production..."
+            
+            # Source the env file
+            set -a
+            source /tmp/.env.production
+            set +a
+            
             # Remove legacy lowercase secrets to prevent conflicts
             docker secret rm openai_api_key 2>/dev/null || true
             docker secret rm stripe_api_key 2>/dev/null || true
             
-            create_secret "OPENAI_API_KEY" "${OPENAI_API_KEY}"
-            create_secret "STRIPE_SECRET_KEY" "${STRIPE_SECRET_KEY}"
-            create_secret "JWT_SECRET_KEY" "${JWT_SECRET_KEY}"
-            create_secret "GOOGLE_CLIENT_ID" "${GOOGLE_CLIENT_ID}"
-            create_secret "GOOGLE_CLIENT_SECRET" "${GOOGLE_CLIENT_SECRET}"
+            # Create secrets for sensitive values only
+            create_secret_from_env "OPENAI_API_KEY" "${OPENAI_API_KEY}"
+            create_secret_from_env "STRIPE_SECRET_KEY" "${STRIPE_SECRET_KEY}"
+            create_secret_from_env "JWT_SECRET_KEY" "${JWT_SECRET_KEY}"
+            create_secret_from_env "GOOGLE_CLIENT_ID" "${GOOGLE_CLIENT_ID}"
+            create_secret_from_env "GOOGLE_CLIENT_SECRET" "${GOOGLE_CLIENT_SECRET}"
             
             # Check disk space before deploy
             echo "=== Disk Space ==="
@@ -192,7 +334,7 @@ jobs:
             # Login to ECR
             echo "${ECR_PASSWORD}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             
-            # Pull images explicitly to ensure they exist and verify auth
+            # Pull images explicitly
             echo "Pulling images..."
             docker pull ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG}
             docker pull ${ECR_REGISTRY}/visionai-frontend:${IMAGE_TAG}
@@ -210,20 +352,14 @@ jobs:
             # Check service status
             docker service ls
             
-            # Check for failed services (WARNING ONLY - NO EXIT)
-            echo "Checking service status..."
-            docker service ls
-            
             # Count total expected services
             EXPECTED_COUNT=5
             ACTUAL_COUNT=$(docker service ls --filter "label=com.docker.stack.namespace=visionai" -q | wc -l)
             
             if [ "$ACTUAL_COUNT" -lt "$EXPECTED_COUNT" ]; then
                echo "⚠️  Warning: Stack incomplete! Expected $EXPECTED_COUNT services, found $ACTUAL_COUNT."
-               echo "This usually means some services failed to start."
                echo "=== Stack Tasks (All) ==="
                docker stack ps visionai --no-trunc
-               # REMOVED: exit 1 - just warn, don't fail
             fi
 
             FAILED=$(docker service ls --filter "label=com.docker.stack.namespace=visionai" --format "{{.Replicas}}" | grep "0/")
@@ -236,57 +372,50 @@ jobs:
               docker service logs --tail 50 visionai_backend || true
               echo "=== Celery Beat Logs ==="
               docker service logs --tail 50 visionai_celery-beat || true
-              # REMOVED: exit 1 - just warn, don't fail
             fi
-            echo "Deployment completed (check warnings above if any)!"
             
-            # Cleanup secrets file
-            rm -f /tmp/.env.secrets
-          EOF
+            echo "Deployment completed!"
+            
+            # Cleanup env file (contains secrets)
+            rm -f /tmp/.env.production
+          ENDSSH
 
       - name: Verify deployment
-        continue-on-error: true # Don't fail the workflow if verification fails
+        continue-on-error: true
         run: |
           ssh -i ~/.ssh/swarm_key \
-            ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }} << 'EOF'
+            ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }} << 'ENDSSH'
             
-            # Check stack tasks (running/failed)
             echo "=== Stack Tasks ==="
             docker stack ps visionai --no-trunc
 
-            # Check node status
             echo "=== Node Status ==="
             docker node ls
             
-            # Check disk space
             echo "=== Disk Space ==="
             df -h
             
-            # Check service logs for errors
             echo "=== Recent Backend Logs ==="
             docker service logs --tail 50 visionai_backend || true
             
             echo "=== Recent Celery Beat Logs ==="
             docker service logs --tail 50 visionai_celery-beat || true
             
-            # Verify internal health (bypass firewall/DNS)
             echo "=== Internal Health Check ==="
             curl -v -k --connect-timeout 10 https://127.0.0.1/api/v1/health || echo "Internal Check Failed"
 
-            # Verify health endpoints (external)
             echo "=== External Health Check ==="
             sleep 10
             curl -f --connect-timeout 10 https://visionsai.store/api/v1/health || echo "External check failed, but continuing..."
             
             echo "Verification complete!"
-          EOF
-
-      # REMOVED: Rollback on failure section
+          ENDSSH
 
       - name: Cleanup
         if: always()
         run: |
           rm -f ~/.ssh/swarm_key
+          rm -f .env.production
 
   notify:
     name: Send Deployment Notification

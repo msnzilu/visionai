@@ -33,6 +33,8 @@ services:
       - logs:/app/logs
       - ml-models:/app/models
       - ml-data:/app/data
+    env_file:
+      - .env.production
     deploy:
       replicas: 1
       update_config:
