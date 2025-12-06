@@ -121,9 +121,43 @@ function loadProfessionalSummary(cvData) {
     const summary = cvData.summary || cvData.professional_summary ||
         'No professional summary available. Upload your CV to get AI-generated insights.';
 
-    document.getElementById('professionalSummary').innerHTML = `
-        <p style="color: #4b5563; line-height: 1.8;">${summary}</p>
-    `;
+    // Split into sentences (handle multiple sentence endings)
+    const sentences = summary.match(/[^.!?]+[.!?]+/g) || [summary];
+
+    const maxInitialSentences = 5;
+    const hasMore = sentences.length > maxInitialSentences;
+
+    if (hasMore) {
+        const initialText = sentences.slice(0, maxInitialSentences).join(' ');
+        const remainingText = sentences.slice(maxInitialSentences).join(' ');
+
+        const html = `
+            <p id="summaryInitial" style="color: #4b5563; line-height: 1.8;">${initialText}</p>
+            <p id="summaryMore" style="color: #4b5563; line-height: 1.8; display: none; margin-top: 0.5rem;">${remainingText}</p>
+            <button onclick="toggleSummary()" id="summaryToggleBtn" class="btn-upload" style="margin-top: 1rem; padding: 0.5rem 1rem; font-size: 0.875rem;">
+                Show More
+            </button>
+        `;
+        document.getElementById('professionalSummary').innerHTML = html;
+    } else {
+        document.getElementById('professionalSummary').innerHTML = `
+            <p style="color: #4b5563; line-height: 1.8;">${summary}</p>
+        `;
+    }
+}
+
+// Toggle summary visibility
+function toggleSummary() {
+    const moreSection = document.getElementById('summaryMore');
+    const btn = document.getElementById('summaryToggleBtn');
+
+    if (moreSection.style.display === 'none') {
+        moreSection.style.display = 'block';
+        btn.textContent = 'Show Less';
+    } else {
+        moreSection.style.display = 'none';
+        btn.textContent = 'Show More';
+    }
 }
 
 // Load skills
@@ -148,7 +182,7 @@ function loadSkills(cvData) {
         return;
     }
 
-    const maxInitialSkills = 12;
+    const maxInitialSkills = 5;
     const hasMore = skillsArray.length > maxInitialSkills;
     const initialSkills = hasMore ? skillsArray.slice(0, maxInitialSkills) : skillsArray;
     const remainingSkills = hasMore ? skillsArray.slice(maxInitialSkills) : [];
@@ -199,7 +233,12 @@ function loadExperience(cvData) {
         return;
     }
 
-    const html = experience.map(exp => {
+    const maxInitialExp = 5;
+    const hasMore = experience.length > maxInitialExp;
+    const initialExp = hasMore ? experience.slice(0, maxInitialExp) : experience;
+    const remainingExp = hasMore ? experience.slice(maxInitialExp) : [];
+
+    const renderExperience = (exp) => {
         // Get description from achievements array or description field
         let description = '';
         if (exp.achievements && Array.isArray(exp.achievements) && exp.achievements.length > 0) {
@@ -221,9 +260,38 @@ function loadExperience(cvData) {
                 <div class="experience-description">${description}</div>
             </div>
         `;
-    }).join('');
+    };
+
+    const html = `
+        <div id="experienceInitial">
+            ${initialExp.map(renderExperience).join('')}
+        </div>
+        ${hasMore ? `
+            <div id="experienceMore" style="display: none;">
+                ${remainingExp.map(renderExperience).join('')}
+            </div>
+            <button onclick="toggleExperience()" id="experienceToggleBtn" class="btn-upload" style="margin-top: 1rem;">
+                Show ${remainingExp.length} More ${remainingExp.length === 1 ? 'Role' : 'Roles'}
+            </button>
+        ` : ''}
+    `;
 
     document.getElementById('experienceSection').innerHTML = html;
+}
+
+// Toggle experience visibility
+function toggleExperience() {
+    const moreSection = document.getElementById('experienceMore');
+    const btn = document.getElementById('experienceToggleBtn');
+
+    if (moreSection.style.display === 'none') {
+        moreSection.style.display = 'block';
+        btn.textContent = 'Show Less';
+    } else {
+        moreSection.style.display = 'none';
+        const hiddenCount = moreSection.querySelectorAll('.experience-item').length;
+        btn.textContent = `Show ${hiddenCount} More ${hiddenCount === 1 ? 'Role' : 'Roles'}`;
+    }
 }
 
 // Load recommended roles
@@ -239,7 +307,7 @@ async function loadRecommendedRoles(cvData) {
         return;
     }
 
-    const maxInitialRoles = 3;
+    const maxInitialRoles = 5;
     const hasMore = roles.length > maxInitialRoles;
     const initialRoles = hasMore ? roles.slice(0, maxInitialRoles) : roles;
     const remainingRoles = hasMore ? roles.slice(maxInitialRoles) : [];
