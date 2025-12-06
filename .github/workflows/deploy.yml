@@ -115,9 +115,17 @@ jobs:
             echo "IMAGE_TAG=main-${{ github.sha }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Get ECR Login Password
+        id: ecr-login
+        run: |
+          PASSWORD=$(aws ecr get-login-password --region ${{ env.AWS_REGION }})
+          echo "::add-mask::$PASSWORD"
+          echo "ECR_PASSWORD=$PASSWORD" >> $GITHUB_OUTPUT
+
       - name: Deploy to Swarm
         env:
           IMAGE_TAG: ${{ steps.set-tag.outputs.IMAGE_TAG }}
+          ECR_PASSWORD: ${{ steps.ecr-login.outputs.ECR_PASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -137,11 +145,13 @@ jobs:
             create_secret() {
               local name=$1
               local value=$2
-              if ! docker secret ls | grep -q "$name"; then
+              # Check if secret exists using docker inspect
+              if ! docker secret inspect "$name" > /dev/null 2>&1; then
                 echo "Creating secret: $name"
                 echo "$value" | docker secret create "$name" -
               else
                 echo "Secret $name already exists (skipping)"
+                # Optional: Update usage if needed (Swarm secrets are immutable, need rotation for updates)
               fi
             }
 
@@ -172,7 +182,7 @@ jobs:
             export IMAGE_TAG=${{ steps.set-tag.outputs.IMAGE_TAG }}
             
             # Login to ECR
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+            echo "${ECR_PASSWORD}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             
             # Deploy stack with rolling update
             docker stack deploy \
