@@ -166,6 +166,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - FRONTEND_URL=https://visionsai.store
+      - SECRETS_DIR=
     volumes:
       - logs:/app/logs
       - celery-beat:/app/celerybeat
