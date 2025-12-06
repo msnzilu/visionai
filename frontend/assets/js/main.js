@@ -158,7 +158,26 @@ const API = {
 
         try {
             const response = await fetch(url, config);
-            const data = await response.json();
+
+            // Handle backend errors (502/503) - redirect to login
+            if (response.status === 502 || response.status === 503) {
+                console.error('Backend is down or unavailable, redirecting to login...');
+                Utils.removeToken();
+                window.location.href = '/login.html';
+                return;
+            }
+
+            // Try to parse JSON response
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                // If JSON parse fails, backend is likely returning HTML (error page)
+                console.error('Backend returned invalid JSON, likely down. Redirecting to login...');
+                Utils.removeToken();
+                window.location.href = '/login.html';
+                return;
+            }
 
             // If unauthorized and we have a refresh token, try to refresh
             if (response.status === 401 && Utils.getRefreshToken()) {
@@ -168,7 +187,21 @@ const API = {
                     config.headers.Authorization = `Bearer ${Utils.getToken()}`;
                     const retryResponse = await fetch(url, config);
                     return await retryResponse.json();
+                } else {
+                    // Refresh failed, redirect to login
+                    console.error('Token refresh failed, redirecting to login...');
+                    Utils.removeToken();
+                    window.location.href = '/login.html';
+                    return;
                 }
+            }
+
+            // If still unauthorized after refresh attempt, redirect to login
+            if (response.status === 401) {
+                console.error('Unauthorized, redirecting to login...');
+                Utils.removeToken();
+                window.location.href = '/login.html';
+                return;
             }
 
             if (!response.ok) {
@@ -178,6 +211,15 @@ const API = {
             return data;
         } catch (error) {
             console.error('API Error:', error);
+
+            // If it's a network error, backend is likely down
+            if (error.message.includes('fetch') || error.name === 'TypeError') {
+                console.error('Network error, backend may be down. Redirecting to login...');
+                Utils.removeToken();
+                window.location.href = '/login.html';
+                return;
+            }
+
             throw error;
         }
     },

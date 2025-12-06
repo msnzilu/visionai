@@ -279,6 +279,17 @@ try:
 except ImportError as e:
     logger.warning(f"Email applications router not available: {e}")
 
+try:
+    from app.api.auto_apply import router as auto_apply_router
+    app.include_router(
+        auto_apply_router,
+        prefix=f"{settings.API_V1_STR}/auto-apply",
+        tags=["Auto Apply"]
+    )
+    logger.info("Auto-apply router loaded")
+except ImportError as e:
+    logger.warning(f"Auto-apply router not available: {e}")
+
 
 # Catch-all for missing routes during development
 @app.get("/api/v1/{path:path}")

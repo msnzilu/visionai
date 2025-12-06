@@ -24,6 +24,16 @@ async function loadCVAnalysis() {
             }
         });
 
+        // Redirect to login on auth failures or backend errors
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 502 || response.status === 503) {
+                console.error('Authentication or backend error, redirecting to login...');
+                CVision.Utils.removeToken();
+                window.location.href = '../login.html';
+                return;
+            }
+        }
+
         const data = await response.json();
         cvData = data.cv_parsed;
 
@@ -42,6 +52,13 @@ async function loadCVAnalysis() {
 
     } catch (error) {
         console.error('Error loading CV analysis:', error);
+        // If it's a network error or JSON parse error, likely backend is down
+        if (error instanceof SyntaxError || error.message.includes('fetch')) {
+            console.error('Backend appears to be down, redirecting to login...');
+            CVision.Utils.removeToken();
+            window.location.href = '../login.html';
+            return;
+        }
         showError();
     }
 }
@@ -310,8 +327,7 @@ async function toggleAutomation() {
 
     if (userTier === 'free' && !automationEnabled) {
         badge.style.display = 'block';
-        alert('⭐ Premium Feature\n\nFull automation requires a premium subscription.\n\nUpgrade to Premium to:\n✅ Auto-apply to 5-10 jobs daily\n✅ AI-generated custom CVs\n✅ Personalized cover letters\n✅ Save 90% of your time\n\nPrice: $29.99/month');
-        window.location.href = '/pages/subscription.html';
+        showPremiumModal();
         return;
     }
 
@@ -330,6 +346,26 @@ async function toggleAutomation() {
         await disableAutomation();
     }
 }
+
+// Show premium modal
+function showPremiumModal() {
+    const modal = document.getElementById('premiumModal');
+    modal.style.display = 'flex';
+    modal.style.pointerEvents = 'auto';
+}
+
+// Close premium modal
+function closePremiumModal() {
+    const modal = document.getElementById('premiumModal');
+    modal.style.display = 'none';
+    modal.style.pointerEvents = 'none';
+}
+
+// Upgrade now - redirect to subscription page
+function upgradeNow() {
+    window.location.href = '/pages/subscription.html';
+}
+
 
 function updateSliderValue(type, value) {
     if (type === 'maxApps') {
@@ -391,28 +427,36 @@ async function loadAutomationStatus() {
             }
         });
 
-        if (response.ok) {
-            const data = await response.json();
-            automationEnabled = data.enabled;
-
-            if (automationEnabled) {
-                const toggle = document.getElementById('automationToggle');
-                const slider = document.getElementById('automationSlider');
-                const status = document.getElementById('automationStatus');
-                const panel = document.getElementById('automationPanel');
-
-                toggle.style.background = '#10b981';
-                slider.style.left = '33px';
-                status.textContent = 'Active - Applying to jobs automatically';
-                panel.style.display = 'block';
-
-                document.getElementById('maxAppsSlider').value = data.max_daily_applications;
-                document.getElementById('maxAppsValue').textContent = data.max_daily_applications;
-                document.getElementById('minScoreSlider').value = Math.round(data.min_match_score * 100);
-                document.getElementById('minScoreValue').textContent = Math.round(data.min_match_score * 100);
+        // If endpoint doesn't exist yet (404), silently ignore
+        if (!response.ok) {
+            if (response.status === 404) {
+                console.log('Auto-apply status endpoint not available yet');
+                return;
             }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        automationEnabled = data.enabled;
+
+        if (automationEnabled) {
+            const toggle = document.getElementById('automationToggle');
+            const slider = document.getElementById('automationSlider');
+            const status = document.getElementById('automationStatus');
+            const panel = document.getElementById('automationPanel');
+
+            toggle.style.background = '#10b981';
+            slider.style.left = '33px';
+            status.textContent = 'Active - Applying to jobs automatically';
+            panel.style.display = 'block';
+
+            document.getElementById('maxAppsSlider').value = data.max_daily_applications;
+            document.getElementById('maxAppsValue').textContent = data.max_daily_applications;
+            document.getElementById('minScoreSlider').value = Math.round(data.min_match_score * 100);
+            document.getElementById('minScoreValue').textContent = Math.round(data.min_match_score * 100);
         }
     } catch (error) {
-        console.error('Error loading automation status:', error);
+        // Silently handle errors - automation status is not critical for page load
+        console.log('Could not load automation status:', error.message);
     }
 }

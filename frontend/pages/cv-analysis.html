@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CV Analysis - Vision.AI</title>
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <link rel="stylesheet" href="../assets/css/components.css">
+    <script src="/assets/js/auth-guard.js"></script>
+    <link rel="stylesheet" href="assets/css/global.css">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .analysis-container {
             max-width: 1400px;
@@ -291,182 +292,298 @@
     </style>
 </head>
 
-<body>
+<body class="bg-gray-50 font-sans">
     <!-- Header Navigation -->
     <div id="navbar-container"></div>
 
-    <div class="analysis-container">
-        <!-- Header -->
-        <div class="page-header">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1 class="page-title">📊 CV Analysis & Job Recommendations</h1>
-                    <p class="page-subtitle">AI-powered analysis of your CV with personalized job role suggestions</p>
-                </div>
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div class="analysis-container">
+            <!-- Header -->
+            <div class="page-header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1 class="page-title">📊 CV Analysis & Job Recommendations</h1>
+                        <p class="page-subtitle">AI-powered analysis of your CV with personalized job role suggestions
+                        </p>
+                    </div>
 
-                <!-- Automate Everything Toggle -->
-                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; cursor: pointer;"
-                        onclick="toggleAutomation()">
-                        <div>
-                            <div style="font-weight: bold; font-size: 1rem;">🤖 Automate Everything</div>
-                            <div style="font-size: 0.75rem; opacity: 0.9;" id="automationStatus">Click to enable full
-                                automation</div>
-                        </div>
-                        <div id="automationToggle"
-                            style="position: relative; width: 60px; height: 30px; background: rgba(255,255,255,0.3); border-radius: 15px; transition: all 0.3s;">
-                            <div id="automationSlider"
-                                style="position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; background: white; border-radius: 50%; transition: all 0.3s;">
+                    <!-- Automate Everything Toggle -->
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; cursor: pointer;"
+                            onclick="toggleAutomation()">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1rem;">🤖 Automate Everything</div>
+                                <div style="font-size: 0.75rem; opacity: 0.9;" id="automationStatus">Click to enable
+                                    full
+                                    automation</div>
+                            </div>
+                            <div id="automationToggle"
+                                style="position: relative; width: 60px; height: 30px; background: rgba(255,255,255,0.3); border-radius: 15px; transition: all 0.3s;">
+                                <div id="automationSlider"
+                                    style="position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; background: white; border-radius: 50%; transition: all 0.3s;">
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div id="premiumBadge"
-                        style="display: none; padding: 0.5rem 1rem; background: #fbbf24; color: #78350f; border-radius: 8px; font-size: 0.875rem; font-weight: bold;">
-                        ⭐ Premium Feature
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Automation Settings Panel (Hidden by default) -->
-        <div id="automationPanel"
-            style="display: none; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-            <h3 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;">⚙️ Automation Settings</h3>
-            <p style="color: #6b7280; margin-bottom: 1.5rem;">Configure how the system automatically applies to jobs on
-                your behalf</p>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.5rem;">
-                <div>
-                    <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Max Applications Per
-                        Day</label>
-                    <input type="range" min="1" max="10" value="5" id="maxAppsSlider" style="width: 100%;"
-                        oninput="updateSliderValue('maxApps', this.value)">
-                    <div style="text-align: center; margin-top: 0.5rem; font-weight: bold; color: #667eea;">
-                        <span id="maxAppsValue">5</span> applications/day
-                    </div>
-                </div>
-                <div>
-                    <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Minimum Match Score</label>
-                    <input type="range" min="50" max="90" value="70" id="minScoreSlider" style="width: 100%;"
-                        oninput="updateSliderValue('minScore', this.value)">
-                    <div style="text-align: center; margin-top: 0.5rem; font-weight: bold; color: #667eea;">
-                        <span id="minScoreValue">70</span>% minimum
+                        <div id="premiumBadge"
+                            style="display: none; padding: 0.5rem 1rem; background: #fbbf24; color: #78350f; border-radius: 8px; font-size: 0.875rem; font-weight: bold;">
+                            ⭐ Premium Feature
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div style="background: #f9fafb; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                <h4 style="font-weight: bold; margin-bottom: 0.75rem;">What Will Be Automated:</h4>
-                <ul style="list-style: none; padding: 0; margin: 0;">
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ AI finds matching jobs (based on your CV)</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Generates custom CV for each job</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Writes personalized cover letters</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Submits applications automatically</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Monitors email for responses</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Updates application status</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Sends you notifications</li>
-                </ul>
+            <!-- Automation Settings Panel (Hidden by default) -->
+            <div id="automationPanel"
+                style="display: none; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+                <h3 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;">⚙️ Automation Settings</h3>
+                <p style="color: #6b7280; margin-bottom: 1.5rem;">Configure how the system automatically applies to jobs
+                    on
+                    your behalf</p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Max Applications Per
+                            Day</label>
+                        <input type="range" min="1" max="10" value="5" id="maxAppsSlider" style="width: 100%;"
+                            oninput="updateSliderValue('maxApps', this.value)">
+                        <div style="text-align: center; margin-top: 0.5rem; font-weight: bold; color: #667eea;">
+                            <span id="maxAppsValue">5</span> applications/day
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Minimum Match
+                            Score</label>
+                        <input type="range" min="50" max="90" value="70" id="minScoreSlider" style="width: 100%;"
+                            oninput="updateSliderValue('minScore', this.value)">
+                        <div style="text-align: center; margin-top: 0.5rem; font-weight: bold; color: #667eea;">
+                            <span id="minScoreValue">70</span>% minimum
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: #f9fafb; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h4 style="font-weight: bold; margin-bottom: 0.75rem;">What Will Be Automated:</h4>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ AI finds matching jobs (based on your CV)</li>
+                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Generates custom CV for each job</li>
+                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Writes personalized cover letters</li>
+                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Submits applications automatically</li>
+                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Monitors email for responses</li>
+                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Updates application status</li>
+                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Sends you notifications</li>
+                    </ul>
+                </div>
+
+                <button onclick="saveAutomationSettings()"
+                    style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;">
+                    Save Settings & Start Automation
+                </button>
             </div>
 
-            <button onclick="saveAutomationSettings()"
-                style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;">
-                Save Settings & Start Automation
-            </button>
-        </div>
+            <!-- Stats Bar -->
+            <div class="stats-bar" id="statsBar" style="display: none;">
+                <div class="stat-box">
+                    <div class="stat-number" id="totalSkills">0</div>
+                    <div class="stat-label">Skills Identified</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="yearsExp">0</div>
+                    <div class="stat-label">Years Experience</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="matchingRoles">0</div>
+                    <div class="stat-label">Matching Roles</div>
+                </div>
+            </div>
 
-        <!-- Stats Bar -->
-        <div class="stats-bar" id="statsBar" style="display: none;">
-            <div class="stat-box">
-                <div class="stat-number" id="totalSkills">0</div>
-                <div class="stat-label">Skills Identified</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-number" id="yearsExp">0</div>
-                <div class="stat-label">Years Experience</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-number" id="matchingRoles">0</div>
-                <div class="stat-label">Matching Roles</div>
-            </div>
-        </div>
+            <!-- Main Grid -->
+            <div class="analysis-grid">
+                <!-- Personal Information -->
+                <div class="card">
+                    <h2 class="card-title">👤 Personal Information</h2>
+                    <div id="personalInfo">
+                        <div class="skeleton skeleton-text large"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                    </div>
+                </div>
 
-        <!-- Main Grid -->
-        <div class="analysis-grid">
-            <!-- Personal Information -->
+                <!-- Professional Summary -->
+                <div class="card">
+                    <h2 class="card-title">📝 Professional Summary</h2>
+                    <div id="professionalSummary">
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text" style="width: 80%;"></div>
+                    </div>
+                </div>
+
+                <!-- Skills -->
+                <div class="card full-width">
+                    <h2 class="card-title">🎯 Skills & Expertise</h2>
+                    <div id="skillsSection">
+                        <div class="skills-grid">
+                            <div class="skeleton skeleton-badge"></div>
+                            <div class="skeleton skeleton-badge"></div>
+                            <div class="skeleton skeleton-badge"></div>
+                            <div class="skeleton skeleton-badge"></div>
+                            <div class="skeleton skeleton-badge"></div>
+                            <div class="skeleton skeleton-badge"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Experience -->
+                <div class="card full-width">
+                    <h2 class="card-title">💼 Work Experience</h2>
+                    <div id="experienceSection">
+                        <div class="skeleton skeleton-box" style="margin-bottom: 1rem;"></div>
+                        <div class="skeleton skeleton-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommended Job Roles -->
             <div class="card">
-                <h2 class="card-title">👤 Personal Information</h2>
-                <div id="personalInfo">
-                    <div class="skeleton skeleton-text large"></div>
-                    <div class="skeleton skeleton-text"></div>
-                    <div class="skeleton skeleton-text"></div>
-                    <div class="skeleton skeleton-text"></div>
-                    <div class="skeleton skeleton-text"></div>
-                    <div class="skeleton skeleton-text"></div>
-                </div>
-            </div>
-
-            <!-- Professional Summary -->
-            <div class="card">
-                <h2 class="card-title">📝 Professional Summary</h2>
-                <div id="professionalSummary">
-                    <div class="skeleton skeleton-text"></div>
-                    <div class="skeleton skeleton-text"></div>
-                    <div class="skeleton skeleton-text"></div>
-                    <div class="skeleton skeleton-text" style="width: 80%;"></div>
-                </div>
-            </div>
-
-            <!-- Skills -->
-            <div class="card full-width">
-                <h2 class="card-title">🎯 Skills & Expertise</h2>
-                <div id="skillsSection">
-                    <div class="skills-grid">
-                        <div class="skeleton skeleton-badge"></div>
-                        <div class="skeleton skeleton-badge"></div>
-                        <div class="skeleton skeleton-badge"></div>
-                        <div class="skeleton skeleton-badge"></div>
-                        <div class="skeleton skeleton-badge"></div>
-                        <div class="skeleton skeleton-badge"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Experience -->
-            <div class="card full-width">
-                <h2 class="card-title">💼 Work Experience</h2>
-                <div id="experienceSection">
+                <h2 class="card-title">🎯 Recommended Job Roles Based on Your CV</h2>
+                <div id="recommendedRoles">
+                    <div class="skeleton skeleton-box" style="margin-bottom: 1rem;"></div>
                     <div class="skeleton skeleton-box" style="margin-bottom: 1rem;"></div>
                     <div class="skeleton skeleton-box"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Recommended Job Roles -->
-        <div class="card">
-            <h2 class="card-title">🎯 Recommended Job Roles Based on Your CV</h2>
-            <div id="recommendedRoles">
-                <div class="skeleton skeleton-box" style="margin-bottom: 1rem;"></div>
-                <div class="skeleton skeleton-box" style="margin-bottom: 1rem;"></div>
-                <div class="skeleton skeleton-box"></div>
+        <!-- Premium Modal -->
+        <div id="premiumModal"
+            style="display: none; pointer-events: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(5px); animation: fadeIn 0.3s ease;">
+            <div
+                style="background: white; border-radius: 20px; max-width: 500px; width: 90%; padding: 2.5rem; position: relative; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: slideUp 0.3s ease;">
+                <!-- Close Button -->
+                <button onclick="closePremiumModal()"
+                    style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; transition: color 0.2s;">
+                    ✕
+                </button>
+
+                <!-- Icon -->
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <div
+                        style="display: inline-block; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-bottom: 1rem;">
+                        <span style="font-size: 3rem;">🤖</span>
+                    </div>
+                    <h2 style="font-size: 1.75rem; font-weight: bold; color: #1f2937; margin: 0;">Premium Feature</h2>
+                </div>
+
+                <!-- Description -->
+                <p style="text-align: center; color: #6b7280; font-size: 1rem; margin-bottom: 2rem; line-height: 1.6;">
+                    Full automation requires a premium subscription. Upgrade now to unlock the power of AI-driven job
+                    applications!
+                </p>
+
+                <!-- Benefits -->
+                <div
+                    style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                    <h3 style="font-weight: bold; margin-bottom: 1rem; color: #1f2937; font-size: 1rem;">✨ What You'll
+                        Get:</h3>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="color: #10b981; font-weight: bold;">✓</span>
+                            Auto-apply to 5-10 jobs daily
+                        </li>
+                        <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="color: #10b981; font-weight: bold;">✓</span>
+                            AI-generated custom CVs for each job
+                        </li>
+                        <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="color: #10b981; font-weight: bold;">✓</span>
+                            Personalized cover letters
+                        </li>
+                        <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="color: #10b981; font-weight: bold;">✓</span>
+                            Email monitoring & auto-updates
+                        </li>
+                        <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="color: #10b981; font-weight: bold;">✓</span>
+                            Save 90% of your application time
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Pricing -->
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div
+                        style="display: inline-block; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border-radius: 12px;">
+                        <span style="font-size: 2rem; font-weight: bold; color: white;">$29.99</span>
+                        <span style="color: white; opacity: 0.9; font-size: 1rem;">/month</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 1rem;">
+                    <button onclick="closePremiumModal()"
+                        style="flex: 1; padding: 1rem; background: #f3f4f6; color: #4b5563; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 1rem;">
+                        Maybe Later
+                    </button>
+                    <button onclick="upgradeNow()"
+                        style="flex: 1; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); font-size: 1rem;">
+                        Upgrade Now 🚀
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <script src="../assets/js/main.js"></script>
-    <script src="../assets/js/pages/cv-analysis.js"></script>
-    <script src="../assets/js/components/navbar.js" defer></script>
-    <script defer>
-        // Load navbar component
-        fetch('/components/navbar.html')
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById('navbar-container').innerHTML = html;
-                if (window.CVisionNavbar) {
-                    CVisionNavbar.init('CV Analysis');
+        <style>
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
                 }
-            })
-            .catch(error => console.error('Error loading navbar:', error));
-    </script>
+
+                to {
+                    opacity: 1;
+                }
+            }
+
+            @keyframes slideUp {
+                from {
+                    transform: translateY(30px);
+                    opacity: 0;
+                }
+
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+
+            #premiumModal button:hover {
+                transform: translateY(-2px);
+            }
+
+            #premiumModal button:active {
+                transform: translateY(0);
+            }
+        </style>
+
+        <script src="../assets/js/main.js"></script>
+        <script src="../assets/js/pages/cv-analysis.js"></script>
+        <script src="../assets/js/components/navbar.js" defer></script>
+        <script defer>
+            // Load navbar component
+            fetch('/components/navbar.html')
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('navbar-container').innerHTML = html;
+                    if (window.CVisionNavbar) {
+                        CVisionNavbar.init('CV Analysis');
+                    }
+                })
+                .catch(error => console.error('Error loading navbar:', error));
+        </script>
 </body>
 
 </html>

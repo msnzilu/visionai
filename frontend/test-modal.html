@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Modal Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 2rem;
+            background: #f9fafb;
+        }
+
+        .test-button {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .test-button:hover {
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        #premiumModal button:hover {
+            transform: translateY(-2px);
+        }
+
+        #premiumModal button:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Premium Modal Test</h1>
+    <p>Click the button below to test the premium modal:</p>
+    <button class="test-button" onclick="showPremiumModal()">Show Premium Modal</button>
+
+    <!-- Premium Modal -->
+    <div id="premiumModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(5px); animation: fadeIn 0.3s ease;">
+        <div
+            style="background: white; border-radius: 20px; max-width: 500px; width: 90%; padding: 2.5rem; position: relative; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: slideUp 0.3s ease;">
+            <!-- Close Button -->
+            <button onclick="closePremiumModal()"
+                style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; transition: color 0.2s;">
+                ✕
+            </button>
+
+            <!-- Icon -->
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div
+                    style="display: inline-block; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-bottom: 1rem;">
+                    <span style="font-size: 3rem;">🤖</span>
+                </div>
+                <h2 style="font-size: 1.75rem; font-weight: bold; color: #1f2937; margin: 0;">Premium Feature</h2>
+            </div>
+
+            <!-- Description -->
+            <p style="text-align: center; color: #6b7280; font-size: 1rem; margin-bottom: 2rem; line-height: 1.6;">
+                Full automation requires a premium subscription. Upgrade now to unlock the power of AI-driven job
+                applications!
+            </p>
+
+            <!-- Benefits -->
+            <div
+                style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                <h3 style="font-weight: bold; margin-bottom: 1rem; color: #1f2937; font-size: 1rem;">✨ What You'll Get:
+                </h3>
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: #10b981; font-weight: bold;">✓</span>
+                        Auto-apply to 5-10 jobs daily
+                    </li>
+                    <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: #10b981; font-weight: bold;">✓</span>
+                        AI-generated custom CVs for each job
+                    </li>
+                    <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: #10b981; font-weight: bold;">✓</span>
+                        Personalized cover letters
+                    </li>
+                    <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: #10b981; font-weight: bold;">✓</span>
+                        Email monitoring & auto-updates
+                    </li>
+                    <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="color: #10b981; font-weight: bold;">✓</span>
+                        Save 90% of your application time
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Pricing -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div
+                    style="display: inline-block; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border-radius: 12px;">
+                    <span style="font-size: 2rem; font-weight: bold; color: white;">$29.99</span>
+                    <span style="color: white; opacity: 0.9; font-size: 1rem;">/month</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="closePremiumModal()"
+                    style="flex: 1; padding: 1rem; background: #f3f4f6; color: #4b5563; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 1rem;">
+                    Maybe Later
+                </button>
+                <button onclick="upgradeNow()"
+                    style="flex: 1; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); font-size: 1rem;">
+                    Upgrade Now 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Show premium modal
+        function showPremiumModal() {
+            const modal = document.getElementById('premiumModal');
+            modal.style.display = 'flex';
+        }
+
+        // Close premium modal
+        function closePremiumModal() {
+            const modal = document.getElementById('premiumModal');
+            modal.style.display = 'none';
+        }
+
+        // Upgrade now - redirect to subscription page
+        function upgradeNow() {
+            alert('Would redirect to: /pages/subscription.html');
+        }
+    </script>
+</body>
+
+</html>
