@@ -25,7 +25,6 @@ services:
         - "traefik.http.routers.frontend.rule=Host(`visionsai.store`)"
         - "traefik.http.routers.frontend.entrypoints=web"
         - "traefik.http.services.frontend.loadbalancer.server.port=80"
-        - "traefik.docker.network=visionai_app-network"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
       interval: 45s
@@ -39,18 +38,21 @@ services:
     networks:
       - app-network
     environment:
+      # Core Settings
       - DEBUG=false
+      - ENVIRONMENT=production
+      
+      # Database Configuration (REQUIRED)
       - MONGODB_URL=mongodb://mongodb:27017/job_platform
       - REDIS_URL=redis://redis:6379
       - DATABASE_NAME=job_platform
+      
+      # Celery Configuration (REQUIRED)
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      # Read secrets from files
-      - OPENAI_API_KEY_FILE=/run/secrets/OPENAI_API_KEY
-      - STRIPE_SECRET_KEY_FILE=/run/secrets/STRIPE_SECRET_KEY
-      - JWT_SECRET_KEY_FILE=/run/secrets/JWT_SECRET_KEY
-      - GOOGLE_CLIENT_ID_FILE=/run/secrets/GOOGLE_CLIENT_ID
-      - GOOGLE_CLIENT_SECRET_FILE=/run/secrets/GOOGLE_CLIENT_SECRET
+      
+      # Application URLs
+      - FRONTEND_URL=https://visionsai.store
     secrets:
       - OPENAI_API_KEY
       - STRIPE_SECRET_KEY
@@ -60,6 +62,8 @@ services:
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs
+      - ml-models:/app/models
+      - ml-data:/app/data
     deploy:
       replicas: 1
       update_config:
@@ -81,7 +85,6 @@ services:
         - "traefik.http.routers.backend.rule=Host(`visionsai.store`) && PathPrefix(`/api`)"
         - "traefik.http.routers.backend.entrypoints=web"
         - "traefik.http.services.backend.loadbalancer.server.port=8000"
-        - "traefik.docker.network=visionai_app-network"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
@@ -89,7 +92,7 @@ services:
       retries: 5
       start_period: 120s
 
-  # MongoDB Service (Local)
+  # MongoDB Service
   mongodb:
     image: mongo:7.0
     networks:
@@ -115,7 +118,7 @@ services:
       retries: 3
       start_period: 60s
 
-  # Redis Service (Local)
+  # Redis Service
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes --maxmemory 100mb --maxmemory-policy allkeys-lru
@@ -155,14 +158,14 @@ services:
       - DATABASE_NAME=job_platform
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - OPENAI_API_KEY_FILE=/run/secrets/OPENAI_API_KEY
-      - STRIPE_SECRET_KEY_FILE=/run/secrets/STRIPE_SECRET_KEY
+      - FRONTEND_URL=https://visionsai.store
     secrets:
       - OPENAI_API_KEY
       - STRIPE_SECRET_KEY
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs
+      - ml-models:/app/models
     deploy:
       replicas: 1
       update_config:
@@ -198,6 +201,7 @@ services:
       - DATABASE_NAME=job_platform
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - FRONTEND_URL=https://visionsai.store
     volumes:
       - logs:/app/logs
       - celery-beat:/app/celerybeat-schedule
@@ -213,17 +217,16 @@ services:
         limits:
           memory: 256M
 
-  # Traefik Reverse Proxy
+  # Traefik Reverse Proxy (v3 compatible)
   traefik:
     image: traefik:v3.2
     command:
       - "--api.dashboard=true"
       - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.swarmMode=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=visionai_app-network"
-      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.swarm=true"
+      - "--providers.swarm.exposedbydefault=false"
+      - "--providers.swarm.network=visionai_app-network"
+      - "--providers.swarm.endpoint=unix:///var/run/docker.sock"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
@@ -270,6 +273,10 @@ volumes:
   uploads:
     driver: local
   logs:
+    driver: local
+  ml-models:
+    driver: local
+  ml-data:
     driver: local
   celery-beat:
     driver: local

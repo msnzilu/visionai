@@ -10,30 +10,39 @@ import json
 from pathlib import Path
 
 
+def get_secret(secret_name: str, default: Optional[str] = None) -> Optional[str]:
+    """Read secret from file if *_FILE env var exists, otherwise from env var"""
+    file_path = os.getenv(f"{secret_name}_FILE")
+    if file_path and os.path.exists(file_path):
+        with open(file_path, 'r') as f:
+            return f.read().strip()
+    value = os.getenv(secret_name)
+    return value if value else default
+
+
 class Settings(BaseSettings):
     # Project information
-    PROJECT_NAME: str = Field(env="PROJECT_NAME")
+    PROJECT_NAME: str = Field(default="VisionAI", env="PROJECT_NAME")
     PROJECT_DESCRIPTION: str = "Comprehensive AI-powered job application automation platform"
-    PROJECT_VERSION: str = Field(env="PROJECT_VERSION")
+    PROJECT_VERSION: str = Field(default="1.0.0", env="PROJECT_VERSION")
     
     # API settings
     API_V1_STR: str = "/api/v1"
-    HOST: str = Field(env="HOST")
-    PORT: int = Field(env="PORT")
-    DEBUG: bool = Field(env="DEBUG")
+    HOST: str = Field(default="0.0.0.0", env="HOST")
+    PORT: int = Field(default=8000, env="PORT")
+    DEBUG: bool = Field(default=False, env="DEBUG")
     ENVIRONMENT: str = Field(default="production", env="ENVIRONMENT")
     
-    # Security
-    SECRET_KEY: str = Field(env="SECRET_KEY")
-    JWT_SECRET_KEY: str = Field(env="JWT_SECRET_KEY")
-    JWT_ALGORITHM: str = Field(env="JWT_ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(env="ACCESS_TOKEN_EXPIRE_MINUTES")
-    REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(env="REFRESH_TOKEN_EXPIRE_MINUTES")
-    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = Field(env="PASSWORD_RESET_TOKEN_EXPIRE_HOURS")
+    # Security - REQUIRED
+    SECRET_KEY: str = Field(default_factory=lambda: get_secret("SECRET_KEY", "change-this-secret-key-in-production"))
+    JWT_SECRET_KEY: str = Field(default_factory=lambda: get_secret("JWT_SECRET_KEY", "change-this-jwt-secret-in-production"))
+    JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(default=10080, env="REFRESH_TOKEN_EXPIRE_MINUTES")  # 7 days
+    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = Field(default=24, env="PASSWORD_RESET_TOKEN_EXPIRE_HOURS")
     # Remember Me token expiration
     REMEMBER_ME_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=1440, env="REMEMBER_ME_ACCESS_TOKEN_EXPIRE_MINUTES")  # 1 day
     REMEMBER_ME_REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(default=43200, env="REMEMBER_ME_REFRESH_TOKEN_EXPIRE_MINUTES")  # 30 days
-
 
     # CORS & Allowed Hosts
     CORS_ORIGINS_RAW: Union[str, List[str]] = Field(default='["http://localhost", "http://localhost:80", "http://localhost:3000"]', alias="CORS_ORIGINS")
@@ -55,134 +64,136 @@ class Settings(BaseSettings):
                 return [origin.strip() for origin in cleaned.split(',')]
         return ["http://localhost", "http://localhost:80", "http://localhost:3000"]
     
-    # Database
+    # Database - REQUIRED
     MONGODB_URL: str = Field(env="MONGODB_URL")
-    DATABASE_NAME: str = Field(env="DATABASE_NAME")
+    DATABASE_NAME: str = Field(default="job_platform", env="DATABASE_NAME")
     
-    # Redis
+    # Redis - REQUIRED
     REDIS_URL: str = Field(env="REDIS_URL")
-    REDIS_HOST: str = Field(env="REDIS_HOST")
-    REDIS_PORT: int = Field(env="REDIS_PORT")
-    REDIS_DB: int = Field(env="REDIS_DB")
-    CACHE_TTL: int = Field(env="CACHE_TTL")
+    REDIS_HOST: str = Field(default="redis", env="REDIS_HOST")
+    REDIS_PORT: int = Field(default=6379, env="REDIS_PORT")
+    REDIS_DB: int = Field(default=0, env="REDIS_DB")
+    CACHE_TTL: int = Field(default=3600, env="CACHE_TTL")
     
-    # OpenAI API
-    OPENAI_API_KEY: str = Field(env="OPENAI_API_KEY")
-    OPENAI_MODEL: str = Field(env="OPENAI_MODEL")
-    OPENAI_MAX_TOKENS: int = Field(env="OPENAI_MAX_TOKENS")
-    OPENAI_TEMPERATURE: float = Field(env="OPENAI_TEMPERATURE")
+    # OpenAI API - REQUIRED
+    OPENAI_API_KEY: str = Field(default_factory=lambda: get_secret("OPENAI_API_KEY", ""))
+    OPENAI_MODEL: str = Field(default="gpt-4", env="OPENAI_MODEL")
+    OPENAI_MAX_TOKENS: int = Field(default=2000, env="OPENAI_MAX_TOKENS")
+    OPENAI_TEMPERATURE: float = Field(default=0.7, env="OPENAI_TEMPERATURE")
     
-    # Stripe
-    STRIPE_SECRET_KEY: str = Field(env="STRIPE_SECRET_KEY")
-    STRIPE_PUBLISHABLE_KEY: str = Field(env="STRIPE_PUBLISHABLE_KEY")
-    STRIPE_WEBHOOK_SECRET: str = Field(env="STRIPE_WEBHOOK_SECRET")
-    STRIPE_BASIC_PRICE_ID: str = Field(env="STRIPE_BASIC_PRICE_ID")
-    STRIPE_PREMIUM_PRICE_ID: str = Field(env="STRIPE_PREMIUM_PRICE_ID")
+    # Stripe - REQUIRED for payments
+    STRIPE_SECRET_KEY: str = Field(default_factory=lambda: get_secret("STRIPE_SECRET_KEY", ""))
+    STRIPE_PUBLISHABLE_KEY: str = Field(default="", env="STRIPE_PUBLISHABLE_KEY")
+    STRIPE_WEBHOOK_SECRET: str = Field(default="", env="STRIPE_WEBHOOK_SECRET")
+    STRIPE_BASIC_PRICE_ID: str = Field(default="", env="STRIPE_BASIC_PRICE_ID")
+    STRIPE_PREMIUM_PRICE_ID: str = Field(default="", env="STRIPE_PREMIUM_PRICE_ID")
     
-    # Email service
-    SMTP_HOST: str = Field(env="SMTP_HOST")
-    SMTP_PORT: int = Field(env="SMTP_PORT")
-    SMTP_USERNAME: str = Field(env="SMTP_USERNAME")
-    SMTP_PASSWORD: str = Field(env="SMTP_PASSWORD")
-    SMTP_USE_TLS: bool = Field(env="SMTP_USE_TLS")
+    # Email service - Optional (for notifications)
+    SMTP_HOST: Optional[str] = Field(default=None, env="SMTP_HOST")
+    SMTP_PORT: int = Field(default=587, env="SMTP_PORT")
+    SMTP_USERNAME: Optional[str] = Field(default=None, env="SMTP_USERNAME")
+    SMTP_PASSWORD: Optional[str] = Field(default=None, env="SMTP_PASSWORD")
+    SMTP_USE_TLS: bool = Field(default=True, env="SMTP_USE_TLS")
 
     # Mail settings
-    MAIL_USERNAME: str = Field(env="MAIL_USERNAME")
-    MAIL_PASSWORD: str = Field(env="MAIL_PASSWORD")
-    MAIL_FROM: str = Field(env="MAIL_FROM")
-    MAIL_FROM_NAME: str = Field(env="MAIL_FROM_NAME")
-    MAIL_PORT: int = Field(env="MAIL_PORT")
-    MAIL_SERVER: str = Field(env="MAIL_SERVER")
-    MAIL_STARTTLS: bool = Field(env="MAIL_STARTTLS")
-    MAIL_SSL_TLS: bool = Field(env="MAIL_SSL_TLS")
-    SUPPORT_EMAIL: str = Field(env="SUPPORT_EMAIL")
-    COMPANY_NAME: str = Field(env="COMPANY_NAME")
+    MAIL_USERNAME: Optional[str] = Field(default=None, env="MAIL_USERNAME")
+    MAIL_PASSWORD: Optional[str] = Field(default=None, env="MAIL_PASSWORD")
+    MAIL_FROM: str = Field(default="noreply@visionsai.store", env="MAIL_FROM")
+    MAIL_FROM_NAME: str = Field(default="VisionAI", env="MAIL_FROM_NAME")
+    MAIL_PORT: int = Field(default=587, env="MAIL_PORT")
+    MAIL_SERVER: Optional[str] = Field(default=None, env="MAIL_SERVER")
+    MAIL_STARTTLS: bool = Field(default=True, env="MAIL_STARTTLS")
+    MAIL_SSL_TLS: bool = Field(default=False, env="MAIL_SSL_TLS")
+    SUPPORT_EMAIL: str = Field(default="support@visionsai.store", env="SUPPORT_EMAIL")
+    COMPANY_NAME: str = Field(default="VisionAI", env="COMPANY_NAME")
 
-    # OAuth
-    GOOGLE_CLIENT_ID: str = Field(env="GOOGLE_CLIENT_ID")
-    GOOGLE_CLIENT_SECRET: str = Field(env="GOOGLE_CLIENT_SECRET")
-    GOOGLE_REDIRECT_URI: str = Field(env="GOOGLE_REDIRECT_URI")
+    # OAuth - REQUIRED for Google/LinkedIn login
+    GOOGLE_CLIENT_ID: str = Field(default_factory=lambda: get_secret("GOOGLE_CLIENT_ID", ""))
+    GOOGLE_CLIENT_SECRET: str = Field(default_factory=lambda: get_secret("GOOGLE_CLIENT_SECRET", ""))
+    GOOGLE_REDIRECT_URI: str = Field(default="https://visionsai.store/api/auth/google/callback", env="GOOGLE_REDIRECT_URI")
     
-    LINKEDIN_CLIENT_ID: str = Field(env="LINKEDIN_CLIENT_ID")
-    LINKEDIN_CLIENT_SECRET: str = Field(env="LINKEDIN_CLIENT_SECRET")
-    LINKEDIN_REDIRECT_URI: str = Field(env="LINKEDIN_REDIRECT_URI")
+    LINKEDIN_CLIENT_ID: Optional[str] = Field(default=None, env="LINKEDIN_CLIENT_ID")
+    LINKEDIN_CLIENT_SECRET: Optional[str] = Field(default=None, env="LINKEDIN_CLIENT_SECRET")
+    LINKEDIN_REDIRECT_URI: str = Field(default="https://visionsai.store/api/auth/linkedin/callback", env="LINKEDIN_REDIRECT_URI")
     
     # Frontend URL
-    FRONTEND_URL: str = Field(env="FRONTEND_URL")
+    FRONTEND_URL: str = Field(default="https://visionsai.store", env="FRONTEND_URL")
 
-    # Job board APIs
-    INDEED_PUBLISHER_ID: str = Field(env="INDEED_PUBLISHER_ID")
-    INDEED_API_KEY: str = Field(env="INDEED_API_KEY")
+    # Job board APIs - Optional (for job scraping)
+    INDEED_PUBLISHER_ID: Optional[str] = Field(default=None, env="INDEED_PUBLISHER_ID")
+    INDEED_API_KEY: Optional[str] = Field(default=None, env="INDEED_API_KEY")
     
     # File storage
-    UPLOAD_DIR: str = Field(env="UPLOAD_DIR")
-    MAX_FILE_SIZE: int = Field(env="MAX_FILE_SIZE")
-    MAX_UPLOAD_SIZE: int = Field(env="MAX_UPLOAD_SIZE")
+    UPLOAD_DIR: str = Field(default="/app/uploads", env="UPLOAD_DIR")
+    MAX_FILE_SIZE: int = Field(default=10485760, env="MAX_FILE_SIZE")  # 10MB
+    MAX_UPLOAD_SIZE: int = Field(default=52428800, env="MAX_UPLOAD_SIZE")  # 50MB
     ALLOWED_FILE_TYPES: List[str] = [".pdf", ".docx", ".doc", ".txt"]
     
     # Rate limiting
-    RATE_LIMIT_REQUESTS: int = Field(env="RATE_LIMIT_REQUESTS")
-    RATE_LIMIT_PERIOD: int = Field(env="RATE_LIMIT_PERIOD")
+    RATE_LIMIT_REQUESTS: int = Field(default=100, env="RATE_LIMIT_REQUESTS")
+    RATE_LIMIT_PERIOD: int = Field(default=60, env="RATE_LIMIT_PERIOD")
     
     # Subscription limits - Free Tier
-    FREE_TIER_MONTHLY_ATTEMPTS: int = Field(env="FREE_TIER_MONTHLY_ATTEMPTS")
-    FREE_TIER_JOBS_PER_ATTEMPT: int = Field(env="FREE_TIER_JOBS_PER_ATTEMPT")
+    FREE_TIER_MONTHLY_ATTEMPTS: int = Field(default=5, env="FREE_TIER_MONTHLY_ATTEMPTS")
+    FREE_TIER_JOBS_PER_ATTEMPT: int = Field(default=10, env="FREE_TIER_JOBS_PER_ATTEMPT")
     
     # Subscription limits - Basic Tier
-    BASIC_TIER_DAILY_ATTEMPTS: int = Field(env="BASIC_TIER_DAILY_ATTEMPTS")
-    BASIC_TIER_MONTHLY_ATTEMPTS: int = Field(env="BASIC_TIER_MONTHLY_ATTEMPTS")
-    BASIC_TIER_JOBS_PER_ATTEMPT: int = Field(env="BASIC_TIER_JOBS_PER_ATTEMPT")
-    BASIC_TIER_PRICE: int = Field(env="BASIC_TIER_PRICE")
+    BASIC_TIER_DAILY_ATTEMPTS: int = Field(default=3, env="BASIC_TIER_DAILY_ATTEMPTS")
+    BASIC_TIER_MONTHLY_ATTEMPTS: int = Field(default=50, env="BASIC_TIER_MONTHLY_ATTEMPTS")
+    BASIC_TIER_JOBS_PER_ATTEMPT: int = Field(default=50, env="BASIC_TIER_JOBS_PER_ATTEMPT")
+    BASIC_TIER_PRICE: float = Field(default=9.99, env="BASIC_TIER_PRICE")
     
     # Subscription limits - Premium Tier
-    PREMIUM_TIER_MONTHLY_ATTEMPTS: int = Field(env="PREMIUM_TIER_MONTHLY_ATTEMPTS")
-    PREMIUM_TIER_JOBS_PER_ATTEMPT: int = Field(env="PREMIUM_TIER_JOBS_PER_ATTEMPT")
-    PREMIUM_TIER_PRICE: int = Field(env="PREMIUM_TIER_PRICE")
+    PREMIUM_TIER_MONTHLY_ATTEMPTS: int = Field(default=500, env="PREMIUM_TIER_MONTHLY_ATTEMPTS")
+    PREMIUM_TIER_JOBS_PER_ATTEMPT: int = Field(default=200, env="PREMIUM_TIER_JOBS_PER_ATTEMPT")
+    PREMIUM_TIER_PRICE: float = Field(default=29.99, env="PREMIUM_TIER_PRICE")
     
     # Referral system
-    REFERRALS_FOR_FREE_ATTEMPT: int = Field(env="REFERRALS_FOR_FREE_ATTEMPT")
-    BASIC_REFERRAL_BONUS: int = Field(env="BASIC_REFERRAL_BONUS")
-    PREMIUM_REFERRAL_BONUS: int = Field(env="PREMIUM_REFERRAL_BONUS")
+    REFERRALS_FOR_FREE_ATTEMPT: int = Field(default=3, env="REFERRALS_FOR_FREE_ATTEMPT")
+    BASIC_REFERRAL_BONUS: float = Field(default=5.0, env="BASIC_REFERRAL_BONUS")
+    PREMIUM_REFERRAL_BONUS: float = Field(default=10.0, env="PREMIUM_REFERRAL_BONUS")
     
-    # Browser automation service
-    BROWSER_AUTOMATION_URL: str = Field(env="BROWSER_AUTOMATION_URL")
+    # Browser automation service - Optional
+    BROWSER_AUTOMATION_URL: Optional[str] = Field(default=None, env="BROWSER_AUTOMATION_URL")
     AUTOMATION_SERVICE_TOKEN: str = Field(default="your-secret-token-here", env="AUTOMATION_SERVICE_TOKEN")
-
     
     # Machine Learning
-    ML_MODEL_PATH: str = Field(env="ML_MODEL_PATH")
-    ML_TRAINING_DATA_PATH: str = Field(env="ML_TRAINING_DATA_PATH")
-    ML_RETRAIN_INTERVAL_DAYS: int = Field(env="ML_RETRAIN_INTERVAL_DAYS")
+    ML_MODEL_PATH: str = Field(default="/app/models/classifier.pkl", env="ML_MODEL_PATH")
+    ML_TRAINING_DATA_PATH: str = Field(default="/app/data/training", env="ML_TRAINING_DATA_PATH")
+    ML_RETRAIN_INTERVAL_DAYS: int = Field(default=30, env="ML_RETRAIN_INTERVAL_DAYS")
     
     # Scraping Configuration
-    SCRAPER_USER_AGENT: str = Field(env="SCRAPER_USER_AGENT")
-    SCRAPER_DELAY_MIN: int = Field(env="SCRAPER_DELAY_MIN")
-    SCRAPER_DELAY_MAX: int = Field(env="SCRAPER_DELAY_MAX")
+    SCRAPER_USER_AGENT: str = Field(default="Mozilla/5.0 (compatible; VisionAI/1.0)", env="SCRAPER_USER_AGENT")
+    SCRAPER_DELAY_MIN: int = Field(default=1, env="SCRAPER_DELAY_MIN")
+    SCRAPER_DELAY_MAX: int = Field(default=3, env="SCRAPER_DELAY_MAX")
     
     # Logging
-    LOG_LEVEL: str = Field(env="LOG_LEVEL")
-    LOG_FILE: str = Field(env="LOG_FILE")
+    LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
+    LOG_FILE: str = Field(default="/app/logs/app.log", env="LOG_FILE")
     
-    # Background tasks
+    # Background tasks - REQUIRED
     CELERY_BROKER_URL: str = Field(env="CELERY_BROKER_URL")
     CELERY_RESULT_BACKEND: str = Field(env="CELERY_RESULT_BACKEND")
     
     # Webhooks
-    WEBHOOK_SECRET: str = Field(env="WEBHOOK_SECRET")
+    WEBHOOK_SECRET: str = Field(default="change-this-webhook-secret", env="WEBHOOK_SECRET")
     
     def create_upload_dir(self) -> None:
         """Create upload directory if it doesn't exist"""
-        Path(self.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
-        Path("logs").mkdir(exist_ok=True)
-        Path(self.ML_MODEL_PATH).mkdir(parents=True, exist_ok=True)
+        try:
+            Path(self.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
+            Path("logs").mkdir(exist_ok=True)
+            Path(self.ML_MODEL_PATH).parent.mkdir(parents=True, exist_ok=True)
+            Path(self.ML_TRAINING_DATA_PATH).mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"Warning: Could not create directories: {e}")
     
     class Config:
-        # env_file removed - Docker loads .env via docker-compose.yml
         env_file_encoding = 'utf-8'
         secrets_dir = "/run/secrets"
         case_sensitive = True
         extra = "ignore"
-        populate_by_name = True  # Allow using alias names
+        populate_by_name = True
 
 
 # Create settings instance
