@@ -1,34 +1,4 @@
 services:
-  # Frontend Service
-  frontend:
-    image: ${ECR_REGISTRY}/visionai-frontend:${IMAGE_TAG:-latest}
-    networks:
-      - app-network
-    ports:
-      - "3000:80"  # Expose directly to host
-    deploy:
-      replicas: 1
-      update_config:
-        parallelism: 1
-        delay: 10s
-        failure_action: rollback
-        order: start-first
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-      resources:
-        reservations:
-          memory: 64M
-        limits:
-          memory: 256M
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
-      interval: 45s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
   # Backend API Service
   backend:
     image: ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG:-latest}
