@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Frontend Service
   frontend:
-    image: ${ECR_REGISTRY}/visionai:frontend-${IMAGE_TAG:-latest}
+    image: ${ECR_REGISTRY}/visionai-frontend:${IMAGE_TAG:-latest}
     networks:
       - app-network
     deploy:
@@ -32,7 +32,7 @@ services:
 
   # Backend API Service
   backend:
-    image: ${ECR_REGISTRY}/visionai:backend-${IMAGE_TAG:-latest}
+    image: ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG:-latest}
     networks:
       - app-network
     environment:
@@ -133,7 +133,7 @@ services:
 
   # Celery Worker
   celery-worker:
-    image: ${ECR_REGISTRY}/visionai:backend-${IMAGE_TAG:-latest}
+    image: ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG:-latest}
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1
     networks:
       - app-network
@@ -170,7 +170,7 @@ services:
 
   # Celery Beat
   celery-beat:
-    image: ${ECR_REGISTRY}/visionai:backend-${IMAGE_TAG:-latest}
+    image: ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG:-latest}
     command: celery -A app.workers.celery_app beat --loglevel=info
     networks:
       - app-network
