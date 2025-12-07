@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help Center - CVision</title>
+
+    <!-- Global Styles -->
+    <link rel="stylesheet" href="assets/css/global.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation -->
+    <nav class="navbar relative z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <a href="index.html"
+                        class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-800">CVision</a>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="index.html#features"
+                        class="text-gray-600 hover:text-primary-600 transition-colors font-medium">Features</a>
+                    <a href="index.html#pricing"
+                        class="text-gray-600 hover:text-primary-600 transition-colors font-medium">Pricing</a>
+                    <a href="help.html" class="text-primary-600 font-medium">Help Center</a>
+                    <a href="login.html"
+                        class="text-gray-600 hover:text-primary-600 transition-colors font-medium">Login</a>
+                    <a href="register.html"
+                        class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg">
+                        Get Started
+                    </a>
+                </div>
+                <!-- Mobile menu button -->
+                <div class="md:hidden">
+                    <button class="text-gray-600 p-2" id="mobile-menu-button">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-100 shadow-lg absolute w-full z-50">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="index.html#features"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Features</a>
+                <a href="index.html#pricing"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Pricing</a>
+                <a href="help.html"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-primary-600 bg-primary-50">Help
+                    Center</a>
+                <a href="login.html"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Login</a>
+                <a href="register.html"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-white bg-primary-600 hover:bg-primary-700 mt-4">Get
+                    Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-20 pb-12 bg-gradient-to-br from-primary-600 to-primary-800 text-white relative overflow-hidden">
+        <div
+            class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-20">
+        </div>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            <h1 class="text-4xl md:text-5xl font-bold mb-6">How can we help you?</h1>
+            <p class="text-xl text-primary-100 mb-8">Search our knowledge base or browse categories below</p>
+
+            <!-- Search Bar -->
+            <div class="max-w-2xl mx-auto">
+                <div class="relative">
+                    <input type="text" id="helpSearch" placeholder="Search for help articles, guides, FAQs..."
+                        class="w-full px-6 py-4 pl-14 bg-white text-gray-900 rounded-xl shadow-lg focus:outline-none focus:ring-4 focus:ring-primary-300 transition-all">
+                    <svg class="w-6 h-6 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Links -->
+    <section class="py-12 bg-white border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-6">
+                <a href="#getting-started"
+                    class="group bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 hover:shadow-lg transition-all border border-blue-200">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">🚀</div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Getting Started</h3>
+                    <p class="text-sm text-gray-600">Learn the basics and set up your account</p>
+                </a>
+
+                <a href="#faqs"
+                    class="group bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 hover:shadow-lg transition-all border border-purple-200">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">❓</div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">FAQs</h3>
+                    <p class="text-sm text-gray-600">Find answers to common questions</p>
+                </a>
+
+                <a href="#tutorials"
+                    class="group bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 hover:shadow-lg transition-all border border-green-200">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">📚</div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Tutorials</h3>
+                    <p class="text-sm text-gray-600">Step-by-step guides and videos</p>
+                </a>
+
+                <a href="#contact"
+                    class="group bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 hover:shadow-lg transition-all border border-orange-200">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">💬</div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Contact Support</h3>
+                    <p class="text-sm text-gray-600">Get help from our support team</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Getting Started Section -->
+    <section id="getting-started" class="py-16 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Getting Started with CVision</h2>
+                <p class="text-xl text-gray-600">Follow these simple steps to start your job search journey</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                    <div
+                        class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4 text-2xl font-bold text-primary-600">
+                        1</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Create Your Account</h3>
+                    <p class="text-gray-600 mb-4">Sign up with your email or use Google/LinkedIn for quick registration.
+                        It takes less than 2 minutes!</p>
+                    <a href="register.html" class="text-primary-600 hover:text-primary-700 font-medium">Create Account
+                        →</a>
+                </div>
+
+                <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                    <div
+                        class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4 text-2xl font-bold text-primary-600">
+                        2</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Upload Your CV</h3>
+                    <p class="text-gray-600 mb-4">Upload your resume and our AI will analyze your skills, experience,
+                        and career goals to match you with perfect jobs.</p>
+                    <a href="dashboard.html" class="text-primary-600 hover:text-primary-700 font-medium">Upload CV →</a>
+                </div>
+
+                <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                    <div
+                        class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4 text-2xl font-bold text-primary-600">
+                        3</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Start Applying</h3>
+                    <p class="text-gray-600 mb-4">Browse matched jobs, customize your applications with AI, and apply
+                        with one click or enable full automation.</p>
+                    <a href="pages/jobs.html" class="text-primary-600 hover:text-primary-700 font-medium">Find Jobs
+                        →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQs Section -->
+    <section id="faqs" class="py-16 bg-white">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
+                <p class="text-xl text-gray-600">Quick answers to common questions</p>
+            </div>
+
+            <!-- FAQ Categories -->
+            <div class="flex flex-wrap gap-3 mb-8 justify-center">
+                <button onclick="filterFAQs('all')"
+                    class="faq-filter-btn active px-4 py-2 rounded-lg font-medium transition-all">All</button>
+                <button onclick="filterFAQs('account')"
+                    class="faq-filter-btn px-4 py-2 rounded-lg font-medium transition-all">Account</button>
+                <button onclick="filterFAQs('features')"
+                    class="faq-filter-btn px-4 py-2 rounded-lg font-medium transition-all">Features</button>
+                <button onclick="filterFAQs('billing')"
+                    class="faq-filter-btn px-4 py-2 rounded-lg font-medium transition-all">Billing</button>
+                <button onclick="filterFAQs('technical')"
+                    class="faq-filter-btn px-4 py-2 rounded-lg font-medium transition-all">Technical</button>
+            </div>
+
+            <!-- FAQ Items -->
+            <div class="space-y-4" id="faqContainer">
+                <!-- Account FAQs -->
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="account">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">How do I create an account?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">Click the "Get Started" button on the homepage or navigation bar. You
+                            can sign up using your email address, Google account, or LinkedIn profile. After
+                            registration, verify your email to activate your account.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="account">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">Can I change my email address?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">Yes! Go to your Profile settings, click on "Account Settings", and
+                            update your email address. You'll need to verify the new email before the change takes
+                            effect.</p>
+                    </div>
+                </div>
+
+                <!-- Features FAQs -->
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="features">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">How does the AI CV customization work?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">Our AI analyzes the job description and your master CV, then creates a
+                            tailored version that highlights the most relevant skills and experiences for that specific
+                            role. It optimizes keywords, restructures content, and ensures ATS compatibility.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="features">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">What is the auto-apply feature?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">Auto-apply is a premium feature that automatically finds matching jobs,
+                            generates custom CVs and cover letters, and submits applications on your behalf. You can set
+                            daily limits and minimum match scores to control the automation.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="features">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">How accurate is the job matching?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">Our AI uses advanced machine learning to analyze your skills,
+                            experience, and preferences against job requirements. Match scores above 70% indicate strong
+                            alignment. The system learns from your interactions to improve recommendations over time.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Billing FAQs -->
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="billing">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">What's included in the free plan?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">The free plan includes: 5 job searches per month, basic CV analysis, 3
+                            AI-customized CVs, manual job applications, and access to our job board. Perfect for casual
+                            job seekers!</p>
+                    </div>
+                </div>
+
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="billing">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">Can I cancel my subscription anytime?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">Yes! You can cancel your subscription at any time from your account
+                            settings. You'll continue to have access to premium features until the end of your billing
+                            period. No cancellation fees.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="billing">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">Do you offer refunds?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">We offer a 14-day money-back guarantee for first-time subscribers. If
+                            you're not satisfied with our service, contact support within 14 days of your initial
+                            purchase for a full refund.</p>
+                    </div>
+                </div>
+
+                <!-- Technical FAQs -->
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="technical">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">What file formats do you support for CV upload?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">We support PDF, DOCX, DOC, and TXT formats. Maximum file size is 10MB.
+                            For best results, we recommend uploading a well-formatted PDF or DOCX file.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="technical">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">Is my data secure?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">Absolutely! We use bank-level encryption (AES-256) for data storage and
+                            TLS 1.3 for data transmission. Your CV and personal information are never shared with third
+                            parties without your explicit consent. We're GDPR compliant.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    data-category="technical">
+                    <button onclick="toggleFAQ(this)"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-100 transition-colors">
+                        <span class="font-semibold text-gray-900">Can I use CVision on mobile devices?</span>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="faq-answer hidden px-6 pb-4">
+                        <p class="text-gray-600">Yes! CVision is fully responsive and works on all devices. While we
+                            don't have a dedicated mobile app yet, our web platform is optimized for mobile browsers and
+                            provides a seamless experience on smartphones and tablets.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tutorials Section -->
+    <section id="tutorials" class="py-16 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Video Tutorials & Guides</h2>
+                <p class="text-xl text-gray-600">Learn how to make the most of CVision</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div
+                    class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 h-48 flex items-center justify-center">
+                        <div class="text-white text-6xl">▶️</div>
+                    </div>
+                    <div class="p-6">
+                        <span class="text-xs font-semibold text-primary-600 uppercase tracking-wide">Tutorial</span>
+                        <h3 class="text-lg font-bold text-gray-900 mt-2 mb-3">Getting Started with CVision</h3>
+                        <p class="text-gray-600 text-sm mb-4">A complete walkthrough of setting up your account,
+                            uploading your CV, and finding your first job matches.</p>
+                        <button class="text-primary-600 hover:text-primary-700 font-medium text-sm">Watch Tutorial
+                            →</button>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 h-48 flex items-center justify-center">
+                        <div class="text-white text-6xl">▶️</div>
+                    </div>
+                    <div class="p-6">
+                        <span class="text-xs font-semibold text-primary-600 uppercase tracking-wide">Tutorial</span>
+                        <h3 class="text-lg font-bold text-gray-900 mt-2 mb-3">AI CV Customization</h3>
+                        <p class="text-gray-600 text-sm mb-4">Learn how to use our AI to create perfectly tailored CVs
+                            for each job application and maximize your chances.</p>
+                        <button class="text-primary-600 hover:text-primary-700 font-medium text-sm">Watch Tutorial
+                            →</button>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 h-48 flex items-center justify-center">
+                        <div class="text-white text-6xl">▶️</div>
+                    </div>
+                    <div class="p-6">
+                        <span class="text-xs font-semibold text-primary-600 uppercase tracking-wide">Tutorial</span>
+                        <h3 class="text-lg font-bold text-gray-900 mt-2 mb-3">Setting Up Auto-Apply</h3>
+                        <p class="text-gray-600 text-sm mb-4">Configure automation settings to let CVision apply to jobs
+                            on your behalf while you focus on interview preparation.</p>
+                        <button class="text-primary-600 hover:text-primary-700 font-medium text-sm">Watch Tutorial
+                            →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Support Section -->
+    <section id="contact" class="py-16 bg-white">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Still Need Help?</h2>
+                <p class="text-xl text-gray-600">Our support team is here to assist you</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <div
+                    class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 text-center border border-blue-200">
+                    <div class="text-4xl mb-4">📧</div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Email Support</h3>
+                    <p class="text-sm text-gray-600 mb-4">Get help via email within 24 hours</p>
+                    <a href="mailto:support@cvision.com"
+                        class="text-primary-600 hover:text-primary-700 font-medium text-sm">support@cvision.com</a>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 text-center border border-green-200">
+                    <div class="text-4xl mb-4">💬</div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Live Chat</h3>
+                    <p class="text-sm text-gray-600 mb-4">Chat with us in real-time</p>
+                    <button onclick="openLiveChat()"
+                        class="text-primary-600 hover:text-primary-700 font-medium text-sm">Start Chat →</button>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 text-center border border-purple-200">
+                    <div class="text-4xl mb-4">📚</div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Documentation</h3>
+                    <p class="text-sm text-gray-600 mb-4">Browse our detailed guides</p>
+                    <a href="#getting-started" class="text-primary-600 hover:text-primary-700 font-medium text-sm">View
+                        Docs →</a>
+                </div>
+            </div>
+
+            <!-- Contact Form -->
+            <div class="mt-12 bg-gray-50 rounded-xl p-8 border border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900 mb-6">Send us a message</h3>
+                <form id="contactForm" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                            <input type="text" required
+                                class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                            <input type="email" required
+                                class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                        <input type="text" required
+                            class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                        <textarea rows="5" required
+                            class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"></textarea>
+                    </div>
+                    <button type="submit"
+                        class="w-full btn-gradient text-white py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                        Send Message
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <!-- Footer -->
+    <footer class="py-12 bg-white border-t border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <div class="text-2xl font-bold text-gray-900 mb-4">CVision</div>
+                <p class="text-gray-500 mb-6">AI-Powered Job Application Platform</p>
+                <div class="flex justify-center space-x-8 mb-8">
+                    <a href="help.html" class="text-gray-500 hover:text-primary-600 transition-colors">Help Center</a>
+                    <a href="privacy.html" class="text-gray-500 hover:text-primary-600 transition-colors">Privacy
+                        Policy</a>
+                    <a href="terms.html" class="text-gray-500 hover:text-primary-600 transition-colors">Terms of
+                        Service</a>
+                    <a href="contact.html" class="text-gray-500 hover:text-primary-600 transition-colors">Contact</a>
+                </div>
+                <p class="text-gray-400 text-sm">&copy; 2024 CVision. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="assets/js/help.js"></script>
+
+    <!-- Chatbot -->
+    <link rel="stylesheet" href="assets/css/chatbot.css">
+    <script src="assets/js/chatbot.js"></script>
+</body>
+
+</html>

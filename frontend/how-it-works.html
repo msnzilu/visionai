@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How It Works - CVision</title>
+
+    <!-- Global Styles -->
+    <link rel="stylesheet" href="assets/css/global.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation -->
+    <nav class="navbar relative z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <a href="index.html"
+                        class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-800">CVision</a>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="features.html"
+                        class="text-gray-600 hover:text-primary-600 transition-colors font-medium">Features</a>
+                    <a href="how-it-works.html" class="text-primary-600 font-medium">How It Works</a>
+                    <a href="pricing.html"
+                        class="text-gray-600 hover:text-primary-600 transition-colors font-medium">Pricing</a>
+                    <a href="help.html" class="text-gray-600 hover:text-primary-600 transition-colors font-medium">Help
+                        Center</a>
+                    <a href="login.html"
+                        class="text-gray-600 hover:text-primary-600 transition-colors font-medium">Login</a>
+                    <a href="register.html"
+                        class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg">
+                        Get Started
+                    </a>
+                </div>
+                <!-- Mobile menu button -->
+                <div class="md:hidden">
+                    <button class="text-gray-600 p-2" id="mobile-menu-button">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-100 shadow-lg absolute w-full z-50">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="features.html"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Features</a>
+                <a href="how-it-works.html"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-primary-600 bg-primary-50">How It
+                    Works</a>
+                <a href="pricing.html"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Pricing</a>
+                <a href="help.html"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Help
+                    Center</a>
+                <a href="login.html"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Login</a>
+                <a href="register.html"
+                    class="block px-3 py-2 rounded-md text-base font-medium text-white bg-primary-600 hover:bg-primary-700 mt-4">Get
+                    Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-20 pb-12 bg-gradient-to-br from-primary-600 to-primary-800 text-white relative overflow-hidden">
+        <div
+            class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-20">
+        </div>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            <h1 class="text-4xl md:text-5xl font-bold mb-6">How It Works</h1>
+            <p class="text-xl text-primary-100 mb-8">Get hired faster with our simple 4-step process powered by AI</p>
+        </div>
+    </section>
+
+    <!-- Process Steps -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Step 1 -->
+            <div class="grid lg:grid-cols-2 gap-12 items-center mb-20">
+                <div class="order-2 lg:order-1">
+                    <div class="flex items-center mb-6">
+                        <div
+                            class="w-16 h-16 bg-primary-100 rounded-2xl shadow-md flex items-center justify-center text-2xl font-bold text-primary-600">
+                            1
+                        </div>
+                        <h2 class="text-3xl font-bold text-gray-900 ml-4">Upload Your CV</h2>
+                    </div>
+                    <p class="text-lg text-gray-600 mb-6">Upload your resume and our AI analyzes your skills,
+                        experience, and career goals instantly. Our advanced algorithms extract key information and
+                        identify your strengths.</p>
+                    <ul class="space-y-3">
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Supports PDF, DOCX, and TXT formats</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Instant AI-powered skills extraction</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">ATS compatibility check and optimization suggestions</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="order-1 lg:order-2">
+                    <div
+                        class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-12 text-center text-white shadow-xl">
+                        <div class="text-8xl mb-4">📄</div>
+                        <p class="text-xl font-semibold">Drag & Drop Your CV</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="grid lg:grid-cols-2 gap-12 items-center mb-20">
+                <div>
+                    <div
+                        class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-12 text-center text-white shadow-xl">
+                        <div class="text-8xl mb-4">🎯</div>
+                        <p class="text-xl font-semibold">AI Finds Perfect Matches</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center mb-6">
+                        <div
+                            class="w-16 h-16 bg-primary-100 rounded-2xl shadow-md flex items-center justify-center text-2xl font-bold text-primary-600">
+                            2
+                        </div>
+                        <h2 class="text-3xl font-bold text-gray-900 ml-4">Find Perfect Jobs</h2>
+                    </div>
+                    <p class="text-lg text-gray-600 mb-6">Get matched with relevant job opportunities across the web
+                        based on your unique profile. Our AI scans thousands of job postings to find the best fits.</p>
+                    <ul class="space-y-3">
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Smart matching algorithm considers skills, experience, and
+                                preferences</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Match score for each job (70%+ recommended)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Filter by location, salary, remote options, and more</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="grid lg:grid-cols-2 gap-12 items-center mb-20">
+                <div class="order-2 lg:order-1">
+                    <div class="flex items-center mb-6">
+                        <div
+                            class="w-16 h-16 bg-primary-100 rounded-2xl shadow-md flex items-center justify-center text-2xl font-bold text-primary-600">
+                            3
+                        </div>
+                        <h2 class="text-3xl font-bold text-gray-900 ml-4">Customize Applications</h2>
+                    </div>
+                    <p class="text-lg text-gray-600 mb-6">AI generates tailored CVs and persuasive cover letters for
+                        each specific application. Every document is optimized for the job requirements and ATS systems.
+                    </p>
+                    <ul class="space-y-3">
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Job-specific CV highlighting relevant experience</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Personalized cover letters for each position</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Keyword optimization for ATS compatibility</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="order-1 lg:order-2">
+                    <div
+                        class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-12 text-center text-white shadow-xl">
+                        <div class="text-8xl mb-4">✨</div>
+                        <p class="text-xl font-semibold">AI Customizes Everything</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div>
+                    <div
+                        class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-12 text-center text-white shadow-xl">
+                        <div class="text-8xl mb-4">🚀</div>
+                        <p class="text-xl font-semibold">One-Click Application</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center mb-6">
+                        <div
+                            class="w-16 h-16 bg-primary-100 rounded-2xl shadow-md flex items-center justify-center text-2xl font-bold text-primary-600">
+                            4
+                        </div>
+                        <h2 class="text-3xl font-bold text-gray-900 ml-4">Apply Instantly</h2>
+                    </div>
+                    <p class="text-lg text-gray-600 mb-6">One-click application or fully automated submission to save
+                        you hours every week. Track all your applications in one centralized dashboard.</p>
+                    <ul class="space-y-3">
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Automated form filling with browser automation</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Full automation mode for premium users</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Track applications, interviews, and responses in one
+                                place</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="py-16 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Why CVision Works</h2>
+                <p class="text-xl text-gray-600">Join thousands of successful job seekers</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="text-5xl font-bold text-primary-600 mb-2">10K+</div>
+                    <div class="text-gray-600 font-medium">Jobs Matched</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-5xl font-bold text-primary-600 mb-2">85%</div>
+                    <div class="text-gray-600 font-medium">Success Rate</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-5xl font-bold text-primary-600 mb-2">2 Min</div>
+                    <div class="text-gray-600 font-medium">Setup Time</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24 bg-gradient-to-br from-primary-600 to-primary-800 text-white relative overflow-hidden">
+        <div
+            class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-20">
+        </div>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6">Ready to Get Started?</h2>
+            <p class="text-xl text-primary-100 mb-10">Start your job search journey today and land your dream job
+                faster.</p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="register.html"
+                    class="bg-white text-primary-600 hover:bg-gray-50 px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform hover:-translate-y-1">
+                    Start Free Trial
+                </a>
+                <a href="features.html"
+                    class="px-8 py-4 bg-primary-700/50 hover:bg-primary-700 text-white rounded-xl font-bold text-lg transition-all border border-white/20 backdrop-blur-sm">
+                    Explore Features
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 bg-white border-t border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <div class="text-2xl font-bold text-gray-900 mb-4">CVision</div>
+                <p class="text-gray-500 mb-6">AI-Powered Job Application Platform</p>
+                <div class="flex justify-center space-x-8 mb-8">
+                    <a href="help.html" class="text-gray-500 hover:text-primary-600 transition-colors">Help Center</a>
+                    <a href="privacy.html" class="text-gray-500 hover:text-primary-600 transition-colors">Privacy
+                        Policy</a>
+                    <a href="terms.html" class="text-gray-500 hover:text-primary-600 transition-colors">Terms of
+                        Service</a>
+                    <a href="contact.html" class="text-gray-500 hover:text-primary-600 transition-colors">Contact</a>
+                </div>
+                <p class="text-gray-400 text-sm">&copy; 2024 CVision. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="assets/js/help.js"></script>
+
+    <!-- Chatbot -->
+    <link rel="stylesheet" href="assets/css/chatbot.css">
+    <script src="assets/js/chatbot.js"></script>
+</body>
+
+</html>
