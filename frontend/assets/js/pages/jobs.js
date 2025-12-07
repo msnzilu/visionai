@@ -300,6 +300,14 @@ function displayJobs(jobs) {
     });
 }
 
+
+function decodeHtmlEntities(text) {
+    if (!text) return '';
+    const textArea = document.createElement('textarea');
+    textArea.innerHTML = text;
+    return textArea.value;
+}
+
 function createJobCard(job) {
     const card = document.createElement('div');
     card.className = 'job-card bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 relative overflow-hidden group flex flex-col h-full';
