@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscriptions - CVision Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="../assets/css/global.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 text-white flex-shrink-0">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gradient">CVision Admin</h1>
+            </div>
+            <nav class="mt-6 space-y-1">
+                <a href="index.html" class="block px-6 py-3 hover:bg-gray-800 transition">Dashboard</a>
+                <a href="users.html" class="block px-6 py-3 hover:bg-gray-800 transition">Users</a>
+                <a href="tickets.html" class="block px-6 py-3 hover:bg-gray-800 transition">Support Tickets</a>
+                <a href="documents.html" class="block px-6 py-3 hover:bg-gray-800 transition">Documents</a>
+                <a href="subscriptions.html"
+                    class="block px-6 py-3 bg-gray-800 border-l-4 border-blue-500">Subscriptions</a>
+                <a href="applications.html" class="block px-6 py-3 hover:bg-gray-800 transition">Applications</a>
+                <a href="referrals.html" class="block px-6 py-3 hover:bg-gray-800 transition">Referrals</a>
+                <a href="settings.html" class="block px-6 py-3 hover:bg-gray-800 transition">Settings</a>
+
+                <a href="../dashboard.html" class="block px-6 py-3 hover:bg-gray-800 mt-8 border-t border-gray-800">
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to App
+                    </span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto relative">
+            <!-- Header -->
+            <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+                <div class="px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-900">Subscription Management</h2>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600" id="adminName">Admin</span>
+                        <button onclick="logout()" class="text-sm text-gray-600 hover:text-gray-900">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-6">
+                <!-- Data Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                        <div class="flex gap-4">
+                            <input type="text" id="searchInput" placeholder="Search users by email..."
+                                class="px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <select id="tierFilter" onchange="loadUsers()"
+                                class="px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">All Tiers</option>
+                                <option value="free">Free</option>
+                                <option value="basic">Basic</option>
+                                <option value="premium">Premium</option>
+                            </select>
+                            <button onclick="loadUsers()"
+                                class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">Search</button>
+                        </div>
+                        <button onclick="loadUsers()"
+                            class="text-blue-600 hover:text-blue-800 text-sm font-medium">Refresh</button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">User</th>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Tier</th>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Joined</th>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody" class="divide-y divide-gray-100">
+                                <!-- Data injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="p-4 border-t border-gray-100 flex justify-between items-center" id="paginationControls">
+                        <span class="text-sm text-gray-600">Page <span id="currentPage">1</span> of <span
+                                id="totalPages">1</span></span>
+                        <div class="space-x-2">
+                            <button onclick="changePage(-1)"
+                                class="px-3 py-1 border rounded text-sm hover:bg-gray-50">Prev</button>
+                            <button onclick="changePage(1)"
+                                class="px-3 py-1 border rounded text-sm hover:bg-gray-50">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Modal -->
+            <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 overflow-hidden">
+                    <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-gray-900">Edit Subscription</h3>
+                        <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">&times;</button>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <input type="hidden" id="editUserId">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">User Email</label>
+                            <input type="text" id="editUserEmail" disabled
+                                class="w-full px-3 py-2 bg-gray-100 border rounded-lg text-gray-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Subscription Tier</label>
+                            <select id="editTier"
+                                class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                <option value="free">Free</option>
+                                <option value="basic">Basic</option>
+                                <option value="premium">Premium</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="editStatus" class="form-checkbox text-blue-600 rounded">
+                                <span class="text-sm text-gray-700">Account Active</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="p-6 bg-gray-50 flex justify-end space-x-3">
+                        <button onclick="closeModal()"
+                            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium">Cancel</button>
+                        <button onclick="saveChanges()"
+                            class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Save
+                            Changes</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="../assets/js/main.js"></script>
+    <script>
+        // Check Auth
+        if (!localStorage.getItem('token')) {
+            window.location.href = '../login.html';
+        }
+
+        let currentPage = 1;
+        const limit = 50;
+
+        async function loadUsers() {
+            const token = localStorage.getItem('token');
+            const search = document.getElementById('searchInput').value;
+            const tier = document.getElementById('tierFilter').value;
+            const tableBody = document.getElementById('usersTableBody');
+
+            try {
+                let url = `/api/v1/admin/users?page=${currentPage}&limit=${limit}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                if (tier) url += `&tier=${tier}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch users');
+
+                const data = await response.json();
+
+                document.getElementById('currentPage').textContent = data.page;
+                document.getElementById('totalPages').textContent = data.pages;
+
+                if (data.users.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500">No users found.</td></tr>`;
+                    return;
+                }
+
+                tableBody.innerHTML = data.users.map(user => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            <div class="font-medium">${user.first_name || ''} ${user.last_name || ''}</div>
+                            <div class="text-xs text-gray-500">${user.email}</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            <span class="px-2 py-1 text-xs rounded-full font-medium ${user.subscription_tier === 'premium' ? 'bg-purple-100 text-purple-700' :
+                        user.subscription_tier === 'basic' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-700'
+                    }">
+                                ${user.subscription_tier ? user.subscription_tier.toUpperCase() : 'FREE'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }">
+                                ${user.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${new Date(user.created_at).toLocaleDateString()}</td>
+                        <td class="px-6 py-4 text-sm">
+                            <button onclick="openEditModal('${user.id}', '${user.email}', '${user.subscription_tier || 'free'}', ${user.is_active})" 
+                                class="text-blue-600 hover:text-blue-800 font-medium text-sm">Edit</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading users');
+            }
+        }
+
+        function changePage(delta) {
+            const total = parseInt(document.getElementById('totalPages').textContent);
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= total) {
+                currentPage = newPage;
+                loadUsers();
+            }
+        }
+
+        function openEditModal(id, email, tier, isActive) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUserEmail').value = email;
+            document.getElementById('editTier').value = tier;
+            document.getElementById('editStatus').checked = isActive;
+
+            document.getElementById('editModal').classList.remove('hidden');
+            document.getElementById('editModal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('flex');
+        }
+
+        async function saveChanges() {
+            const id = document.getElementById('editUserId').value;
+            const tier = document.getElementById('editTier').value;
+            const isActive = document.getElementById('editStatus').checked;
+            const token = localStorage.getItem('token');
+
+            try {
+                // Update Tier
+                const tierResponse = await fetch(`/api/v1/admin/users/${id}/tier?tier=${tier}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!tierResponse.ok) throw new Error('Failed to update tier');
+
+                // Update Status
+                const statusResponse = await fetch(`/api/v1/admin/users/${id}/status?is_active=${isActive}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!statusResponse.ok) throw new Error('Failed to update status');
+
+                closeModal();
+                loadUsers();
+                alert('Subscription updated successfully');
+
+            } catch (error) {
+                console.error(error);
+                alert('Error updating user: ' + error.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '../login.html';
+        }
+
+        // Init
+        loadUsers();
+    </script>
+</body>
+
+</html>

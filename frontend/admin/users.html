@@ -1,53 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Users - Admin - CVision</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body class="bg-gray-50">
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
-        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+        <aside id="sidebar"
+            class="fixed lg:static inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
             <div class="p-4 sm:p-6 flex justify-between items-center">
                 <h1 class="text-xl sm:text-2xl font-bold">CVision Admin</h1>
                 <button onclick="toggleSidebar()" class="lg:hidden text-white hover:text-gray-300">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
                     </svg>
                 </button>
             </div>
-            <nav class="mt-6">
-                <a href="dashboard.html" class="block px-4 sm:px-6 py-3 hover:bg-gray-800 transition">
+            <nav class="mt-6 space-y-1">
+                <a href="index.html" class="block px-4 sm:px-6 py-3 hover:bg-gray-800 transition">Dashboard</a>
+                <a href="users.html" class="block px-4 sm:px-6 py-3 bg-gray-800 border-l-4 border-blue-500">Users</a>
+                <a href="tickets.html" class="block px-4 sm:px-6 py-3 hover:bg-gray-800 transition">Support Tickets</a>
+                <a href="documents.html" class="block px-4 sm:px-6 py-3 hover:bg-gray-800 transition">Documents</a>
+                <a href="subscriptions.html"
+                    class="block px-4 sm:px-6 py-3 hover:bg-gray-800 transition">Subscriptions</a>
+                <a href="applications.html"
+                    class="block px-4 sm:px-6 py-3 hover:bg-gray-800 transition">Applications</a>
+                <a href="referrals.html" class="block px-4 sm:px-6 py-3 hover:bg-gray-800 transition">Referrals</a>
+                <a href="settings.html" class="block px-4 sm:px-6 py-3 hover:bg-gray-800 transition">Settings</a>
+
+                <a href="../dashboard.html"
+                    class="block px-4 sm:px-6 py-3 hover:bg-gray-800 mt-8 border-t border-gray-800">
                     <span class="flex items-center">
-                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                         </svg>
-                        <span class="text-sm sm:text-base">Dashboard</span>
-                    </span>
-                </a>
-                <a href="users.html" class="block px-4 sm:px-6 py-3 bg-gray-800 border-l-4 border-blue-500">
-                    <span class="flex items-center">
-                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                        </svg>
-                        <span class="text-sm sm:text-base">Users</span>
-                    </span>
-                </a>
-                <a href="../dashboard.html" class="block px-4 sm:px-6 py-3 hover:bg-gray-800 mt-8 border-t border-gray-800">
-                    <span class="flex items-center">
-                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                        </svg>
-                        <span class="text-sm sm:text-base">Back to App</span>
+                        Back to App
                     </span>
                 </a>
             </nav>
         </aside>
 
         <!-- Overlay for mobile -->
-        <div id="sidebarOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden" onclick="toggleSidebar()"></div>
+        <div id="sidebarOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+            onclick="toggleSidebar()"></div>
 
         <!-- Main Content -->
         <main class="flex-1 overflow-y-auto">
@@ -57,7 +59,8 @@
                     <div class="flex items-center space-x-3 sm:space-x-4">
                         <button onclick="toggleSidebar()" class="lg:hidden text-gray-600 hover:text-gray-900">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 6h16M4 12h16M4 18h16"></path>
                             </svg>
                         </button>
                         <h2 class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Users</h2>
@@ -70,23 +73,26 @@
                 <!-- Filters -->
                 <div class="bg-white rounded-lg p-4 mb-6 shadow-sm">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                        <input type="text" id="searchInput" placeholder="Search users..." 
+                        <input type="text" id="searchInput" placeholder="Search users..."
                             class="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        
-                        <select id="tierFilter" class="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+
+                        <select id="tierFilter"
+                            class="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="">All Tiers</option>
                             <option value="free">Free</option>
                             <option value="basic">Basic</option>
                             <option value="premium">Premium</option>
                         </select>
-                        
-                        <select id="statusFilter" class="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+
+                        <select id="statusFilter"
+                            class="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="">All Status</option>
                             <option value="true">Active</option>
                             <option value="false">Inactive</option>
                         </select>
-                        
-                        <button onclick="applyFilters()" class="px-3 sm:px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+
+                        <button onclick="applyFilters()"
+                            class="px-3 sm:px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                             Apply Filters
                         </button>
                     </div>
@@ -98,11 +104,21 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                                    <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
-                                    <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Status</th>
-                                    <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Created</th>
-                                    <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <th
+                                        class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        User</th>
+                                    <th
+                                        class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Tier</th>
+                                    <th
+                                        class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                                        Status</th>
+                                    <th
+                                        class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                                        Created</th>
+                                    <th
+                                        class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
@@ -119,17 +135,22 @@
                 <!-- Pagination -->
                 <div id="pagination" class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div class="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
-                        Showing <span id="showingFrom">0</span> to <span id="showingTo">0</span> of <span id="totalUsers">0</span>
+                        Showing <span id="showingFrom">0</span> to <span id="showingTo">0</span> of <span
+                            id="totalUsers">0</span>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <button onclick="previousPage()" id="prevBtn" class="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <button onclick="previousPage()" id="prevBtn"
+                            class="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
                             <span class="hidden sm:inline">Previous</span>
                             <span class="sm:hidden">Prev</span>
                         </button>
                         <span class="px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-700">
                             <span id="currentPage">1</span>/<span id="totalPages">1</span>
                         </span>
-                        <button onclick="nextPage()" id="nextBtn" class="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <button onclick="nextPage()" id="nextBtn"
+                            class="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
                             Next
                         </button>
                     </div>
@@ -145,7 +166,8 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="text" id="editEmail" readonly class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50">
+                    <input type="text" id="editEmail" readonly
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Subscription Tier</label>
@@ -164,10 +186,12 @@
                 </div>
             </div>
             <div class="mt-6 flex flex-col sm:flex-row justify-end gap-3">
-                <button onclick="closeEditModal()" class="w-full sm:w-auto px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+                <button onclick="closeEditModal()"
+                    class="w-full sm:w-auto px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
                     Cancel
                 </button>
-                <button onclick="saveUserChanges()" class="w-full sm:w-auto px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <button onclick="saveUserChanges()"
+                    class="w-full sm:w-auto px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                     Save Changes
                 </button>
             </div>
@@ -187,7 +211,7 @@
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
-            
+
             sidebar.classList.toggle('-translate-x-full');
             overlay.classList.toggle('hidden');
         }
@@ -231,7 +255,7 @@
 
         function displayUsers(users) {
             const tbody = document.getElementById('usersTableBody');
-            
+
             if (users.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="px-4 sm:px-6 py-4 text-center text-gray-500 text-sm">No users found</td></tr>';
                 return;
@@ -252,9 +276,9 @@
                     </td>
                     <td class="px-4 sm:px-6 py-4">
                         <span class="px-2 py-1 inline-flex text-xs font-semibold rounded-full 
-                            ${user.subscription_tier === 'premium' ? 'bg-yellow-100 text-yellow-800' : 
-                              user.subscription_tier === 'basic' ? 'bg-blue-100 text-blue-800' : 
-                              'bg-gray-100 text-gray-800'}">
+                            ${user.subscription_tier === 'premium' ? 'bg-yellow-100 text-yellow-800' :
+                    user.subscription_tier === 'basic' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'}">
                             ${user.subscription_tier}
                         </span>
                     </td>
@@ -282,7 +306,7 @@
             document.getElementById('totalUsers').textContent = data.total;
             document.getElementById('currentPage').textContent = data.page;
             document.getElementById('totalPages').textContent = data.pages;
-            
+
             document.getElementById('prevBtn').disabled = data.page <= 1;
             document.getElementById('nextBtn').disabled = data.page >= data.pages;
         }
@@ -297,7 +321,7 @@
 
                 const user = await response.json();
                 currentUserId = userId;
-                
+
                 document.getElementById('editEmail').value = user.email;
                 document.getElementById('editTier').value = user.subscription_tier;
                 document.getElementById('editStatus').value = user.is_active;
@@ -364,4 +388,5 @@
         loadUsers();
     </script>
 </body>
+
 </html>

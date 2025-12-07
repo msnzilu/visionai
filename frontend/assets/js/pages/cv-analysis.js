@@ -638,9 +638,6 @@ function showEmptyState() {
                 <div class="empty-state-icon">📄</div>
                 <h3>No CV Data Available</h3>
                 <p>Please upload your CV from your profile to get AI-powered analysis and job recommendations</p>
-                <button class="btn-upload" onclick="window.location.href='/pages/profile.html'">
-                    Go to Profile
-                </button>
             </div>
         `;
     });

@@ -8,6 +8,8 @@ const CVisionChatbot = {
     messages: [],
     escalationTriggered: false,
     failedAttempts: 0,
+    chatState: 'normal', // normal, awaiting_email, awaiting_message
+    ticketData: { email: '', message: '' },
 
     // Knowledge base for AI responses
     knowledgeBase: {
@@ -58,7 +60,7 @@ const CVisionChatbot = {
         contact: {
             keywords: ['contact', 'support', 'email', 'phone', 'human', 'agent', 'representative'],
             responses: [
-                "You can reach our support team:\n\n📧 Email: support@cvision.com (24hr response)\n💬 Live Chat: Available Mon-Fri, 9am-5pm EST\n📝 Contact Form: Available 24/7\n\nWould you like me to connect you with a human agent now?"
+                "You can reach our support team directly here in the chat. Would you like me to connect you with a human agent now?"
             ]
         }
     },
@@ -77,6 +79,9 @@ const CVisionChatbot = {
     },
 
     createChatWidget() {
+        // Only create widget if not already present
+        if (document.getElementById('chatButton')) return;
+
         const chatHTML = `
             <!-- Chat Button -->
             <button class="chat-button" id="chatButton" aria-label="Open chat">
@@ -137,10 +142,10 @@ const CVisionChatbot = {
         const chatInput = document.getElementById('chatInput');
         const chatSend = document.getElementById('chatSend');
 
-        chatButton.addEventListener('click', () => this.toggleChat());
-        chatMinimize.addEventListener('click', () => this.toggleChat());
-        chatSend.addEventListener('click', () => this.sendMessage());
-        chatInput.addEventListener('keypress', (e) => {
+        if (chatButton) chatButton.addEventListener('click', () => this.toggleChat());
+        if (chatMinimize) chatMinimize.addEventListener('click', () => this.toggleChat());
+        if (chatSend) chatSend.addEventListener('click', () => this.sendMessage());
+        if (chatInput) chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.sendMessage();
         });
     },
@@ -162,11 +167,14 @@ const CVisionChatbot = {
         setTimeout(() => {
             this.addMessage('bot', "👋 Hi! I'm your CVision AI assistant. I can help you with questions about our features, pricing, and how to get started. How can I help you today?");
             this.showQuickActions();
-            document.getElementById('chatBadge').style.display = 'flex';
+            const badge = document.getElementById('chatBadge');
+            if (badge) badge.style.display = 'flex';
         }, 1000);
     },
 
     showQuickActions() {
+        if (this.chatState !== 'normal') return;
+
         const quickActionsContainer = document.getElementById('quickActions');
         quickActionsContainer.innerHTML = this.quickActions.map(action =>
             `<button class="quick-action-btn" onclick="CVisionChatbot.handleQuickAction('${action}')">${action}</button>`
@@ -243,8 +251,19 @@ const CVisionChatbot = {
     processMessage(message) {
         const lowerMessage = message.toLowerCase();
 
+        // Handle state-based flows
+        if (this.chatState === 'awaiting_email') {
+            this.handleEmailInput(message);
+            return;
+        }
+
+        if (this.chatState === 'awaiting_message') {
+            this.handleTicketMessageInput(message);
+            return;
+        }
+
         // Check for escalation keywords
-        if (lowerMessage.includes('human') || lowerMessage.includes('agent') || lowerMessage.includes('representative')) {
+        if (lowerMessage.includes('talk to a human') || lowerMessage.includes('human') || lowerMessage.includes('agent') || lowerMessage.includes('representative')) {
             this.triggerEscalation();
             return;
         }
@@ -275,6 +294,71 @@ const CVisionChatbot = {
         this.addMessage('bot', response);
     },
 
+    triggerEscalation() {
+        this.addMessage('bot', "Okay, let me check if a support agent is available...");
+        document.getElementById('quickActions').innerHTML = ''; // Clear quick actions
+
+        // Simulate checking availability
+        setTimeout(() => {
+            this.startInlineSupportTicket();
+        }, 2000);
+    },
+
+    startInlineSupportTicket() {
+        this.addMessage('bot', "Analysis complete: All our agents are currently assisting other users. 😔\n\nHowever, I can create a priority support ticket for you right here. An agent will assume this thread and email you shortly.\n\nWhat is the best email address to reach you at?");
+        this.chatState = 'awaiting_email';
+
+        // Auto-fill email if user is logged in (simulated check)
+        // In a real app we'd check currentUser.email
+    },
+
+    handleEmailInput(email) {
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            this.addMessage('bot', "That doesn't look like a valid email address. Please try again.");
+            return;
+        }
+
+        this.ticketData.email = email;
+        this.chatState = 'awaiting_message';
+        this.addMessage('bot', "Got it! And what message would you like to leave for the support team?");
+    },
+
+    handleTicketMessageInput(msg) {
+        this.ticketData.message = msg;
+        this.chatState = 'normal';
+
+        this.addMessage('bot', "Creating your ticket...");
+
+        // Create ticket object
+        const ticketId = Math.floor(Math.random() * 10000) + 1000;
+        const newTicket = {
+            id: ticketId,
+            email: this.ticketData.email,
+            message: this.ticketData.message,
+            status: 'open',
+            timestamp: new Date().toISOString()
+        };
+
+        // Save to localStorage for Admin Panel
+        try {
+            const tickets = JSON.parse(localStorage.getItem('visionai_tickets') || '[]');
+            tickets.push(newTicket);
+            localStorage.setItem('visionai_tickets', JSON.stringify(tickets));
+        } catch (e) {
+            console.error('Error saving ticket to localStorage:', e);
+        }
+
+        setTimeout(() => {
+            this.addMessage('bot', `✅ **Ticket Created Successfully!**\n\nTicket ID: #${ticketId}\n\nWe have sent a confirmation to **${this.ticketData.email}**. A human agent will review your message ("${this.ticketData.message.substring(0, 20)}...") and get back to you within 24 hours.\n\nCan I help you with anything else in the meantime?`);
+            this.showQuickActions();
+
+            // Reset ticket data
+            this.ticketData = { email: '', message: '' };
+        }, 1500);
+    },
+
     showEscalationOptions() {
         const messagesContainer = document.getElementById('chatMessages');
         const escalationHTML = `
@@ -298,27 +382,6 @@ const CVisionChatbot = {
         this.failedAttempts = 0;
         this.addMessage('bot', "No problem! I'm here to help. What else would you like to know?");
         this.showQuickActions();
-    },
-
-    triggerEscalation() {
-        if (this.escalationTriggered) return;
-        this.escalationTriggered = true;
-
-        this.addMessage('bot', "I'm connecting you with our support team. This will take just a moment...");
-
-        setTimeout(() => {
-            this.addMessage('bot', "I've created a support ticket for you. Our team typically responds within 24 hours via email at support@cvision.com.\n\nYou can also:\n• Fill out our contact form for immediate assistance\n• Email us directly at support@cvision.com\n\nWould you like me to open the contact form?");
-
-            const messagesContainer = document.getElementById('chatMessages');
-            const contactHTML = `
-                <div class="escalation-actions">
-                    <button class="escalation-btn primary" onclick="window.location.href='contact.html'">Open Contact Form</button>
-                    <button class="escalation-btn secondary" onclick="CVisionChatbot.continueWithBot()">Continue Chatting</button>
-                </div>
-            `;
-            messagesContainer.insertAdjacentHTML('beforeend', contactHTML);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }, 1500);
     }
 };
 

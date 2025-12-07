@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - CVision Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="../assets/css/global.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 text-white flex-shrink-0">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gradient">CVision Admin</h1>
+            </div>
+            <nav class="mt-6 space-y-1">
+                <a href="index.html" class="block px-6 py-3 hover:bg-gray-800 transition">Dashboard</a>
+                <a href="users.html" class="block px-6 py-3 hover:bg-gray-800 transition">Users</a>
+                <a href="tickets.html" class="block px-6 py-3 hover:bg-gray-800 transition">Support Tickets</a>
+                <a href="documents.html" class="block px-6 py-3 hover:bg-gray-800 transition">Documents</a>
+                <a href="subscriptions.html" class="block px-6 py-3 hover:bg-gray-800 transition">Subscriptions</a>
+                <a href="applications.html" class="block px-6 py-3 hover:bg-gray-800 transition">Applications</a>
+                <a href="referrals.html" class="block px-6 py-3 hover:bg-gray-800 transition">Referrals</a>
+                <a href="settings.html" class="block px-6 py-3 bg-gray-800 border-l-4 border-blue-500">Settings</a>
+
+                <a href="../dashboard.html" class="block px-6 py-3 hover:bg-gray-800 mt-8 border-t border-gray-800">
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to App
+                    </span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Header -->
+            <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+                <div class="px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-900">System Settings</h2>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600" id="adminName">Admin</span>
+                        <button onclick="logout()" class="text-sm text-gray-600 hover:text-gray-900">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-6 max-w-4xl">
+                <!-- Settings Form -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-6 border-b border-gray-100">
+                        <h3 class="text-lg font-bold text-gray-900">General Configuration</h3>
+                        <p class="text-sm text-gray-500 mt-1">Manage global system settings and features.</p>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        <!-- Maintenance Mode -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900">Maintenance Mode</h4>
+                                <p class="text-sm text-gray-500">Prevent users from accessing the platform.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="maintenanceMode" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                </div>
+                            </label>
+                        </div>
+
+                        <hr class="border-gray-100">
+
+                        <!-- User Registration -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900">User Registration</h4>
+                                <p class="text-sm text-gray-500">Allow new users to sign up.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="userRegistration" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                </div>
+                            </label>
+                        </div>
+
+                        <hr class="border-gray-100">
+
+                        <!-- Email Notifications -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900">Email Notifications</h4>
+                                <p class="text-sm text-gray-500">Send system emails (welcome, updates, etc).</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="emailNotifications" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="p-6 bg-gray-50 flex justify-end">
+                        <button onclick="saveSettings()"
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-all transform hover:scale-105">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/main.js"></script>
+    <script>
+        // Check Auth using token existence as simple check
+        if (!localStorage.getItem('token')) {
+            window.location.href = '../login.html';
+        }
+
+        // Load Settings
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('visionai_admin_settings') || '{}');
+
+            // Defauts
+            document.getElementById('maintenanceMode').checked = settings.maintenanceMode || false;
+            document.getElementById('userRegistration').checked = settings.userRegistration !== false; // Default true
+            document.getElementById('emailNotifications').checked = settings.emailNotifications !== false; // Default true
+        }
+
+        function saveSettings() {
+            const settings = {
+                maintenanceMode: document.getElementById('maintenanceMode').checked,
+                userRegistration: document.getElementById('userRegistration').checked,
+                emailNotifications: document.getElementById('emailNotifications').checked
+            };
+
+            localStorage.setItem('visionai_admin_settings', JSON.stringify(settings));
+
+            // Show success animation/toast
+            const btn = document.querySelector('button[onclick="saveSettings()"]');
+            const originalText = btn.innerText;
+            btn.innerText = 'Saved!';
+            btn.classList.add('bg-green-600');
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.classList.remove('bg-green-600');
+            }, 2000);
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '../login.html';
+        }
+
+        // Init
+        loadSettings();
+    </script>
+</body>
+
+</html>

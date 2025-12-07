@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referral Program - CVision Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="../assets/css/global.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 text-white flex-shrink-0">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gradient">CVision Admin</h1>
+            </div>
+            <nav class="mt-6 space-y-1">
+                <a href="index.html" class="block px-6 py-3 hover:bg-gray-800 transition">Dashboard</a>
+                <a href="users.html" class="block px-6 py-3 hover:bg-gray-800 transition">Users</a>
+                <a href="tickets.html" class="block px-6 py-3 hover:bg-gray-800 transition">Support Tickets</a>
+                <a href="documents.html" class="block px-6 py-3 hover:bg-gray-800 transition">Documents</a>
+                <a href="subscriptions.html" class="block px-6 py-3 hover:bg-gray-800 transition">Subscriptions</a>
+                <a href="applications.html" class="block px-6 py-3 hover:bg-gray-800 transition">Applications</a>
+                <a href="referrals.html" class="block px-6 py-3 bg-gray-800 border-l-4 border-blue-500">Referrals</a>
+                <a href="settings.html" class="block px-6 py-3 hover:bg-gray-800 transition">Settings</a>
+
+                <a href="../dashboard.html" class="block px-6 py-3 hover:bg-gray-800 mt-8 border-t border-gray-800">
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to App
+                    </span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Header -->
+            <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+                <div class="px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-900">Referral Program</h2>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600" id="adminName">Admin</span>
+                        <button onclick="logout()" class="text-sm text-gray-600 hover:text-gray-900">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-6">
+                <!-- Stats Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="text-sm font-medium text-gray-500">Total Referrals</div>
+                        <div class="text-3xl font-bold text-gray-900 mt-2" id="totalReferrals">0</div>
+                    </div>
+                    <!-- Could add more stats here from a stats endpoint if available -->
+                </div>
+
+                <!-- Data Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold">All Referrals</h3>
+                        <button onclick="loadReferrals()"
+                            class="text-blue-600 hover:text-blue-800 text-sm font-medium">Refresh</button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Referrer</th>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Referee Email</th>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Reward Paid</th>
+                                    <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="referralsTableBody" class="divide-y divide-gray-100">
+                                <!-- Data injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="p-4 border-t border-gray-100 flex justify-between items-center" id="paginationControls">
+                        <span class="text-sm text-gray-600">Page <span id="currentPage">1</span> of <span
+                                id="totalPages">1</span></span>
+                        <div class="space-x-2">
+                            <button onclick="changePage(-1)"
+                                class="px-3 py-1 border rounded text-sm hover:bg-gray-50">Prev</button>
+                            <button onclick="changePage(1)"
+                                class="px-3 py-1 border rounded text-sm hover:bg-gray-50">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/main.js"></script>
+    <script>
+        // Check Auth
+        if (!localStorage.getItem('token')) {
+            window.location.href = '../login.html';
+        }
+
+        let currentPage = 1;
+        const limit = 50;
+
+        async function loadReferrals() {
+            const token = localStorage.getItem('token');
+            const tableBody = document.getElementById('referralsTableBody');
+
+            try {
+                let url = `/api/v1/admin/referrals?page=${currentPage}&limit=${limit}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch referrals');
+
+                const data = await response.json();
+
+                document.getElementById('currentPage').textContent = data.page;
+                document.getElementById('totalPages').textContent = data.pages;
+                document.getElementById('totalReferrals').textContent = data.total;
+
+                if (data.referrals.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500">No referrals found.</td></tr>`;
+                    return;
+                }
+
+                tableBody.innerHTML = data.referrals.map(ref => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 text-sm text-gray-900">${ref.referrer_email || 'Unknown'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${ref.referee_email}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs rounded-full font-medium ${ref.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }">
+                                ${ref.status.toUpperCase()}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${ref.referrer_reward_paid ? 'Yes' : 'No'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${new Date(ref.referred_at).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading referrals');
+            }
+        }
+
+        function changePage(delta) {
+            const total = parseInt(document.getElementById('totalPages').textContent);
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= total) {
+                currentPage = newPage;
+                loadReferrals();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '../login.html';
+        }
+
+        // Init
+        loadReferrals();
+    </script>
+</body>
+
+</html>
