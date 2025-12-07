@@ -19,100 +19,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initializeJobSearch();
 
-    // Check for URL parameters to pre-fill search
-    const urlParams = new URLSearchParams(window.location.search);
-    const searchQuery = urlParams.get('search');
-    const searchLocation = urlParams.get('location');
-    const employmentType = urlParams.get('employment_type');
-    const workArrangement = urlParams.get('work_arrangement');
-
-    console.log('URL Parameters:', { searchQuery, searchLocation, employmentType, workArrangement });
-
-    if (searchQuery || searchLocation || employmentType || workArrangement) {
-        // Wait for DOM to be fully ready
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Pre-fill search fields from URL parameters
-        if (searchQuery) {
-            const searchInput = document.getElementById('searchQuery');
-            if (searchInput) {
-                searchInput.value = searchQuery;
-                console.log('Set search query to:', searchQuery);
-            } else {
-                console.error('Search query input not found');
-            }
-        }
-
-        if (searchLocation) {
-            const locationInput = document.getElementById('searchLocation');
-            if (locationInput) {
-                locationInput.value = searchLocation;
-                console.log('Set location to:', searchLocation);
-            }
-        }
-
-        // Pre-fill filter checkboxes
-        if (employmentType) {
-            const types = employmentType.split(',');
-            types.forEach(type => {
-                const checkbox = document.querySelector(`.employment-type[value="${type}"]`);
-                if (checkbox) {
-                    checkbox.checked = true;
-                    console.log('Checked employment type:', type);
-                } else {
-                    console.warn('Employment type checkbox not found:', type);
-                }
-            });
-        }
-
-        if (workArrangement) {
-            const arrangements = workArrangement.split(',');
-            arrangements.forEach(arrangement => {
-                const checkbox = document.querySelector(`.work-arrangement[value="${arrangement}"]`);
-                if (checkbox) {
-                    checkbox.checked = true;
-                    console.log('Checked work arrangement:', arrangement);
-                } else {
-                    console.warn('Work arrangement checkbox not found:', arrangement);
-                }
-            });
-        }
-
-        // Automatically trigger search
-        console.log('Triggering automatic search...');
-        setTimeout(async () => {
-            await performSearch();
-        }, 500);
-    } else {
-        // Load existing jobs from database on page load
-        await loadJobsFromDB();
-    }
-
-    // Check if quick apply was triggered from CV Analysis page (legacy support)
-    const quickApplyRole = sessionStorage.getItem('quickApplyRole');
-    if (quickApplyRole) {
-        // Clear the sessionStorage
-        sessionStorage.removeItem('quickApplyRole');
-
-        // Pre-fill search with role title
-        document.getElementById('searchQuery').value = quickApplyRole;
-
-        // Wait a moment for page to be ready, then trigger quick apply
-        setTimeout(async () => {
-            // Perform search first to find jobs matching the role
-            await performSearch();
-
-            // Wait for search results, then open quick apply modal if jobs found
-            setTimeout(() => {
-                if (currentJobs.length > 0) {
-                    // Open quick apply modal for the first matching job
-                    applyToJob(currentJobs[0]._id || currentJobs[0].id);
-                } else {
-                    CVision.Utils.showAlert(`No jobs found for "${quickApplyRole}". Try searching manually.`, 'info');
-                }
-            }, 1000);
-        }, 500);
-    }
+    // Load existing jobs from database on page load
+    await loadJobsFromDB();
 });
 
 function initializeJobSearch() {
@@ -394,95 +302,111 @@ function displayJobs(jobs) {
 
 function createJobCard(job) {
     const card = document.createElement('div');
-    card.className = 'job-card bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition p-6 relative';
+    card.className = 'job-card bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 relative overflow-hidden group flex flex-col h-full';
 
-    const matchScoreHTML = job.match_score
-        ? `<div class="flex items-center gap-2 mb-2">
-               <span class="text-sm font-medium text-green-600">${Math.round(job.match_score * 100)}% Match</span>
-               <div class="h-2 flex-1 bg-gray-200 rounded-full max-w-[100px]">
-                   <div class="h-2 bg-green-600 rounded-full" style="width: ${job.match_score * 100}%"></div>
-               </div>
-           </div>`
+    // Match Score Gradient Border (Optional)
+    const matchBorder = job.match_score
+        ? `<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-primary-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>`
         : '';
 
-    // Phase 3: Batch selection checkbox
+    // Batch Selection Checkbox
     const batchCheckboxHTML = batchModeActive ? `
-        <div class="absolute top-4 left-4">
+        <div class="absolute top-4 left-4 z-10">
             <input type="checkbox" 
                    class="job-select-checkbox w-5 h-5 rounded text-primary-600 border-gray-300 focus:ring-primary-500" 
                    onchange="toggleJobSelection('${job._id || job.id}', this)">
         </div>
     ` : '';
 
+    // Header Section
+    const matchBadge = job.match_score
+        ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/></svg>
+             ${Math.round(job.match_score * 100)}% Match
+           </span>`
+        : '';
+
     card.innerHTML = `
+        ${matchBorder}
         ${batchCheckboxHTML}
-        <div class="${batchModeActive ? 'ml-8' : ''}">
-            ${matchScoreHTML}
-            <div class="flex justify-between items-start">
-                <div class="flex-1 cursor-pointer" onclick="showJobDetails('${job._id || job.id}')">
-                    <h3 class="text-lg font-semibold text-gray-900 hover:text-primary-600">
+        
+        <div class="p-6 flex-1 flex flex-col cursor-pointer" onclick="showJobDetails('${job._id || job.id}')">
+            <!-- Header: Title & Company -->
+            <div class="flex justify-between items-start mb-4 ${batchModeActive ? 'ml-8' : ''}">
+                <div class="flex-1 min-w-0 pr-4">
+                    <div class="flex items-center gap-2 mb-1">
+                        ${matchBadge}
+                        <span class="text-xs text-gray-500 flex items-center">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            ${formatDate(job.posted_date || job.created_at)}
+                        </span>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 leading-tight group-hover:text-primary-600 transition-colors line-clamp-2" title="${decodeHtmlEntities(job.title)}">
                         ${decodeHtmlEntities(job.title)}
                     </h3>
-                    <p class="text-gray-600 mt-1">${decodeHtmlEntities(job.company_name)}</p>
-                    <p class="text-gray-500 text-sm mt-1">${decodeHtmlEntities(job.location)}</p>
+                    <p class="text-base text-gray-600 font-medium mt-1 truncate">${decodeHtmlEntities(job.company_name)}</p>
                 </div>
-                <button class="save-job-btn text-gray-400 hover:text-primary-600" onclick="event.stopPropagation(); saveJob('${job._id || job.id}')">
+                <button class="save-job-btn p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition-colors flex-shrink-0" 
+                        onclick="event.stopPropagation(); saveJob('${job._id || job.id}')" title="Save Job">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                     </svg>
                 </button>
             </div>
-            
-            <div class="flex flex-wrap gap-2 mt-4">
-                ${job.employment_type ? `<span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">${formatEnumValue(job.employment_type)}</span>` : ''}
-                ${job.work_arrangement ? `<span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">${formatEnumValue(job.work_arrangement)}</span>` : ''}
+
+            <!-- Metadata Row -->
+            <div class="flex flex-wrap items-center gap-y-2 gap-x-4 text-sm text-gray-500 mb-4 ${batchModeActive ? 'ml-8' : ''}">
+                <div class="flex items-center">
+                    <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    ${decodeHtmlEntities(job.location)}
+                </div>
+                ${job.salary_range ? `
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        ${job.salary_range.min ? `${job.salary_range.min} - ` : ''}${job.salary_range.max} ${job.salary_range.currency || ''}
+                    </div>
+                ` : ''}
             </div>
 
+            <!-- Tags -->
+            <div class="flex flex-wrap gap-2 mb-4 ${batchModeActive ? 'ml-8' : ''}">
+                ${job.employment_type ? `<span class="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-100">${formatEnumValue(job.employment_type)}</span>` : ''}
+                ${job.work_arrangement ? `<span class="px-2.5 py-0.5 bg-purple-50 text-purple-700 rounded-md text-xs font-medium border border-purple-100">${formatEnumValue(job.work_arrangement)}</span>` : ''}
+            </div>
 
-            <p class="text-gray-600 mt-4 line-clamp-2">${job.description ? decodeHtmlEntities(job.description) : 'No description available'}</p>
+            <!-- Description -->
+            <p class="text-gray-600 text-sm line-clamp-3 mb-4 leading-relaxed ${batchModeActive ? 'ml-8' : ''}">
+                ${job.description ? decodeHtmlEntities(job.description).replace(/<[^>]*>?/gm, '') : 'No description available'}
+            </p>
 
-
+            <!-- Skills (Bottom of content) -->
             ${job.skills_required && job.skills_required.length > 0 ? `
-                <div class="mt-4 flex flex-wrap gap-2">
-                    ${job.skills_required.slice(0, 5).map(skill =>
-        `<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">${decodeHtmlEntities(skill)}</span>`
+                <div class="mt-auto pt-4 border-t border-gray-50 ${batchModeActive ? 'ml-8' : ''}">
+                    <div class="flex flex-wrap gap-2">
+                        ${job.skills_required.slice(0, 3).map(skill =>
+        `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">${decodeHtmlEntities(skill)}</span>`
     ).join('')}
-                    ${job.skills_required.length > 5 ? `
-                        <span class="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs">+${job.skills_required.length - 5} more</span>
-                    ` : ''}
+                        ${job.skills_required.length > 3 ? `
+                            <span class="px-2 py-1 text-gray-400 text-xs">+${job.skills_required.length - 3}</span>
+                        ` : ''}
+                    </div>
                 </div>
             ` : ''}
+        </div>
 
-            <div class="mt-4 text-sm text-gray-500">
-                Posted ${formatDate(job.posted_date || job.created_at)}
-            </div>
-
-            <!-- Phase 3 & 6: Action buttons -->
-            <div class="flex gap-2 mt-4">
-                <button onclick="event.stopPropagation(); saveJob('${job._id || job.id}')" 
-                    class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-50 transition-colors">
-                    Save
-                </button>
-                
-                <button onclick="event.stopPropagation(); showCustomizeModal('${job._id || job.id}')" 
-                    style="background: #667eea;" 
-                    class="flex-1 text-white rounded-lg px-3 py-2 text-sm font-medium hover:opacity-90 transition-all flex items-center justify-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Customize
-                </button>
-                
-                <button onclick="event.stopPropagation(); applyToJob('${job._id || job.id}')" 
-                    class="flex-1 btn-gradient text-white rounded-lg px-3 py-2 text-sm font-medium hover:shadow-lg transition-all flex items-center justify-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                    </svg>
-                    Apply
-                </button>
-            </div>
+        <!-- Footer Actions -->
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex gap-3">
+             <button onclick="event.stopPropagation(); showCustomizeModal('${job._id || job.id}')" 
+                class="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg px-4 py-2 text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 group/btn">
+                <svg class="w-4 h-4 text-gray-500 group-hover/btn:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                Customize
+            </button>
+            
+            <button onclick="event.stopPropagation(); applyToJob('${job._id || job.id}')" 
+                class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 text-sm font-semibold hover:shadow-lg hover:-translate-y-0.5 transition-all shadow-md flex items-center justify-center gap-2">
+                Apply Now
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </button>
         </div>
     `;
 
@@ -493,9 +417,9 @@ function showJobDetails(jobId) {
     const job = currentJobs.find(j => (j._id || j.id) === jobId);
     if (!job) return;
 
-    document.getElementById('modalTitle').textContent = decodeHtmlEntities(job.title);
-    document.getElementById('modalCompany').textContent = decodeHtmlEntities(job.company_name);
-    document.getElementById('modalLocation').textContent = decodeHtmlEntities(job.location);
+    document.getElementById('modalTitle').textContent = job.title;
+    document.getElementById('modalCompany').textContent = job.company_name;
+    document.getElementById('modalLocation').textContent = job.location;
 
     const content = document.getElementById('modalContent');
     content.innerHTML = `
@@ -519,15 +443,14 @@ function showJobDetails(jobId) {
 
         <div class="mt-4">
             <h4 class="font-semibold mb-2">Job Description</h4>
-            <div class="text-gray-700 leading-relaxed whitespace-pre-wrap">${job.description ? decodeHtmlEntities(job.description) : 'No description available'}</div>
-
+            <p class="text-gray-700 whitespace-pre-line">${job.description || 'No description available'}</p>
         </div>
 
         ${job.requirements && job.requirements.length > 0 ? `
             <div class="mt-4">
                 <h4 class="font-semibold mb-2">Requirements</h4>
                 <ul class="list-disc list-inside space-y-1 text-gray-700">
-                    ${job.requirements.map(req => `<li>${decodeHtmlEntities(req)}</li>`).join('')}
+                    ${job.requirements.map(req => `<li>${req}</li>`).join('')}
                 </ul>
             </div>
         ` : ''}
@@ -537,7 +460,7 @@ function showJobDetails(jobId) {
                 <h4 class="font-semibold mb-2">Required Skills</h4>
                 <div class="flex flex-wrap gap-2">
                     ${job.skills_required.map(skill =>
-        `<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded">${decodeHtmlEntities(skill)}</span>`
+        `<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded">${skill}</span>`
     ).join('')}
                 </div>
             </div>
@@ -546,8 +469,7 @@ function showJobDetails(jobId) {
         ${job.salary_range ? `
             <div class="mt-4">
                 <h4 class="font-semibold mb-2">Salary Range</h4>
-                <p class="text-gray-700">${job.salary_range.min} - ${job.salary_range.max} ${job.salary_range.currency ? job.salary_range.currency : 'USD'}</p>
-
+                <p class="text-gray-700">${job.salary_range.min} - ${job.salary_range.max} ${job.salary_range.currency || 'USD'}</p>
             </div>
         ` : ''}
 
@@ -674,14 +596,6 @@ function showEmptyState() {
     document.getElementById('loadingState').classList.add('hidden');
 }
 
-// Helper function to decode HTML entities
-function decodeHtmlEntities(text) {
-    if (!text) return text;
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    return textarea.value;
-}
-
 function formatEnumValue(value) {
     return value.replace(/_/g, ' ')
         .split(' ')
@@ -795,11 +709,12 @@ async function loadUserCVsForBatch() {
 }
 
 // ============================================================================
-// Phase 6: Quick Apply Functions
+// Phase 6: Browser Automation Apply Functions
 // ============================================================================
 
 /**
- * Phase 6: Apply to job (Step 1: Select CV)
+ * Phase 6: Apply to job with browser automation
+ * Opens modal for CV/cover letter selection, then starts browser autofill
  */
 async function applyToJob(jobId) {
     try {
@@ -809,7 +724,7 @@ async function applyToJob(jobId) {
             return;
         }
 
-        // Show modal to select CV first
+        // Show modal to select CV and cover letter
         await showApplyModal(jobId);
 
     } catch (error) {
@@ -819,285 +734,167 @@ async function applyToJob(jobId) {
 }
 
 /**
- * Show Apply Modal (Step 1)
+ * Start Quick Apply (Email Agent)
  */
-async function showApplyModal(jobId) {
-    const job = currentJobs.find(j => (j._id || j.id) === jobId);
-    if (!job) return;
-
-    // Populate Modal Info
-    const titleEl = document.getElementById('applyModalJobTitle');
-    const companyEl = document.getElementById('applyModalCompany');
-
-    if (titleEl) titleEl.textContent = job.title;
-    if (companyEl) companyEl.textContent = job.company_name;
-
-    // Load Documents
-    await loadCVsForApply();
-    await loadCoverLettersForApply();
-
-    // Setup 'Next' Button
-    const nextBtn = document.getElementById('applyNextBtn');
-    if (nextBtn) {
-        // Remove old listeners to avoid duplicates (clone node trick or property assignment)
-        nextBtn.onclick = () => handleApplyNextStep(jobId);
-    }
-
-    // Show Modal
-    const modal = document.getElementById('applyModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
-}
-
-/**
- * Close Apply Modal
- */
-function closeApplyModal() {
-    const modal = document.getElementById('applyModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-}
-
-/**
- * Handle transition to Quick Apply Form (Step 2)
- */
-async function handleApplyNextStep(jobId) {
+async function startQuickApply(jobId) {
     const cvId = document.getElementById('applyModalCvSelect')?.value;
     const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
 
     if (!cvId) {
-        CVision.Utils.showAlert('Please select a CV to proceed', 'warning');
+        CVision.Utils.showAlert('Please select a CV', 'warning');
         return;
     }
 
-    closeApplyModal();
-    await openQuickApplyForm(jobId, cvId, coverLetterId);
+    // Show loading state in button
+    const applyBtn = document.querySelector('#applyModal button.btn-gradient');
+    const originalText = applyBtn.innerHTML;
+    applyBtn.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Sending Application...
+    `;
+    applyBtn.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/email-applications/apply`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            },
+            body: JSON.stringify({
+                job_id: jobId,
+                cv_id: cvId,
+                cover_letter: coverLetterId || null
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'Failed to send application');
+        }
+
+        CVision.Utils.showAlert('Application sent successfully via email!', 'success');
+        closeApplyModal();
+
+        // Update UI to show applied status
+        const applyBtnInCard = document.querySelector(`button[onclick*="applyToJob('${jobId}')"]`);
+        if (applyBtnInCard) {
+            applyBtnInCard.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Applied
+            `;
+            applyBtnInCard.classList.remove('btn-gradient');
+            applyBtnInCard.classList.add('bg-green-600', 'hover:bg-green-700');
+            applyBtnInCard.disabled = true;
+        }
+
+    } catch (error) {
+        console.error('Quick Apply failed:', error);
+        CVision.Utils.showAlert(error.message || 'Failed to send application', 'error');
+
+        // Reset button
+        applyBtn.innerHTML = originalText;
+        applyBtn.disabled = false;
+    }
 }
 
 /**
- * Open the Quick Apply Form Modal (Step 2)
+ * Track application in database (Legacy - now handled by backend)
  */
-async function openQuickApplyForm(jobId, cvId, coverLetterId) {
+async function trackApplication(jobId, cvId, coverLetterId) {
+    // This is now handled automatically by the backend email-applications endpoint
+    console.log('Application tracking handled by backend');
+}
+
+/**
+ * Show apply modal for job application
+ */
+async function showApplyModal(jobId) {
     const job = currentJobs.find(j => (j._id || j.id) === jobId);
-    if (!job) return;
-
-    // Populate Job Details
-    const titleEl = document.getElementById('quickApplyJobTitle');
-    const idInput = document.getElementById('quickApplyJobId');
-
-    if (titleEl) titleEl.textContent = `${job.title} at ${job.company_name}`;
-    if (idInput) idInput.value = jobId;
-
-    // Load User CVs (for the dropdown in the form - sync with selection)
-    await loadCVsForQuickApply();
-
-    // Select the chosen CV in the form's dropdown (wait a bit for load)
-    setTimeout(() => {
-        const formCvSelect = document.querySelector('#quickApplyForm select[name="cv_document_id"]');
-        if (formCvSelect && cvId) {
-            formCvSelect.value = cvId;
-        }
-    }, 100);
-
-    // Load User Profile Data (Basic pre-fill)
-    await loadUserProfileForQuickApply();
-
-    // Extract Data from CV to pre-fill form
-    if (cvId) {
-        await prefillFormFromCV(cvId);
+    if (!job) {
+        CVision.Utils.showAlert('Job not found', 'error');
+        return;
     }
 
-    // Show Modal
-    const modal = document.getElementById('quickApplyModal');
+    // Store job ID for later use
+    currentJobIdForApply = jobId;
+
+    // Create modal HTML
+    const modalHTML = `
+        <div id="applyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">Quick Apply</h3>
+                    <button onclick="closeApplyModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-gray-600 mb-2">Applying to:</p>
+                    <p class="font-semibold text-gray-900">${job.title}</p>
+                    <p class="text-sm text-gray-500">${job.company_name}</p>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select CV *</label>
+                        <select id="applyModalCvSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            <option value="">Loading CVs...</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Cover Letter (Optional)</label>
+                        <select id="applyModalCoverLetterSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            <option value="">Loading cover letters...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button onclick="closeApplyModal()" class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 font-medium hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button onclick="proceedToQuickApply()" class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all">
+                        Next: Application Details
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('applyModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Load documents after modal is added to DOM
+    await loadCVsForApply();
+    await loadCoverLettersForApply();
+}
+
+/**
+ * Close apply modal
+ */
+function closeApplyModal() {
+    const modal = document.getElementById('applyModal');
     if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        modal.remove();
     }
 }
-
-/**
- * Pre-fill form using CV Data
- */
-async function prefillFormFromCV(cvId) {
-    try {
-        // Fetch CV details (reuse list endpoint as it's cached/fast)
-        const response = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cv`, {
-            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            const cvDoc = data.documents?.find(d => d.id === cvId);
-
-            if (cvDoc && cvDoc.cv_data) {
-                const info = cvDoc.cv_data.personal_info || {};
-                const form = document.getElementById('quickApplyForm');
-                if (!form) return;
-
-                // Helper to set value if empty
-                const setIfEmpty = (name, val) => {
-                    const input = form.querySelector(`[name="${name}"]`);
-                    if (input && !input.value && val) input.value = val;
-                };
-
-                // Parse Name
-                if (info.name) {
-                    const parts = info.name.split(' ');
-                    setIfEmpty('first_name', parts[0]);
-                    if (parts.length > 1) setIfEmpty('last_name', parts.slice(1).join(' '));
-                }
-
-                setIfEmpty('email', info.email);
-                setIfEmpty('phone', info.phone);
-                setIfEmpty('address', info.location || info.address);
-
-                // Parse Links
-                if (info.linkedin || info.links?.linkedin) {
-                    setIfEmpty('linkedin_url', info.linkedin || info.links.linkedin);
-                }
-                if (info.portfolio || info.website || info.links?.portfolio) {
-                    setIfEmpty('portfolio_url', info.portfolio || info.website || info.links.portfolio);
-                }
-            }
-        }
-    } catch (e) {
-        console.warn('Failed to pre-fill from CV:', e);
-    }
-}
-
-/**
- * Close Quick Apply Form
- */
-function closeQuickApplyForm() {
-    const modal = document.getElementById('quickApplyModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-}
-
-/**
- * Load CVs for the Quick Apply Form dropdown
- */
-async function loadCVsForQuickApply() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cv`, {
-            headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            }
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            const select = document.querySelector('select[name="cv_document_id"]');
-
-            if (select && data.documents) {
-                if (data.documents.length > 0) {
-                    select.innerHTML = '<option value="">Select your CV...</option>' +
-                        data.documents.map(doc => `<option value="${doc.id}">${doc.filename}</option>`).join('');
-                } else {
-                    select.innerHTML = '<option value="">No CVs found - Please upload one</option>';
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Error loading CVs:', error);
-    }
-}
-
-/**
- * Load User Profile to pre-fill form
- */
-async function loadUserProfileForQuickApply() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
-            headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            }
-        });
-
-        if (response.ok) {
-            const user = await response.json();
-            const form = document.getElementById('quickApplyForm');
-            if (!form) return;
-
-            if (user.first_name) form.querySelector('[name="first_name"]').value = user.first_name;
-            if (user.last_name) form.querySelector('[name="last_name"]').value = user.last_name;
-            if (user.email) form.querySelector('[name="email"]').value = user.email;
-        }
-    } catch (error) {
-        console.error('Error loading user profile:', error);
-    }
-}
-
-// Handle Form Submission
-document.addEventListener('submit', async (e) => {
-    if (e.target.id === 'quickApplyForm') {
-        e.preventDefault();
-
-        const form = e.target;
-        const submitBtn = document.getElementById('quickApplySubmitBtn');
-        const loadingOverlay = document.getElementById('quickApplyLoading');
-
-        // Show loading
-        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-        if (submitBtn) submitBtn.disabled = true;
-
-        try {
-            const formData = new FormData(form);
-            const payload = Object.fromEntries(formData.entries());
-
-            const response = await fetch(`${API_BASE_URL}/api/v1/email-applications/apply`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${CVision.Utils.getToken()}`
-                },
-                body: JSON.stringify({
-                    job_id: payload.job_id,
-                    cv_id: payload.cv_document_id,
-                    cover_letter: payload.cover_letter || null,
-                    personal_message: payload.cover_letter
-                })
-            });
-
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.detail || 'Application failed');
-            }
-
-            CVision.Utils.showAlert('Application sent successfully!', 'success');
-            closeQuickApplyForm();
-            form.reset();
-
-            // Update UI
-            const jobId = payload.job_id;
-            const applyBtnInCard = document.querySelector(`button[onclick*="applyToJob('${jobId}')"]`);
-            if (applyBtnInCard) {
-                applyBtnInCard.innerHTML = `
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    Applied
-                `;
-                applyBtnInCard.classList.remove('btn-gradient');
-                applyBtnInCard.classList.add('bg-green-600', 'hover:bg-green-700');
-                applyBtnInCard.disabled = true;
-            }
-
-        } catch (error) {
-            console.error('Application error:', error);
-            CVision.Utils.showAlert(error.message, 'error');
-        } finally {
-            if (loadingOverlay) loadingOverlay.classList.add('hidden');
-            if (submitBtn) submitBtn.disabled = false;
-        }
-    }
-});
 
 // ============================================================================
 // Phase 3: Customization Modal Functions
@@ -1284,39 +1081,27 @@ window.toggleBatchMode = toggleBatchMode;
 window.showCustomizeModal = showCustomizeModal;
 window.closeCustomizeModal = closeCustomizeModal;
 window.startCustomization = startCustomization;
-// New Quick Apply Exports
-window.openQuickApplyForm = openQuickApplyForm;
-window.closeQuickApplyForm = closeQuickApplyForm;
 window.showApplyModal = showApplyModal;
 window.closeApplyModal = closeApplyModal;
+// window.startBrowserAutofill = startBrowserAutofill; // Deprecated - using openQuickApplyForm instead
 
 
-/**
- * Load CVs for apply modal
- */
 /**
  * Load CVs for apply modal
  */
 async function loadCVsForApply() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cv`, {
-            headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            }
-        });
-
+        const response = await CVision.API.request('/documents/?document_type=cv');
         const cvSelect = document.getElementById('applyModalCvSelect');
+
         if (!cvSelect) return;
 
-        if (response.ok) {
-            const data = await response.json();
-            if (data.documents && data.documents.length > 0) {
-                cvSelect.innerHTML = data.documents.map(doc =>
-                    `<option value="${doc.id}">${doc.filename}</option>`
-                ).join('');
-            } else {
-                cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
-            }
+        if (response.documents && response.documents.length > 0) {
+            cvSelect.innerHTML = response.documents.map(doc =>
+                `<option value="${doc.id}">${doc.filename}</option>`
+            ).join('');
+        } else {
+            cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
         }
     } catch (error) {
         console.error('Failed to load CVs:', error);
@@ -1328,23 +1113,16 @@ async function loadCVsForApply() {
  */
 async function loadCoverLettersForApply() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/documents/?document_type=cover_letter`, {
-            headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            }
-        });
-
+        const response = await CVision.API.request('/documents/?document_type=cover_letter');
         const clSelect = document.getElementById('applyModalCoverLetterSelect');
+
         if (!clSelect) return;
 
-        if (response.ok) {
-            const data = await response.json();
-            if (data.documents && data.documents.length > 0) {
-                clSelect.innerHTML = '<option value="">No cover letter</option>' +
-                    data.documents.map(doc =>
-                        `<option value="${doc.id}">${doc.filename}</option>`
-                    ).join('');
-            }
+        if (response.documents && response.documents.length > 0) {
+            clSelect.innerHTML = '<option value="">No cover letter</option>' +
+                response.documents.map(doc =>
+                    `<option value="${doc.id}">${doc.filename}</option>`
+                ).join('');
         }
     } catch (error) {
         console.error('Failed to load cover letters:', error);
@@ -1438,3 +1216,48 @@ function connectGmail() {
 
 // Store current job ID for apply
 let currentJobIdForApply = null;
+
+/**
+ * Handle transition to Quick Apply Form (Step 2)
+ */
+async function handleApplyNextStep(jobId) {
+    const cvId = document.getElementById('applyModalCvSelect')?.value;
+    const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
+
+    if (!cvId) {
+        CVision.Utils.showAlert('Please select a CV to proceed', 'warning');
+        return;
+    }
+
+    closeApplyModal();
+    // Use the global openQuickApplyForm which now passes args to the manager
+    openQuickApplyForm(jobId, cvId, coverLetterId);
+}
+
+/**
+ * Alias for handleApplyNextStep - called from HTML button
+ */
+function proceedToQuickApply() {
+    const jobId = currentJobIdForApply || getCurrentJobIdFromModal();
+    if (jobId) {
+        handleApplyNextStep(jobId);
+    } else {
+        console.error('No job ID available for quick apply');
+        CVision.Utils.showAlert('Unable to proceed. Please try again.', 'error');
+    }
+}
+
+/**
+ * Get current job ID from the apply modal
+ */
+function getCurrentJobIdFromModal() {
+    // Try to find job ID from modal title
+    const titleEl = document.getElementById('applyModalJobTitle');
+    if (titleEl) {
+        const titleText = titleEl.textContent;
+        // Find job by title match
+        const job = currentJobs.find(j => titleText.includes(j.title));
+        return job ? (job._id || job.id) : null;
+    }
+    return null;
+}

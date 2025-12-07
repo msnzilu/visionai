@@ -162,6 +162,9 @@ class JobBase(BaseModel):
     skills_preferred: List[str] = []
     application_deadline: Optional[date] = None
     start_date: Optional[date] = None
+    application_email: Optional[str] = None
+    contact_email: Optional[str] = None
+    application_url: Optional[HttpUrl] = None
 
 
 class JobCreate(JobBase):

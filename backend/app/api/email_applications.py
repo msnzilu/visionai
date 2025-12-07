@@ -40,63 +40,68 @@ async def apply_via_email(
     Apply for a job via email using the user's connected Gmail account.
     """
     try:
+        logger.info(f"=== Email Application Request Started ===")
+        logger.info(f"Request data: job_id={request.job_id}, cv_id={request.cv_id}")
+        logger.info(f"Current user type: {type(current_user)}, value: {current_user is not None}")
+        
         # 1. Validate User has Gmail Connected
+        if current_user is None:
+            logger.error("current_user is None!")
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication required"
+            )
+            
         if not current_user.get("gmail_auth"):
+            logger.warning(f"User {current_user.get('_id')} has no gmail_auth")
             raise HTTPException(
                 status_code=400, 
                 detail="Gmail account not connected. Please connect your Gmail account first."
             )
         
+        
         # 2. Get Job Details
         jobs_collection = await get_jobs_collection()
+        logger.info(f"Looking up job: {request.job_id}")
+        
         job = await jobs_collection.find_one({"_id": ObjectId(request.job_id)})
+        logger.info(f"Job found: {job is not None}")
+        
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         
-        employer_email = job.get("application_email") or job.get("contact_email")
+        # 3. Get employer email with fallbacks
+        employer_email = (
+            job.get("application_email") or 
+            job.get("contact_email") or 
+            job.get("company_info", {}).get("contact", {}).get("email")
+        )
+        
         if not employer_email:
-             raise HTTPException(status_code=400, detail="This job does not have an email address for applications.")
+            # If no email, suggest using the application URL instead
+            application_url = job.get("application_url") or job.get("external_url")
+            if application_url:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"This job doesn't support email applications. Please apply directly at: {application_url}"
+                )
+            else:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="This job doesn't have an email address or application URL. Please contact the employer directly."
+                )
 
-        # 3. Prepare Email Content
-        user_full_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()
-        job_title = job.get("title", "Job")
-        
-        subject = request.subject_template.format(
-            job_title=job_title,
-            full_name=user_full_name
-        )
-        
-        body = request.cover_letter or f"Dear Hiring Manager,\n\nPlease find attached my application for the {job_title} position.\n\nSincerely,\n{user_full_name}"
-        
-        # TODO: Handle attachments (CV)
-        # For now, we'll assume no attachments or implement fetching from documents collection later
-        attachments = [] 
-        
-        # 4. Send Email via Gmail Service
-        # We need to convert the dict back to GmailAuth model
-        from app.models.user import GmailAuth
-        gmail_auth = GmailAuth(**current_user["gmail_auth"])
-        
-        sent_message = gmail_service.send_email(
-            auth=gmail_auth,
-            to=employer_email,
-            subject=subject,
-            body=body,
-            attachments=attachments
-        )
-        
-        # 5. Create Application Record
+
+        # 4. Create Application Record FIRST (needed for email agent)
         applications_collection = await get_applications_collection()
+        job_title = job.get("title", "Job")
         
         application_doc = Application(
             job_id=request.job_id,
             user_id=str(current_user["_id"]),
-            status=ApplicationStatus.SUBMITTED,
-            source=ApplicationSource.DIRECT, # or EMAIL
+            status=ApplicationStatus.DRAFT,  # Start as draft
+            source=ApplicationSource.DIRECT,
             application_method="email",
-            email_thread_id=sent_message.get("threadId"),
-            last_email_at=datetime.utcnow(),
-            email_status="sent",
             applied_date=datetime.utcnow(),
             job_title=job_title,
             company_name=job.get("company"),
@@ -106,16 +111,74 @@ async def apply_via_email(
         result = await applications_collection.insert_one(application_doc.dict(by_alias=True, exclude={"id"}))
         application_id = str(result.inserted_id)
         
-        # 6. Log Email
-        # We can do this in background
-        # background_tasks.add_task(log_email, ...)
+        # 5. Prepare form data
+        form_data = {
+            "first_name": current_user.get('first_name', ''),
+            "last_name": current_user.get('last_name', ''),
+            "email": current_user.get('email', ''),
+            "phone": current_user.get('phone', ''),
+        }
         
-        return EmailApplicationResponse(
-            success=True,
-            message="Application sent successfully",
-            application_id=application_id,
-            thread_id=sent_message.get("threadId")
-        )
+        
+        # 6. Send via Email Agent Service
+        from app.services.email_agent_service import email_agent_service
+        
+        try:
+            logger.info(f"Sending application via email agent for user {current_user['_id']} to job {request.job_id}")
+            
+            send_result = await email_agent_service.send_application_via_gmail(
+                user_id=str(current_user["_id"]),
+                job_id=request.job_id,
+                application_id=application_id,
+                recipient_email=employer_email,
+                form_data=form_data,
+                cv_document_id=request.cv_id,
+                cover_letter_document_id=None,
+                additional_message=request.cover_letter
+            )
+            
+            logger.info(f"Email agent result: {send_result}")
+            
+            # Handle None or missing result
+            if send_result is None:
+                logger.error("Email agent returned None")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Email service returned no response. Please check your Gmail connection and try again."
+                )
+            
+            if not send_result.get("success"):
+                error_msg = send_result.get("error", "Unknown error occurred")
+                logger.error(f"Email agent failed: {error_msg}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to send application: {error_msg}"
+                )
+            
+            # Success! Application status already updated by email agent
+            return EmailApplicationResponse(
+                success=True,
+                message="Application sent successfully",
+                application_id=application_id,
+                thread_id=send_result.get("gmail_message_id")
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as email_error:
+            logger.error(f"Email agent exception: {str(email_error)}", exc_info=True)
+            # Update application to failed
+            await applications_collection.update_one(
+                {"_id": result.inserted_id},
+                {"$set": {
+                    "status": ApplicationStatus.FAILED,
+                    "error_message": str(email_error)
+                }}
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to send application: {str(email_error)}"
+            )
 
     except Exception as e:
         logger.error(f"Email application failed: {str(e)}")
