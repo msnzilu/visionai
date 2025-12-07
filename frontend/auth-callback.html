@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,15 +10,16 @@
     <!-- Load api.js in the HEAD so it's available immediately -->
     <script src="/assets/js/main.js"></script>
 </head>
+
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center">
     <div class="text-center p-8">
         <div class="mb-6">
             <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
         </div>
-        
+
         <h1 class="text-2xl font-bold text-gray-800 mb-2">Authenticating...</h1>
         <p class="text-gray-600">Please wait while we complete your login</p>
-        
+
         <div id="errorMessage" class="hidden mt-6 bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
             <p id="errorText" class="text-red-600"></p>
             <a href="/login.html" class="inline-block mt-3 text-sm text-red-700 hover:text-red-900 font-medium">
@@ -27,10 +29,10 @@
     </div>
 
     <script src="assets/js/inline-messages.js"></script>
-    
+
     <script>
         // Wait for DOM to be fully loaded
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const urlParams = new URLSearchParams(window.location.search);
             const token = urlParams.get('token');
             const provider = urlParams.get('provider');
@@ -40,53 +42,43 @@
             if (error) {
                 document.querySelector('.animate-spin').classList.add('hidden');
                 document.getElementById('errorMessage').classList.remove('hidden');
-                
+
                 const errorMessages = {
                     'invalid_state': 'Security validation failed. Please try again.',
                     'token_failed': 'Authentication failed. Please try again.',
                     'user_info_failed': 'Failed to retrieve your information.',
                     'auth_failed': 'Authentication failed. Please try again.'
                 };
-                
+
                 document.getElementById('errorText').textContent = errorMessages[error] || 'Authentication failed.';
-            } 
+            }
             else if (token && provider) {
                 // Use CVision from api.js
                 CVision.setToken(token);
-                
+
                 // Fetch user info using your API structure
                 const url = `${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/auth/me`;
-                
+
                 fetch(url, {
-                    headers: {'Authorization': `Bearer ${token}`}
+                    headers: { 'Authorization': `Bearer ${token}` }
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.data && data.data.user) {
-                        CVision.setUser(data.data.user);
-                        
-                        const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-                        const message = isNewUser 
-                            ? `Welcome! Account created with ${providerName}.`
-                            : `Logged in successfully with ${providerName}!`;
-                        
-                        // Show success message
-                        CVision.showAlert(message, 'success');
-                        
-                        // Redirect to dashboard
-                        setTimeout(() => {
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.data && data.data.user) {
+                            CVision.setUser(data.data.user);
+
+                            // Redirect to dashboard immediately
                             window.location.href = '/dashboard.html';
-                        }, 1500);
-                    } else {
-                        throw new Error('Failed to get user info');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.querySelector('.animate-spin').classList.add('hidden');
-                    document.getElementById('errorMessage').classList.remove('hidden');
-                    document.getElementById('errorText').textContent = 'Failed to load user data.';
-                });
+                        } else {
+                            throw new Error('Failed to get user info');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        document.querySelector('.animate-spin').classList.add('hidden');
+                        document.getElementById('errorMessage').classList.remove('hidden');
+                        document.getElementById('errorText').textContent = 'Failed to load user data.';
+                    });
             }
             else {
                 document.querySelector('.animate-spin').classList.add('hidden');
@@ -96,4 +88,5 @@
         });
     </script>
 </body>
+
 </html>

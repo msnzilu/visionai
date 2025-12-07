@@ -118,6 +118,7 @@ class InlineMessage {
         const style = document.createElement('style');
         style.textContent = `
             .message-container { 
+                display: block;
                 margin: 16px 0; 
                 width: 100%;
                 max-width: 100%;
