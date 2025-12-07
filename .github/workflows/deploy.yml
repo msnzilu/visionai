@@ -332,7 +332,7 @@ jobs:
             export IMAGE_TAG=${{ steps.set-tag.outputs.IMAGE_TAG }}
             
             # Login to ECR
-            echo "${ECR_PASSWORD}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             
             # Pull images explicitly
             echo "Pulling images..."
