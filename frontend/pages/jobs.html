@@ -371,14 +371,27 @@
     <script src="../assets/js/generation.js" defer></script>
     <script src="../assets/js/components/navbar.js" defer></script>
     <script>
-        // Load navbar component
+        // Load navbar component with proper initialization
         fetch('../components/navbar.html')
             .then(response => response.text())
             .then(html => {
-                document.getElementById('navbar-container').innerHTML = html;
-                CVisionNavbar.init('Applications');
+                const container = document.getElementById('navbar-container');
+                container.innerHTML = html;
+
+                // Use requestAnimationFrame to ensure DOM has updated
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        // Double RAF ensures DOM is fully updated
+                        if (window.CVisionNavbar) {
+                            console.log('Jobs: Navbar HTML inserted, calling init()');
+                            CVisionNavbar.init('Jobs');
+                        } else {
+                            console.error('Jobs: CVisionNavbar not available');
+                        }
+                    });
+                });
             })
-            .catch(error => console.error('Error loading navbar:', error));
+            .catch(error => console.error('Jobs: Failed to load navbar:', error));
 
         // Load quick apply form component
         fetch('../components/quick-apply-form.html')
