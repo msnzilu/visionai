@@ -16,10 +16,10 @@ class DocumentManager {
             console.warn('CONFIG not found, using fallback URL');
             return 'http://localhost:8000/api/v1/documents';
         };
-        
+
         this.apiBaseUrl = this.getApiUrl();
         console.log('✅ DocumentManager initialized with API URL:', this.apiBaseUrl);
-        
+
         this.maxFileSize = 10 * 1024 * 1024; // 10MB
         this.allowedTypes = [
             'application/pdf',
@@ -35,7 +35,7 @@ class DocumentManager {
         this.checkAuth();
         this.setupEventListeners();
         this.loadDocuments();
-        
+
         if (typeof CVision !== 'undefined') {
             CVision.initUserInfo();
         }
@@ -50,20 +50,19 @@ class DocumentManager {
     setupEventListeners() {
         // File upload
         const fileInput = document.getElementById('cvFileInput');
-        const uploadBtn = document.getElementById('uploadCvBtn');
         const dropZone = document.getElementById('dropZone');
 
         if (fileInput) {
             fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
         }
 
-        if (uploadBtn) {
-            uploadBtn.addEventListener('click', () => fileInput?.click());
-        }
-
+        // Only attach dropZone click listener (uploadCvBtn doesn't exist in HTML)
         if (dropZone) {
             this.setupDragAndDrop(dropZone);
-            dropZone.addEventListener('click', () => fileInput?.click());
+            dropZone.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent any bubbling issues
+                fileInput?.click();
+            });
         }
 
         // Document actions - Event delegation
@@ -86,9 +85,9 @@ class DocumentManager {
         });
 
         // Modal forms
-        document.getElementById('customizeCvForm')?.addEventListener('submit', (e) => 
+        document.getElementById('customizeCvForm')?.addEventListener('submit', (e) =>
             this.handleCustomizeCv(e));
-        document.getElementById('coverLetterForm')?.addEventListener('submit', (e) => 
+        document.getElementById('coverLetterForm')?.addEventListener('submit', (e) =>
             this.handleGenerateCoverLetter(e));
 
         // Modal close handlers
@@ -98,7 +97,7 @@ class DocumentManager {
                 modal?.classList.add('hidden');
                 modal?.classList.remove('flex');
             }
-            
+
             // Close on backdrop click
             if (e.target.classList.contains('modal')) {
                 e.target.classList.add('hidden');
@@ -145,11 +144,11 @@ class DocumentManager {
 
             this.showUploadProgress();
             await this.uploadFile(file);
-            
+
             this.showAlert('CV uploaded and processed successfully!', 'success');
             await this.loadDocuments();
             this.hideUploadProgress();
-            
+
             // Clear file input
             const fileInput = document.getElementById('cvFileInput');
             if (fileInput) fileInput.value = '';
@@ -208,7 +207,7 @@ class DocumentManager {
         try {
             const url = `${this.apiBaseUrl}/`;
             console.log('📥 Fetching documents from:', url);
-            
+
             const response = await fetch(url, {
                 headers: {
                     'Authorization': `Bearer ${this.getAuthToken()}`
@@ -315,7 +314,7 @@ class DocumentManager {
     renderParsedInfo(cvData) {
         const skills = cvData.skills?.technical || [];
         const experience = cvData.experience || [];
-        
+
         return `
             <div class="bg-gray-50 rounded-lg p-4 mb-4">
                 <h4 class="font-medium text-gray-900 mb-2 flex items-center">
@@ -355,7 +354,7 @@ class DocumentManager {
         };
 
         const config = statusConfig[status] || { color: 'gray', text: status };
-        
+
         return `
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-800">
                 ${config.text}
@@ -418,7 +417,7 @@ class DocumentManager {
     showCustomizationModal(documentId) {
         const modal = document.getElementById('customizeCvModal');
         const form = document.getElementById('customizeCvForm');
-        
+
         if (modal && form) {
             form.dataset.documentId = documentId;
             form.reset();
@@ -430,7 +429,7 @@ class DocumentManager {
     showCoverLetterModal(documentId) {
         const modal = document.getElementById('coverLetterModal');
         const form = document.getElementById('coverLetterForm');
-        
+
         if (modal && form) {
             form.dataset.documentId = documentId;
             form.reset();
@@ -441,11 +440,11 @@ class DocumentManager {
 
     async handleCustomizeCv(e) {
         e.preventDefault();
-        
+
         const form = e.target;
         const documentId = form.dataset.documentId;
         const formData = new FormData(form);
-        
+
         const requestData = {
             job_description: formData.get('job_description'),
             company_name: formData.get('company_name'),
@@ -483,11 +482,11 @@ class DocumentManager {
 
     async handleGenerateCoverLetter(e) {
         e.preventDefault();
-        
+
         const form = e.target;
         const documentId = form.dataset.documentId;
         const formData = new FormData(form);
-        
+
         const requestData = {
             job_description: formData.get('job_description'),
             company_name: formData.get('company_name'),
@@ -527,7 +526,7 @@ class DocumentManager {
     showCustomizedCvResult(result) {
         const modal = document.getElementById('customizedCvResultModal');
         const content = document.getElementById('customizedCvContent');
-        
+
         if (modal && content) {
             content.innerHTML = this.formatCvDataForDisplay(result.customized_cv);
             modal.classList.remove('hidden');
@@ -538,7 +537,7 @@ class DocumentManager {
     showCoverLetterResult(result) {
         const modal = document.getElementById('coverLetterResultModal');
         const content = document.getElementById('coverLetterContent');
-        
+
         if (modal && content) {
             content.innerHTML = `
                 <div class="whitespace-pre-wrap bg-gray-50 p-6 rounded-lg border text-gray-700 leading-relaxed">
@@ -553,7 +552,7 @@ class DocumentManager {
                     </div>
                 </div>
             `;
-            
+
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
@@ -561,7 +560,7 @@ class DocumentManager {
 
     formatCvDataForDisplay(cvData) {
         let html = '';
-        
+
         // Personal Info
         if (cvData.personal_info) {
             html += `
@@ -573,7 +572,7 @@ class DocumentManager {
                 </div>
             `;
         }
-        
+
         // Professional Summary
         if (cvData.professional_summary) {
             html += `
@@ -585,7 +584,7 @@ class DocumentManager {
                 </div>
             `;
         }
-        
+
         // Skills
         if (cvData.skills) {
             html += `
@@ -593,7 +592,7 @@ class DocumentManager {
                     <h3 class="text-lg font-bold text-primary-900 mb-3">Skills</h3>
                     <div class="bg-gray-50 p-4 rounded-lg space-y-2">
             `;
-            
+
             if (cvData.skills.technical?.length > 0) {
                 html += `
                     <p>
@@ -602,7 +601,7 @@ class DocumentManager {
                     </p>
                 `;
             }
-            
+
             if (cvData.skills.soft?.length > 0) {
                 html += `
                     <p>
@@ -611,10 +610,10 @@ class DocumentManager {
                     </p>
                 `;
             }
-            
+
             html += '</div></div>';
         }
-        
+
         // Experience
         if (cvData.experience?.length > 0) {
             html += `
@@ -622,7 +621,7 @@ class DocumentManager {
                     <h3 class="text-lg font-bold text-primary-900 mb-3">Experience</h3>
                     <div class="space-y-4">
             `;
-            
+
             cvData.experience.forEach(exp => {
                 html += `
                     <div class="bg-gray-50 p-4 rounded-lg">
@@ -637,10 +636,10 @@ class DocumentManager {
                     </div>
                 `;
             });
-            
+
             html += '</div></div>';
         }
-        
+
         return html;
     }
 
@@ -673,7 +672,7 @@ class DocumentManager {
         if (typeof CVision !== 'undefined' && CVision.Utils?.formatFileSize) {
             return CVision.Utils.formatFileSize(bytes);
         }
-        
+
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -708,10 +707,10 @@ class DocumentManager {
 
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
-        const bgColor = type === 'success' ? 'bg-green-500' : 
-                        type === 'error' ? 'bg-red-500' : 
-                        'bg-primary-500';
-        
+        const bgColor = type === 'success' ? 'bg-green-500' :
+            type === 'error' ? 'bg-red-500' :
+                'bg-primary-500';
+
         notification.className = `fixed top-4 right-4 ${bgColor} text-white p-4 rounded-xl shadow-lg z-50 max-w-sm animate-slide-in`;
         notification.innerHTML = `
             <div class="flex items-center">
@@ -742,7 +741,7 @@ class DocumentManager {
     showLoading(message) {
         const loadingEl = document.getElementById('loadingModal');
         const messageEl = document.getElementById('loadingMessage');
-        
+
         if (loadingEl && messageEl) {
             messageEl.textContent = message;
             loadingEl.classList.remove('hidden');

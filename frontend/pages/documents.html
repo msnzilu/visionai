@@ -250,17 +250,47 @@
 
     <script src="../assets/js/main.js"></script>
     <script src="../assets/js/documents.js"></script>
-    <script src="/assets/js/components/navbar.js" defer></script>
+    <script src="../assets/js/components/navbar.js" defer></script>
     <script defer>
-        // Load navbar component
-        fetch('/components/navbar.html')
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById('navbar-container').innerHTML = html;
-                // Optionally set page title
-                CVisionNavbar.init('Applications');
-            });
+        // Load navbar component with proper initialization
+        function initNavbar() {
+            fetch('../components/navbar.html')
+                .then(response => response.text())
+                .then(html => {
+                    const container = document.getElementById('navbar-container');
+                    container.innerHTML = html;
 
+                    // Use requestAnimationFrame to ensure DOM has updated
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            // Double RAF ensures DOM is fully updated
+                            if (window.CVisionNavbar) {
+                                console.log('Documents: Navbar HTML inserted, calling init()');
+                                CVisionNavbar.init('Documents');
+                            } else {
+                                console.error('Documents: CVisionNavbar not available, retrying...');
+                                // Retry after a short delay
+                                setTimeout(() => {
+                                    if (window.CVisionNavbar) {
+                                        CVisionNavbar.init('Documents');
+                                    }
+                                }, 100);
+                            }
+                        });
+                    });
+                })
+                .catch(error => console.error('Documents: Failed to load navbar:', error));
+        }
+
+        // Wait for navbar.js to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initNavbar);
+        } else {
+            initNavbar();
+        }
+    </script>
+
+    <script>
         // Your page-specific JavaScript
         document.addEventListener('DOMContentLoaded', () => {
             if (!CVision.Utils.isAuthenticated()) {

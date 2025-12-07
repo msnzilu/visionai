@@ -215,14 +215,27 @@
     <script src="../assets/js/pages/applications.js" defer></script>
     <script src="../assets/js/components/navbar.js" defer></script>
     <script defer>
-        // Load navbar component
+        // Load navbar component with proper initialization
         fetch('/components/navbar.html')
             .then(response => response.text())
             .then(html => {
-                document.getElementById('navbar-container').innerHTML = html;
-                // Optionally set page title
-                CVisionNavbar.init('Applications');
-            });
+                const container = document.getElementById('navbar-container');
+                container.innerHTML = html;
+
+                // Use requestAnimationFrame to ensure DOM has updated
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        // Double RAF ensures DOM is fully updated
+                        if (window.CVisionNavbar) {
+                            console.log('Applications: Navbar HTML inserted, calling init()');
+                            CVisionNavbar.init('Applications');
+                        } else {
+                            console.error('Applications: CVisionNavbar not available');
+                        }
+                    });
+                });
+            })
+            .catch(error => console.error('Applications: Failed to load navbar:', error));
 
         // Your page-specific JavaScript
         document.addEventListener('DOMContentLoaded', () => {

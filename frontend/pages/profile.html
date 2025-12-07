@@ -318,12 +318,27 @@
     <script src="../assets/js/components/navbar.js" defer></script>
 
     <script defer>
-        fetch('/components/navbar.html')
+        // Load navbar component with proper initialization
+        fetch('../components/navbar.html')
             .then(response => response.text())
             .then(html => {
-                document.getElementById('navbar-container').innerHTML = html;
-                CVisionNavbar.init('Applications');
-            });
+                const container = document.getElementById('navbar-container');
+                container.innerHTML = html;
+
+                // Use requestAnimationFrame to ensure DOM has updated
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        // Double RAF ensures DOM is fully updated
+                        if (window.CVisionNavbar) {
+                            console.log('Profile: Navbar HTML inserted, calling init()');
+                            CVisionNavbar.init('Profile');
+                        } else {
+                            console.error('Profile: CVisionNavbar not available');
+                        }
+                    });
+                });
+            })
+            .catch(error => console.error('Profile: Failed to load navbar:', error));
 
         // Your page-specific JavaScript
         document.addEventListener('DOMContentLoaded', () => {
