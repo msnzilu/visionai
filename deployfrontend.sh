@@ -2,4 +2,8 @@ scp -i "visionai.pem" -r G:\Desktop\visionai\frontend\* ubuntu@13.51.158.58:/tmp
 
 then 
 
+ssh -i "visionai.pem" ubuntu@13.51.158.58
+
+Then
+
 sudo cp -r /tmp/frontend/* /var/www/visionai/

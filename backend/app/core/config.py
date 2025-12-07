@@ -11,13 +11,43 @@ from pathlib import Path
 
 
 def get_secret(secret_name: str, default: Optional[str] = None) -> Optional[str]:
-    """Read secret from file if *_FILE env var exists, otherwise from env var"""
+    """
+    Read secret from Docker secret file or environment variable.
+    Priority:
+    1. Docker secret at /run/secrets/SECRET_NAME
+    2. Environment variable SECRET_NAME_FILE (path to file)
+    3. Environment variable SECRET_NAME
+    4. Default value
+    """
+    # First, try reading from Docker secret directly
+    docker_secret_path = f"/run/secrets/{secret_name}"
+    if os.path.exists(docker_secret_path):
+        try:
+            with open(docker_secret_path, 'r') as f:
+                value = f.read().strip()
+                if value:  # Only return if not empty
+                    return value
+        except Exception as e:
+            print(f"Warning: Could not read Docker secret {secret_name}: {e}")
+    
+    # Second, try reading from *_FILE env var (for custom secret paths)
     file_path = os.getenv(f"{secret_name}_FILE")
     if file_path and os.path.exists(file_path):
-        with open(file_path, 'r') as f:
-            return f.read().strip()
+        try:
+            with open(file_path, 'r') as f:
+                value = f.read().strip()
+                if value:
+                    return value
+        except Exception as e:
+            print(f"Warning: Could not read secret file {file_path}: {e}")
+    
+    # Third, try direct environment variable
     value = os.getenv(secret_name)
-    return value if value else default
+    if value:
+        return value
+    
+    # Finally, return default
+    return default
 
 
 class Settings(BaseSettings):
@@ -110,7 +140,7 @@ class Settings(BaseSettings):
     # OAuth - REQUIRED for Google/LinkedIn login
     GOOGLE_CLIENT_ID: str = Field(default_factory=lambda: get_secret("GOOGLE_CLIENT_ID", ""))
     GOOGLE_CLIENT_SECRET: str = Field(default_factory=lambda: get_secret("GOOGLE_CLIENT_SECRET", ""))
-    GOOGLE_REDIRECT_URI: str = Field(default="https://visionsai.store/api/auth/google/callback", env="GOOGLE_REDIRECT_URI")
+    GOOGLE_REDIRECT_URI: str = Field(default="https://visionsai.store/api/v1/auth/google/callback", env="GOOGLE_REDIRECT_URI")
     
     LINKEDIN_CLIENT_ID: Optional[str] = Field(default=None, env="LINKEDIN_CLIENT_ID")
     LINKEDIN_CLIENT_SECRET: Optional[str] = Field(default=None, env="LINKEDIN_CLIENT_SECRET")
@@ -201,3 +231,13 @@ settings = Settings()
 
 # Create necessary directories
 settings.create_upload_dir()
+
+# Debug logging (remove after confirming it works)
+if settings.ENVIRONMENT == "production":
+    print("=" * 50)
+    print("PRODUCTION SETTINGS LOADED")
+    print(f"GOOGLE_CLIENT_ID present: {bool(settings.GOOGLE_CLIENT_ID)}")
+    print(f"GOOGLE_CLIENT_ID length: {len(settings.GOOGLE_CLIENT_ID) if settings.GOOGLE_CLIENT_ID else 0}")
+    print(f"GOOGLE_CLIENT_SECRET present: {bool(settings.GOOGLE_CLIENT_SECRET)}")
+    print(f"GOOGLE_REDIRECT_URI: {settings.GOOGLE_REDIRECT_URI}")
+    print("=" * 50)
