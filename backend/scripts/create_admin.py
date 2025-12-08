@@ -5,15 +5,17 @@ from pathlib import Path
 # Add backend directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from app.core.config import settings
 from app.core.security import hash_password, generate_referral_code
 from datetime import datetime
 
 async def create_admin():
     from motor.motor_asyncio import AsyncIOMotorClient
     
-    # Use 'mongo' hostname for Docker environment
-    client = AsyncIOMotorClient("mongodb://mongo:27017")
-    db = client.vision_ai
+    # Use configuration from settings
+    print(f"Connecting to database: {settings.MONGODB_URL}")
+    client = AsyncIOMotorClient(settings.MONGODB_URL)
+    db = client[settings.DATABASE_NAME]
     
     # Check if admin exists
     existing = await db.users.find_one({"email": "admin@cvision.com"})
