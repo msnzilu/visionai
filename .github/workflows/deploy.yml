@@ -167,6 +167,10 @@ jobs:
           OPENAI_MAX_TOKENS=2000
           OPENAI_TEMPERATURE=0.7
 
+          # paystack
+          PAYSTACK_PUBLIC_KEY=${{ secrets.PAYSTACK_PUBLIC_KEY }}
+          PAYSTACK_SECRET_KEY=${{ secrets.PAYSTACK_SECRET_KEY }}
+
           # Stripe
           STRIPE_SECRET_KEY=${{ secrets.STRIPE_API_KEY }}
           STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
@@ -314,6 +318,8 @@ jobs:
             # Create secrets for sensitive values only
             create_secret_from_env "OPENAI_API_KEY" "${OPENAI_API_KEY}"
             create_secret_from_env "STRIPE_SECRET_KEY" "${STRIPE_SECRET_KEY}"
+            create_secret_from_env "PAYSTACK_PUBLIC_KEY" "${PAYSTACK_PUBLIC_KEY}"
+            create_secret_from_env "PAYSTACK_SECRET_KEY" "${PAYSTACK_SECRET_KEY}"
             create_secret_from_env "JWT_SECRET_KEY" "${JWT_SECRET_KEY}"
             create_secret_from_env "GOOGLE_CLIENT_ID" "${GOOGLE_CLIENT_ID}"
             create_secret_from_env "GOOGLE_CLIENT_SECRET" "${GOOGLE_CLIENT_SECRET}"

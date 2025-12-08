@@ -28,6 +28,8 @@ services:
       - JWT_SECRET_KEY
       - GOOGLE_CLIENT_ID
       - GOOGLE_CLIENT_SECRET
+      - PAYSTACK_PUBLIC_KEY
+      - PAYSTACK_SECRET_KEY
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs
@@ -128,6 +130,8 @@ services:
     secrets:
       - OPENAI_API_KEY
       - STRIPE_SECRET_KEY
+      - PAYSTACK_PUBLIC_KEY
+      - PAYSTACK_SECRET_KEY
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs
