@@ -482,13 +482,15 @@ function showGmailConnectedAlert(user) {
 
     const gmailEmail = user.email || 'your Gmail account';
 
-    // Toggle button HTML (inline styles to match cv-analysis look)
+    // Toggle button HTML (responsive with Tailwind)
     const toggleHTML = `
-        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem; background: white; border-radius: 8px; border: 1px solid #e5e7eb; cursor: pointer; margin-left: auto;" onclick="toggleAutomation()">
-            <div>
-                <div style="font-weight: bold; font-size: 0.85rem; color: #1f2937;">Automate Applications</div>
-                <div style="font-size: 0.7rem; color: #6b7280;" id="automationStatus">Click to enable</div>
+        <div class="flex items-center gap-3 p-3 sm:px-4 sm:py-2 bg-white rounded-lg border border-gray-200 cursor-pointer w-full sm:w-auto ml-0 sm:ml-auto hover:shadow-md transition-all shadow-sm" onclick="toggleAutomation()">
+            <div class="flex-1 sm:flex-initial">
+                <div class="font-bold text-sm text-gray-800">Automate Applications</div>
+                <div class="text-xs text-gray-500" id="automationStatus">Click to enable</div>
+                <div id="automationStatsText" class="text-xs text-green-500 font-medium h-3" style="display:none"></div>
             </div>
+            <!-- Toggle Switch (Keep inline styles for JS compatibility with updateAutomationUI) -->
             <div id="automationToggle" style="position: relative; width: 40px; height: 22px; background: rgba(0,0,0,0.1); border-radius: 11px; transition: all 0.3s; flex-shrink: 0;">
                 <div id="automationSlider" style="position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></div>
             </div>
@@ -497,8 +499,8 @@ function showGmailConnectedAlert(user) {
 
     alertsContainer.innerHTML = `
         <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-4 rounded-r shadow-sm">
-            <div class="flex items-center flex-wrap gap-4">
-                <div class="flex items-center flex-1 min-w-[250px]">
+            <div class="flex flex-col sm:flex-row items-center gap-4">
+                <div class="flex items-center w-full sm:flex-1">
                     <div class="flex-shrink-0">
                         <svg class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -529,74 +531,93 @@ async function toggleAutomation() {
     const user = CVision.Utils.getUser();
     const userTier = user?.subscription_tier?.toLowerCase() || 'free';
 
+    const panel = document.getElementById('automationPanel');
+
     if (userTier.includes('free') && !automationEnabled) {
-        showPremiumModal();
-        return;
+        console.log('User is free, blocking automation (DISABLED FOR DEBUGGING)');
+        // showPremiumModal();
+        // if (panel) panel.style.display = 'none'; // defensively ensure panel is closed
+        // return;
     }
 
-    const panel = document.getElementById('automationPanel');
+
 
     if (!automationEnabled) {
         // Opening settings to enable
-        if (panel) panel.style.display = 'block';
+        if (panel) panel.style.display = 'flex';
     } else {
-        // Disabling
-        if (panel) panel.style.display = 'none';
-        await disableAutomation();
+        // Disabling - direct action
+        // Use confirm dialog or just disable
+        if (confirm('Disable auto-apply automation?')) {
+            await disableAutomation();
+        }
     }
+}
+
+function closeAutomationPanel() {
+    const panel = document.getElementById('automationPanel');
+    if (panel) panel.style.display = 'none';
 }
 
 function updateAutomationUI() {
     const toggle = document.getElementById('automationToggle');
     const slider = document.getElementById('automationSlider');
     const status = document.getElementById('automationStatus');
-    const panel = document.getElementById('automationPanel');
+    const statsText = document.getElementById('automationStatsText');
 
     if (!toggle || !slider || !status) return;
 
     if (automationEnabled) {
         toggle.style.background = '#10b981';
         slider.style.left = '20px'; // Adjusted for 40px width
-        status.textContent = 'Active';
-        if (panel) panel.style.display = 'block';
+        status.textContent = 'Automated';
+        if (statsText) statsText.style.display = 'block';
     } else {
         toggle.style.background = 'rgba(0,0,0,0.1)';
         slider.style.left = '2px';
         status.textContent = 'Click to enable';
-        if (panel) panel.style.display = 'none';
+        if (statsText) statsText.style.display = 'none';
     }
 }
 
 async function loadAutomationStatus() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/auto-apply/status`, {
-            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
-        });
+        const [statusResponse, statsResponse] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/v1/auto-apply/status`, {
+                headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+            }),
+            fetch(`${API_BASE_URL}/api/v1/auto-apply/stats`, {
+                headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+            })
+        ]);
 
-        if (!response.ok) {
-            if (response.status !== 404) console.warn(`HTTP error! status: ${response.status}`);
-            return;
+        if (statusResponse.ok) {
+            const data = await statusResponse.json();
+            automationEnabled = data.enabled;
+
+            // Update UI State
+            updateAutomationUI();
+
+            if (data) {
+                const maxSlider = document.getElementById('maxAppsSlider');
+                const minSlider = document.getElementById('minScoreSlider');
+                // ... sliders logic
+                if (maxSlider && data.max_daily_applications) {
+                    maxSlider.value = data.max_daily_applications;
+                    document.getElementById('maxAppsValue').textContent = data.max_daily_applications;
+                }
+                if (minSlider && data.min_match_score) {
+                    minSlider.value = Math.round(data.min_match_score * 100);
+                    document.getElementById('minScoreValue').textContent = Math.round(data.min_match_score * 100);
+                }
+            }
         }
 
-        const data = await response.json();
-        automationEnabled = data.enabled;
-
-        // Update UI
-        updateAutomationUI();
-
-        if (automationEnabled && data) {
-            const maxSlider = document.getElementById('maxAppsSlider');
-            const minSlider = document.getElementById('minScoreSlider');
-            const maxVal = document.getElementById('maxAppsValue');
-            const minVal = document.getElementById('minScoreValue');
-
-            if (maxSlider && data.max_daily_applications) {
-                maxSlider.value = data.max_daily_applications;
-                if (maxVal) maxVal.textContent = data.max_daily_applications;
-            }
-            if (minSlider && data.min_match_score) {
-                minSlider.value = Math.round(data.min_match_score * 100);
-                if (minVal) minVal.textContent = Math.round(data.min_match_score * 100);
+        if (statsResponse.ok) {
+            const stats = await statsResponse.json();
+            const statsText = document.getElementById('automationStatsText');
+            if (statsText && automationEnabled) {
+                statsText.textContent = `Applied: ${stats.today_applications || 0} today`;
             }
         }
 
@@ -625,7 +646,11 @@ async function saveAutomationSettings() {
         if (response.ok) {
             CVision.Utils.showAlert('Automation Enabled! System is now working.', 'success');
             automationEnabled = true;
+            closeAutomationPanel(); // Close panel on success
             updateAutomationUI();
+
+            // Refresh stats immediately
+            loadAutomationStatus();
 
             // Scroll to top to see alert
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -636,6 +661,99 @@ async function saveAutomationSettings() {
     } catch (error) {
         console.error('Error saving settings:', error);
         CVision.Utils.showAlert('Error saving settings', 'error');
+    }
+}
+
+async function runTestAutomation() {
+    const btn = document.getElementById('testRunBtn');
+    if (!btn) return;
+
+    // UI Elements
+    const progressBar = document.getElementById('testProgressBar');
+    const progressFill = document.getElementById('testProgressFill');
+    const progressStatus = document.getElementById('testProgressStatus');
+    const progressPercent = document.getElementById('testProgressPercent');
+
+    // Save original state
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `
+        <svg class="animate-spin h-4 w-4 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Starting...</span>
+    `;
+    btn.disabled = true;
+
+    if (progressBar) {
+        progressBar.classList.remove('hidden');
+        progressFill.style.width = '0%';
+        progressStatus.textContent = 'Initializing...';
+        progressPercent.textContent = '0%';
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auto-apply/test`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            }
+        });
+
+        if (!response.ok) throw new Error('Test failed to start');
+
+        const data = await response.json();
+        const taskId = data.task_id;
+
+        // Poll for status
+        const pollInterval = setInterval(async () => {
+            try {
+                const statusRes = await fetch(`${API_BASE_URL}/api/v1/auto-apply/test/status/${taskId}`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json();
+
+                    // Update Progress UI
+                    if (progressBar) {
+                        const pct = Math.round((statusData.current / statusData.total) * 100);
+                        progressFill.style.width = `${pct}%`;
+                        progressStatus.textContent = statusData.status || 'Processing...';
+                        progressPercent.textContent = `${pct}%`;
+                    }
+
+                    if (statusData.state === 'SUCCESS' || statusData.state === 'FAILURE') {
+                        clearInterval(pollInterval);
+
+                        // Final result handling
+                        if (statusData.state === 'SUCCESS') {
+                            CVision.Utils.showAlert('Test Run Completed Successfully!', 'success');
+                            await loadAutomationStatus(); // Refresh stats
+                        } else {
+                            CVision.Utils.showAlert(`Test Failed: ${statusData.error}`, 'error');
+                        }
+
+                        // Reset UI after delay
+                        setTimeout(() => {
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                            if (progressBar) progressBar.classList.add('hidden');
+                        }, 2000);
+                    }
+                }
+            } catch (err) {
+                console.error('Polling error', err);
+                // Don't clear interval immediately on one network glip, but maybe safe to stop if repeated
+            }
+        }, 1500); // Check every 1.5s
+
+    } catch (error) {
+        console.error('Test run error:', error);
+        CVision.Utils.showAlert('Test run failed to start', 'error');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        if (progressBar) progressBar.classList.add('hidden');
     }
 }
 

@@ -14,8 +14,10 @@ from app.database import get_database
 from app.models.user import User
 from app.workers.auto_apply import (
     enable_auto_apply_for_user,
-    calculate_job_match_score
+    calculate_job_match_score,
+    trigger_single_user_test
 )
+from celery.result import AsyncResult
 import logging
 
 logger = logging.getLogger(__name__)
@@ -114,6 +116,95 @@ async def disable_auto_apply(
         "success": True,
         "message": "Auto-apply disabled successfully"
     }
+
+
+@router.post("/test")
+async def test_auto_apply(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_database)
+):
+    """
+    Trigger a single test run of auto-apply for the current user.
+    Useful for verifying that the automation finds jobs and applies correctly.
+    """
+    require_premium(current_user)
+    
+    user_id = str(current_user["_id"])
+    
+    # Trigger the task and wait for result (or return task_id if it takes too long, 
+    # but for "Test" user usually wants immediate feedback)
+    try:
+        # Note: In production, we might want to just return task_id. 
+        # But for this user feature, we'll wait briefly or return the task info.
+        # Since workers are async, let's call the task. 
+        # If we want synchronous-like behavior for "Test", we can use .get() but careful with timeouts.
+        # Let's try to run it.
+        
+        task = trigger_single_user_test.delay(user_id)
+        
+        # We can return the task ID and have frontend poll, OR just return success 
+        # "Test started". Given the user request "see results", polling might be best,
+        # but let's assume it runs relatively fast (< 10s) for a few jobs.
+        # For simplicity in this iteration, we will return success and let them check stats.
+        
+        # Better: wait for it if possible. 
+        # result = task.get(timeout=30) 
+        # But that blocks API worker. 
+        
+        # Compromise: Return success and tell frontend to poll stats or show "Running... check stats in a moment".
+        
+        return {
+            "success": True,
+            "message": "Test automation started. Please check stats in a few seconds.",
+            "task_id": str(task.id)
+        }
+        
+    except Exception as e:
+         raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start test: {str(e)}"
+        )
+
+
+@router.get("/test/status/{task_id}")
+async def get_test_status(task_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Get status of test run task
+    """
+    task_result = AsyncResult(task_id)
+    
+    response = {
+        "state": task_result.state,
+        "current": 0,
+        "total": 100,
+        "status": "Pending..."
+    }
+    
+    if task_result.state == 'PENDING':
+        # Default pending state
+        pass
+    elif task_result.state == 'PROGRESS':
+        response.update({
+            "current": task_result.info.get('current', 0),
+            "total": task_result.info.get('total', 100),
+            "status": task_result.info.get('status', 'Processing...')
+        })
+    elif task_result.state == 'SUCCESS':
+        response.update({
+            "current": 100,
+            "total": 100,
+            "status": "Completed successfully!",
+            "result": task_result.result
+        })
+    elif task_result.state == 'FAILURE':
+         response.update({
+            "current": 0,
+            "total": 100,
+            "status": "Failed: " + str(task_result.info), 
+            "error": str(task_result.info)
+        })
+        
+    return response
 
 
 @router.get("/stats")

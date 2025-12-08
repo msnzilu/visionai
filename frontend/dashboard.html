@@ -40,115 +40,155 @@
         <!-- Alert Container -->
         <div id="alerts" class="mb-4 sm:mb-6"></div>
 
-        <!-- Automation Settings Panel (Hidden by default) -->
-        <div id="automationPanel"
-            style="display: none; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h3 style="font-size: 1.25rem; font-weight: bold;">⚙️ Automation Settings</h3>
-                    <p style="color: #6b7280;">Configure how the system automatically applies to jobs on your behalf</p>
+        <!-- Automation Settings Panel (Modal) -->
+        <div id="automationPanel" style="display: none;"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity">
+            <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); width: 95%; max-width: 600px; max-height: 90vh; overflow-y: auto; position: relative;"
+                class="animate-fade-in-up">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 style="font-size: 1.25rem; font-weight: bold; color: #1f2937;">⚙️ Automation Settings</h3>
+                        <p style="color: #6b7280; font-size: 0.875rem;">Configure how the system automatically applies
+                            for you</p>
+                    </div>
+                    <button onclick="closeAutomationPanel()"
+                        class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors">
+                        <span class="sr-only">Close</span>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
-                <button onclick="toggleAutomation()" class="text-gray-400 hover:text-gray-600">
-                    <span class="sr-only">Close</span>
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.5rem;">
-                <div>
-                    <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Max Applications Per
-                        Day</label>
-                    <input type="range" min="1" max="10" value="5" id="maxAppsSlider" style="width: 100%;"
-                        oninput="updateSliderValue('maxApps', this.value)">
-                    <div style="text-align: center; margin-top: 0.5rem; font-weight: bold; color: #667eea;">
-                        <span id="maxAppsValue">5</span> applications/day
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-bottom: 2rem;"
+                    class="sm:grid-cols-2">
+                    <div>
+                        <label style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: #374151;">Max
+                            Applications Per Day</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" min="1" max="10" value="5" id="maxAppsSlider"
+                                class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                oninput="updateSliderValue('maxApps', this.value)">
+                        </div>
+                        <div
+                            style="text-align: right; margin-top: 0.25rem; font-weight: bold; color: #667eea; font-size: 0.875rem;">
+                            <span id="maxAppsValue">5</span> / day
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: #374151;">Minimum
+                            Match Score</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" min="50" max="90" value="70" id="minScoreSlider"
+                                class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                oninput="updateSliderValue('minScore', this.value)">
+                        </div>
+                        <div
+                            style="text-align: right; margin-top: 0.25rem; font-weight: bold; color: #667eea; font-size: 0.875rem;">
+                            <span id="minScoreValue">70</span>% match
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Minimum Match Score</label>
-                    <input type="range" min="50" max="90" value="70" id="minScoreSlider" style="width: 100%;"
-                        oninput="updateSliderValue('minScore', this.value)">
-                    <div style="text-align: center; margin-top: 0.5rem; font-weight: bold; color: #667eea;">
-                        <span id="minScoreValue">70</span>% minimum
+
+                <!-- Progress Bar Section (Already here, just styling) -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-medium text-gray-800">Test Run</h4>
+                        <span class="text-xs text-gray-500">Run a single test to verify automation</span>
                     </div>
+
+                    <div id="testProgressBar" class="hidden mb-3">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span id="testProgressStatus" class="font-medium text-blue-600">Starting...</span>
+                            <span id="testProgressPercent" class="text-gray-500">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="testProgressFill" class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <button id="testRunBtn" onclick="runTestAutomation()"
+                        class="w-full py-2 px-4 border border-blue-600 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
+                        <span>🧪 Run Test Automation</span>
+                    </button>
+                </div>
+
+                <div style="background: #f9fafb; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h4 style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.875rem; color: #374151;">What Will
+                        Be Automated:</h4>
+                    <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.875rem;" class="space-y-2">
+                        <li class="flex items-center gap-2 text-gray-600"><span>✅</span> AI finds matching jobs</li>
+                        <li class="flex items-center gap-2 text-gray-600"><span>✅</span> Generates custom CV & Cover
+                            Letter</li>
+                        <li class="flex items-center gap-2 text-gray-600"><span>✅</span> Submits applications
+                            automatically</li>
+                    </ul>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                    <button onclick="saveAutomationSettings()"
+                        class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm w-full sm:w-auto">
+                        Save Changes
+                    </button>
                 </div>
             </div>
-
-            <div style="background: #f9fafb; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                <h4 style="font-weight: bold; margin-bottom: 0.75rem;">What Will Be Automated:</h4>
-                <ul style="list-style: none; padding: 0; margin: 0;">
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ AI finds matching jobs (based on your CV)</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Generates custom CV for each job</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Writes personalized cover letters</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Submits applications automatically</li>
-                    <li style="padding: 0.5rem 0; color: #4b5563;">✅ Monitors email for responses</li>
-                </ul>
-            </div>
-
-            <button onclick="saveAutomationSettings()"
-                style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; width: 100%;">
-                Save Settings & Start Automation
-            </button>
         </div>
 
-        <!-- Premium Modal -->
-        <div id="premiumModal"
-            style="display: none; pointer-events: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(5px); animation: fadeIn 0.3s ease;">
-            <div
-                style="background: white; border-radius: 20px; max-width: 500px; width: 90%; padding: 2.5rem; position: relative; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: slideUp 0.3s ease;">
+        <!-- Premium Feature Modal -->
+        <div id="premiumModal" style="display: none;"
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900 bg-opacity-60 backdrop-blur-sm transition-opacity">
+            <div style="background: white; border-radius: 20px; max-width: 480px; width: 90%; padding: 2rem; position: relative; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);"
+                class="animate-bounce-in">
                 <!-- Close Button -->
                 <button onclick="closePremiumModal()"
-                    style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; transition: color 0.2s;">
+                    style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #9ca3af; transition: color 0.2s;"
+                    class="hover:text-gray-800">
                     ✕
                 </button>
 
                 <!-- Icon -->
                 <div style="text-align: center; margin-bottom: 1.5rem;">
                     <div
-                        style="display: inline-block; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-bottom: 1rem;">
-                        <span style="font-size: 3rem;">🤖</span>
+                        style="display: inline-block; padding: 1.25rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-bottom: 1rem; box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);">
+                        <span style="font-size: 2.5rem;">🤖</span>
                     </div>
-                    <h2 style="font-size: 1.75rem; font-weight: bold; color: #1f2937; margin: 0;">Premium Feature</h2>
+                    <h2
+                        style="font-size: 1.5rem; font-weight: 800; color: #1f2937; margin: 0; letter-spacing: -0.025em;">
+                        Premium Feature</h2>
                 </div>
 
                 <!-- Description -->
-                <p style="text-align: center; color: #6b7280; font-size: 1rem; margin-bottom: 2rem; line-height: 1.6;">
+                <p
+                    style="text-align: center; color: #4b5563; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">
                     Full automation requires a premium subscription. Upgrade now to unlock the power of AI-driven job
                     applications!
                 </p>
 
                 <!-- Benefits -->
-                <div
-                    style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
-                    <h3 style="font-weight: bold; margin-bottom: 1rem; color: #1f2937; font-size: 1rem;">✨ What You'll
-                        Get:</h3>
-                    <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="color: #10b981; font-weight: bold;">✓</span>
-                            Auto-apply to 5-10 jobs daily
+                <div style="background: #f3f4f6; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center gap-2 text-gray-700 font-medium">
+                            <span class="text-emerald-500 font-bold">✓</span> Auto-apply to 5-10 jobs daily
                         </li>
-                        <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="color: #10b981; font-weight: bold;">✓</span>
-                            AI-generated custom CVs for each job
+                        <li class="flex items-center gap-2 text-gray-700 font-medium">
+                            <span class="text-emerald-500 font-bold">✓</span> AI-generated custom CVs
                         </li>
-                        <li style="padding: 0.5rem 0; color: #4b5563; display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="color: #10b981; font-weight: bold;">✓</span>
-                            Personalized cover letters
+                        <li class="flex items-center gap-2 text-gray-700 font-medium">
+                            <span class="text-emerald-500 font-bold">✓</span> Personalized cover letters
                         </li>
                     </ul>
                 </div>
 
                 <!-- Action Buttons -->
-                <div style="display: flex; gap: 1rem;">
+                <div style="display: flex; gap: 0.75rem;">
                     <button onclick="closePremiumModal()"
-                        style="flex: 1; padding: 1rem; background: #f3f4f6; color: #4b5563; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 1rem;">
+                        class="flex-1 py-3 px-4 bg-gray-100 text-gray-600 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
                         Maybe Later
                     </button>
                     <button onclick="upgradeNow()"
-                        style="flex: 1; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); font-size: 1rem;">
+                        class="flex-1 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:-translate-y-0.5">
                         Upgrade Now 🚀
                     </button>
                 </div>

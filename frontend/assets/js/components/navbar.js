@@ -34,7 +34,6 @@ const CVisionNavbar = (function () {
             return;
         }
 
-        setupEventListeners();
         await loadUserInfo();
         await loadNotifications();
         startPolling();
@@ -66,51 +65,68 @@ const CVisionNavbar = (function () {
         });
     }
 
-    // Setup all event listeners
+    // Setup all event listeners using delegation
     function setupEventListeners() {
-        const notificationBtn = document.getElementById('notificationBtn');
-        const notificationDropdown = document.getElementById('notificationDropdown');
+        // Remove existing listener to be safe (though init guard prevents this)
+        // We use a single document listener for all navbar interactions
+        document.addEventListener('click', (e) => {
+            const target = e.target;
+            const notificationDropdown = document.getElementById('notificationDropdown');
+            const userDropdown = document.getElementById('userDropdown');
+            const mobileMenu = document.getElementById('mobileMenu');
 
-        if (notificationBtn) {
-            notificationBtn.addEventListener('click', (e) => {
+            // Notification Button
+            const notifBtn = target.closest('#notificationBtn');
+            if (notifBtn) {
+                e.preventDefault();
                 e.stopPropagation();
+                userDropdown?.classList.remove('show');
+                mobileMenu?.classList.remove('show');
                 notificationDropdown?.classList.toggle('show');
-                document.getElementById('userDropdown')?.classList.remove('show');
-                document.getElementById('mobileMenu')?.classList.remove('show');
-            });
-        } else {
-            console.warn('CVisionNavbar: notificationBtn element not found!');
-        }
+                return;
+            }
 
-        const userMenuBtn = document.getElementById('userMenuBtn');
-        const userDropdown = document.getElementById('userDropdown');
-
-        if (userMenuBtn) {
-            userMenuBtn.addEventListener('click', (e) => {
+            // User Menu Button
+            const userBtn = target.closest('#userMenuBtn');
+            if (userBtn) {
+                e.preventDefault();
                 e.stopPropagation();
-                userDropdown?.classList.toggle('show');
                 notificationDropdown?.classList.remove('show');
-                document.getElementById('mobileMenu')?.classList.remove('show');
-            });
-        } else {
-            console.warn('CVisionNavbar: userMenuBtn element not found!');
-        }
+                mobileMenu?.classList.remove('show');
+                userDropdown?.classList.toggle('show');
+                return;
+            }
 
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        if (mobileMenuBtn) {
-            mobileMenuBtn.addEventListener('click', (e) => {
+            // Mobile Menu Button
+            const mobileBtn = target.closest('#mobileMenuBtn');
+            if (mobileBtn) {
+                e.preventDefault();
                 e.stopPropagation();
-                document.getElementById('mobileMenu')?.classList.toggle('show');
                 notificationDropdown?.classList.remove('show');
                 userDropdown?.classList.remove('show');
-            });
-        }
+                mobileMenu?.classList.toggle('show');
+                return;
+            }
 
-        document.getElementById('markAllReadBtn')?.addEventListener('click', markAllAsRead);
+            // Mark All Read Button
+            const markReadBtn = target.closest('#markAllReadBtn');
+            if (markReadBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                markAllAsRead();
+                return;
+            }
 
-        document.addEventListener('click', () => {
-            notificationDropdown?.classList.remove('show');
-            userDropdown?.classList.remove('show');
+            // Click outside - close dropdowns
+            // Don't close if clicking inside the dropdown itself (unless it's a link/button that should close it)
+            const insideNotif = target.closest('#notificationDropdown');
+            const insideUser = target.closest('#userDropdown');
+            const insideMobile = target.closest('#mobileMenu');
+
+            if (!insideNotif) notificationDropdown?.classList.remove('show');
+            if (!insideUser) userDropdown?.classList.remove('show');
+            // Mobile menu usually stays open until clicked outside or link clicked
+            if (!insideMobile && !mobileBtn) mobileMenu?.classList.remove('show');
         });
     }
 
@@ -425,6 +441,9 @@ const CVisionNavbar = (function () {
         window.location.href = '/login.html';
     }
 
+    // Initialize event listeners immediately (delegation doesn't require elements to exist)
+    setupEventListeners();
+
     // Public API
     return {
         init,
@@ -435,8 +454,7 @@ const CVisionNavbar = (function () {
         getUserInfo,
         updateUserDisplay
     };
-};
-}) ();
+})();
 
 // Expose to window immediately
 window.CVisionNavbar = CVisionNavbar;
