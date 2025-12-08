@@ -9,6 +9,76 @@ from bson import ObjectId
 
 router = APIRouter()
 
+# Add imports for login logic
+from pydantic import BaseModel, EmailStr
+from app.core.security import verify_password, create_access_token
+from app.core.config import settings
+
+class AdminLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+@router.post("/login")
+async def admin_login(
+    login_data: AdminLogin,
+    db = Depends(get_database)
+):
+    """Admin login endpoint"""
+    try:
+        # Find user
+        user = await db.users.find_one({"email": login_data.email})
+        
+        # Verify credentials
+        if not user or not verify_password(login_data.password, user["password"]):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password"
+            )
+            
+        # Strict Admin Check
+        if user.get("role") != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Admin privileges required."
+            )
+            
+        # Create access token
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            str(user["_id"]), 
+            expires_delta=access_token_expires
+        )
+        
+        # Prepare response
+        user_response = {
+            "id": str(user["_id"]),
+            "email": user["email"],
+            "first_name": user.get("first_name", ""),
+            "last_name": user.get("last_name", ""),
+            "role": user.get("role"),
+            "subscription_tier": user.get("subscription_tier", "free")
+        }
+        
+        return {
+            "success": True,
+            "message": "Admin login successful",
+            "data": {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "user": user_response
+            }
+        }
+        
+    except HTTPException as he:
+        # Re-raise HTTP exceptions
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Login failed: {str(e)}"
+        )
+
+
 @router.get("/stats")
 async def get_platform_stats(
     current_admin = Depends(require_admin),

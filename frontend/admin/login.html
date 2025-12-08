@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../assets/css/global.css">
 </head>
+
 <body class="bg-gray-900">
     <div class="min-h-screen flex items-center justify-center px-4">
         <div class="max-w-md w-full">
@@ -50,7 +52,9 @@
                     <button type="submit" id="loginButton"
                         class="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
                         <span class="button-text">Sign In as Admin</span>
-                        <div class="loading-spinner hidden inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <div
+                            class="loading-spinner hidden inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin">
+                        </div>
                     </button>
                 </form>
 
@@ -73,8 +77,6 @@
 
     <script src="../assets/js/main.js"></script>
     <script>
-        const API_BASE = 'http://localhost:8000/api/v1';
-
         // Redirect if already logged in as admin
         if (CVision.Utils.isAuthenticated()) {
             const user = CVision.Utils.getUser();
@@ -108,30 +110,29 @@
                 // Show loading
                 setButtonLoading(loginButton, true);
 
-                // Login request
-                const response = await fetch(`${API_BASE}/auth/login`, {
+                // Login request using shared API client but targeting ADMIN endpoint
+                const data = await CVision.API.request('/admin/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
-
-                const data = await response.json();
 
                 console.log("Full login response:", data);
                 console.log("User object:", data.data?.user);
                 console.log("User role:", data.data?.user?.role);
 
-                if (!response.ok || !data.success) {
+                if (!data.success) {
                     throw new Error(data.message || 'Login failed');
                 }
 
                 // Check if user is admin
                 if (data.data.user.role !== 'admin') {
                     console.log("Role check failed. Expected 'admin', got:", data.data.user.role);
+                    // Force logout if not admin
+                    CVision.Utils.removeToken();
                     throw new Error('Access denied. Admin credentials required.');
                 }
 
-                // Store credentials
+                // Store credentials (API client doesn't auto-store)
                 CVision.Utils.setToken(data.data.access_token);
                 CVision.Utils.setUser(data.data.user);
 
@@ -173,7 +174,7 @@
         function setButtonLoading(button, loading) {
             const textElement = button.querySelector('.button-text');
             const spinnerElement = button.querySelector('.loading-spinner');
-            
+
             if (loading) {
                 button.disabled = true;
                 textElement.classList.add('hidden');
@@ -186,4 +187,5 @@
         }
     </script>
 </body>
+
 </html>
