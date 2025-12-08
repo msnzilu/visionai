@@ -219,3 +219,7 @@ secrets:
     external: true
   GOOGLE_CLIENT_SECRET:
     external: true
+  PAYSTACK_PUBLIC_KEY:      
+    external: true
+  PAYSTACK_SECRET_KEY:     
+    external: true

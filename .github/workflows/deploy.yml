@@ -306,10 +306,22 @@ jobs:
             # Read .env.production and create secrets
             echo "Creating Docker secrets from .env.production..."
             
-            # Source the env file
-            set -a
-            source /tmp/.env.production
-            set +a
+            # Parse .env.production safely (instead of sourcing it)
+            while IFS='=' read -r key value || [ -n "$key" ]; do
+              # Skip comments and empty lines
+              [[ "$key" =~ ^#.*$ ]] || [[ -z "$key" ]] && continue
+              
+              # Remove leading/trailing whitespace and quotes
+              key=$(echo "$key" | xargs)
+              value=$(echo "$value" | xargs)
+              value="${value%\"}"
+              value="${value#\"}"
+              value="${value%\'}"
+              value="${value#\'}"
+              
+              # Export the variable
+              export "$key=$value"
+            done < /tmp/.env.production
             
             # Remove legacy lowercase secrets to prevent conflicts
             docker secret rm openai_api_key 2>/dev/null || true
@@ -340,10 +352,9 @@ jobs:
             # Login to ECR
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             
-            # Pull images explicitly
-            echo "Pulling images..."
+            # Pull backend image
+            echo "Pulling backend image..."
             docker pull ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG}
-            docker pull ${ECR_REGISTRY}/visionai-frontend:${IMAGE_TAG}
             
             # Deploy stack with rolling update
             docker stack deploy \
