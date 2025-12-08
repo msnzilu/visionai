@@ -190,11 +190,16 @@ async def get_test_status(task_id: str, current_user: dict = Depends(get_current
             "status": task_result.info.get('status', 'Processing...')
         })
     elif task_result.state == 'SUCCESS':
+        # Result is typically {"success": True, "applications_sent": N, "message": "..."}
+        result_data = task_result.result or {}
         response.update({
             "current": 100,
             "total": 100,
-            "status": "Completed successfully!",
-            "result": task_result.result
+            "status": "Completed: " + str(result_data.get("message", "Test run finished")),
+            "result": result_data,
+            "message": result_data.get("message"),
+            "applications_sent": result_data.get("applications_sent", 0),
+            "stats": result_data.get("stats", {})
         })
     elif task_result.state == 'FAILURE':
          response.update({

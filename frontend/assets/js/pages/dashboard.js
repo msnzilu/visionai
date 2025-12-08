@@ -535,9 +535,9 @@ async function toggleAutomation() {
 
     if (userTier.includes('free') && !automationEnabled) {
         console.log('User is free, blocking automation (DISABLED FOR DEBUGGING)');
-        // showPremiumModal();
-        // if (panel) panel.style.display = 'none'; // defensively ensure panel is closed
-        // return;
+        showPremiumModal();
+        if (panel) panel.style.display = 'none'; // defensively ensure panel is closed
+        return;
     }
 
 
@@ -692,6 +692,14 @@ async function runTestAutomation() {
         progressPercent.textContent = '0%';
     }
 
+    // Clear previous results
+    const resultContainer = document.getElementById('testRunResult');
+    if (resultContainer) {
+        resultContainer.classList.add('hidden');
+        resultContainer.innerHTML = '';
+        resultContainer.className = "hidden mt-3 text-sm p-3 rounded-md border text-center";
+    }
+
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/auto-apply/test`, {
             method: 'POST',
@@ -728,10 +736,39 @@ async function runTestAutomation() {
 
                         // Final result handling
                         if (statusData.state === 'SUCCESS') {
-                            CVision.Utils.showAlert('Test Run Completed Successfully!', 'success');
+                            // Show specific result message with stats
+                            const appsSent = statusData.applications_sent || 0;
+                            const msg = statusData.message || "Test run completed";
+                            const stats = statusData.stats || {};
+
+                            let detail = "";
+                            if (stats.jobs_found !== undefined) {
+                                detail = `Scanned: ${stats.jobs_found} | Analyzed: ${stats.jobs_analyzed} | Matched: ${stats.matches_found}`;
+                            }
+
+                            const resultContainer = document.getElementById('testRunResult');
+                            if (resultContainer) {
+                                resultContainer.classList.remove('hidden');
+                                if (appsSent > 0) {
+                                    resultContainer.className = "mt-3 text-sm p-3 rounded-md border text-center bg-green-50 border-green-200 text-green-700";
+                                    resultContainer.innerHTML = `<strong>Success! ${appsSent} applications sent.</strong><br><span class="text-xs mt-1 block">${detail}</span>`;
+                                } else {
+                                    resultContainer.className = "mt-3 text-sm p-3 rounded-md border text-center bg-blue-50 border-blue-200 text-blue-700";
+                                    resultContainer.innerHTML = `<strong>${msg}</strong><br><span class="text-xs mt-1 block">${detail}</span>`;
+                                }
+                            }
+
+                            CVision.Utils.showAlert('success', 'Test Run Finished');
+
                             await loadAutomationStatus(); // Refresh stats
                         } else {
-                            CVision.Utils.showAlert(`Test Failed: ${statusData.error}`, 'error');
+                            const resultContainer = document.getElementById('testRunResult');
+                            if (resultContainer) {
+                                resultContainer.classList.remove('hidden');
+                                resultContainer.className = "mt-3 text-sm p-3 rounded-md border text-center bg-red-50 border-red-200 text-red-700";
+                                resultContainer.innerText = `Test Failed: ${statusData.error}`;
+                            }
+                            CVision.Utils.showAlert(`Test Failed`, 'error');
                         }
 
                         // Reset UI after delay
@@ -739,7 +776,7 @@ async function runTestAutomation() {
                             btn.innerHTML = originalText;
                             btn.disabled = false;
                             if (progressBar) progressBar.classList.add('hidden');
-                        }, 2000);
+                        }, 5000); // Keep result visible longer
                     }
                 }
             } catch (err) {

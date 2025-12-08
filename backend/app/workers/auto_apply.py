@@ -187,6 +187,16 @@ async def generate_cover_letter(user_cv: Dict, job: Dict) -> str:
 
 async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dict:
     """Core logic to process auto-apply for a single user"""
+    stats = {
+        "jobs_found": 0,
+        "jobs_analyzed": 0,
+        "matches_found": 0,
+        "applications_sent": 0,
+        "daily_limit": 0,
+        "limit_reached": False,
+        "reason": ""
+    }
+    
     try:
         if task_instance:
             task_instance.update_state(state='PROGRESS', meta={'current': 5, 'total': 100, 'status': 'Initializing user data...'})
@@ -196,7 +206,7 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         # Get user's CV data
         user_cv = user.get("cv_parsed", {})
         if not user_cv:
-            return {"success": False, "error": "No CV data found"}
+            return {"success": False, "error": "No CV data found", "stats": stats}
 
         user_cv["user_id"] = user_id
         user_cv["full_name"] = user.get("full_name")
@@ -205,6 +215,8 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         preferences = user.get("preferences", {})
         max_daily_applications = preferences.get("max_daily_applications", 5)
         min_match_score = preferences.get("min_match_score", 0.7)
+        
+        stats["daily_limit"] = max_daily_applications
         
         # Check how many applications sent today
         today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -216,7 +228,9 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         
         if applications_today >= max_daily_applications:
             logger.info(f"User {user_id} reached daily limit ({max_daily_applications})")
-            return {"success": True, "applications_sent": 0, "message": "Daily limit reached"}
+            stats["limit_reached"] = True
+            stats["reason"] = f"Daily limit reached ({applications_today}/{max_daily_applications})"
+            return {"success": True, "applications_sent": 0, "message": stats["reason"], "stats": stats}
         
         remaining_applications = max_daily_applications - applications_today
         
@@ -233,11 +247,14 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
             "is_active": True,
             "created_at": {"$gte": seven_days_ago},
             "email": {"$exists": True, "$ne": None}  # Must have email to apply
-        }).limit(remaining_applications * 2).to_list(length=remaining_applications * 2)
+        }).limit(remaining_applications * 5).to_list(length=remaining_applications * 5) # Increased search pool
+        
+        stats["jobs_found"] = len(new_jobs)
         
         if not new_jobs:
             logger.info(f"No new jobs for user {user_id}")
-            return {"success": True, "applications_sent": 0, "message": "No new matching jobs found"}
+            stats["reason"] = "No new matching jobs found in database"
+            return {"success": True, "applications_sent": 0, "message": stats["reason"], "stats": stats}
         
         if task_instance:
             task_instance.update_state(state='PROGRESS', meta={'current': 20, 'total': 100, 'status': f'Analyzing {len(new_jobs)} potential jobs...'})
@@ -246,15 +263,19 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         job_scores = []
         for job in new_jobs:
             score = await calculate_job_match_score(user_cv, job)
+            stats["jobs_analyzed"] += 1
             if score >= min_match_score:
                 job_scores.append((job, score))
+        
+        stats["matches_found"] = len(job_scores)
         
         # Sort by score and take top matches
         job_scores.sort(key=lambda x: x[1], reverse=True)
         top_matches = job_scores[:remaining_applications]
         
         if not top_matches:
-             return {"success": True, "applications_sent": 0, "message": "No jobs met your match score criteria"}
+             stats["reason"] = f"Analyzed {len(new_jobs)} jobs, but none met your match score criteria (> {int(min_match_score*100)}%)"
+             return {"success": True, "applications_sent": 0, "message": stats["reason"], "stats": stats}
 
         applications_sent = 0
         total_matches = len(top_matches)
@@ -349,6 +370,7 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                 )
                 
                 applications_sent += 1
+                stats["applications_sent"] += 1
                 logger.info(f"Successfully auto-applied to job {job_id}")
                 
                 # Notify user about auto-application
@@ -366,11 +388,17 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         if task_instance:
             task_instance.update_state(state='PROGRESS', meta={'current': 100, 'total': 100, 'status': 'Test run complete!'})
 
-        return {"success": True, "applications_sent": applications_sent}
+        msg = f"Sent {applications_sent} applications."
+        if applications_sent == 0:
+             msg = "No applications sent."
+             if stats["reason"]:
+                 msg = stats["reason"]
+
+        return {"success": True, "applications_sent": applications_sent, "message": msg, "stats": stats}
 
     except Exception as e:
         logger.error(f"Error processing user {user.get('_id')}: {e}")
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": str(e), "stats": stats}
 
 
 @celery_app.task(name="app.workers.auto_apply.auto_apply_to_matching_jobs")
