@@ -111,12 +111,11 @@ class Settings(BaseSettings):
     OPENAI_MAX_TOKENS: int = Field(default=2000, env="OPENAI_MAX_TOKENS")
     OPENAI_TEMPERATURE: float = Field(default=0.7, env="OPENAI_TEMPERATURE")
     
-    # Stripe - REQUIRED for payments
-    STRIPE_SECRET_KEY: str = Field(default_factory=lambda: get_secret("STRIPE_SECRET_KEY", ""))
-    STRIPE_PUBLISHABLE_KEY: str = Field(default="", env="STRIPE_PUBLISHABLE_KEY")
-    STRIPE_WEBHOOK_SECRET: str = Field(default="", env="STRIPE_WEBHOOK_SECRET")
-    STRIPE_BASIC_PRICE_ID: str = Field(default="", env="STRIPE_BASIC_PRICE_ID")
-    STRIPE_PREMIUM_PRICE_ID: str = Field(default="", env="STRIPE_PREMIUM_PRICE_ID")
+    # Paystack - REQUIRED for payments
+    PAYSTACK_SECRET_KEY: str = Field(default_factory=lambda: get_secret("PAYSTACK_SECRET_KEY", ""))
+    PAYSTACK_PUBLIC_KEY: str = Field(default="", env="PAYSTACK_PUBLIC_KEY")
+    PAYSTACK_BASIC_PLAN_CODE: str = Field(default="", env="PAYSTACK_BASIC_PLAN_CODE")
+    PAYSTACK_PREMIUM_PLAN_CODE: str = Field(default="", env="PAYSTACK_PREMIUM_PLAN_CODE")
     
     # Email service - Optional (for notifications)
     SMTP_HOST: Optional[str] = Field(default=None, env="SMTP_HOST")

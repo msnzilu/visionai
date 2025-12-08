@@ -8,7 +8,7 @@
     <script src="/assets/js/auth-guard.js"></script>
     <link rel="stylesheet" href="../assets/css/global.css">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://js.paystack.co/v1/inline.js"></script>
 </head>
 
 <body class="bg-gray-50">
@@ -95,8 +95,8 @@
 
             <!-- Payment Form -->
             <form id="payment-form">
-                <div id="card-element" class="border border-gray-300 rounded-lg p-4 mb-4"></div>
-                <div id="card-errors" class="text-red-600 text-sm mb-4"></div>
+                <!-- Paystack Popup triggered on click, no card element needed -->
+                <!-- <div id="card-element"></div> Removed for Paystack -->
 
                 <!-- Referral Code -->
                 <div class="mb-4">
@@ -105,7 +105,11 @@
                         placeholder="Enter referral code">
                 </div>
 
-                <button type="submit" id="submit-payment"
+                <p class="text-sm text-gray-500 mb-4 text-center">
+                    Clicking "Subscribe Now" will open a secure window to enter your payment details.
+                </p>
+
+                <button type="button" id="submit-payment" onclick="handlePaymentSubmit(event)"
                     class="w-full btn-gradient text-white rounded-lg px-6 py-3 font-semibold hover:shadow-lg transition-all">
                     Subscribe Now
                 </button>
@@ -187,26 +191,32 @@
 
     <script defer>
         // Load navbar component with proper initialization
-        fetch('../components/navbar.html')
-            .then(response => response.text())
-            .then(html => {
-                const container = document.getElementById('navbar-container');
-                container.innerHTML = html;
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('../components/navbar.html')
+                .then(response => response.text())
+                .then(html => {
+                    const container = document.getElementById('navbar-container');
+                    container.innerHTML = html;
 
-                // Use requestAnimationFrame to ensure DOM has updated
-                requestAnimationFrame(() => {
+                    // Use requestAnimationFrame to ensure DOM has updated
                     requestAnimationFrame(() => {
-                        // Double RAF ensures DOM is fully updated
-                        if (window.CVisionNavbar) {
-                            console.log('Subscription: Navbar HTML inserted, calling init()');
-                            CVisionNavbar.init('Subscription');
-                        } else {
-                            console.error('Subscription: CVisionNavbar not available');
-                        }
+                        requestAnimationFrame(() => {
+                            // Double RAF ensures DOM is fully updated
+                            if (window.CVisionNavbar) {
+                                console.log('Subscription: Navbar HTML inserted, calling init()');
+                                CVisionNavbar.init('Subscription');
+                            } else {
+                                console.error('Subscription: CVisionNavbar not available - checking manual load');
+                                // Fallback: try to manually init if available in global scope but missed
+                                if (typeof CVisionNavbar !== 'undefined') {
+                                    CVisionNavbar.init('Subscription');
+                                }
+                            }
+                        });
                     });
-                });
-            })
-            .catch(error => console.error('Subscription: Failed to load navbar:', error));
+                })
+                .catch(error => console.error('Subscription: Failed to load navbar:', error));
+        });
 
         // Your page-specific JavaScript
         document.addEventListener('DOMContentLoaded', () => {

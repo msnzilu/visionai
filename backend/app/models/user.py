@@ -192,7 +192,7 @@ class User(BaseModel):
     last_login: Optional[datetime] = None
     verified_at: Optional[datetime] = None
     cv_uploaded_at: Optional[datetime] = None
-    stripe_customer_id: Optional[str] = None
+    paystack_customer_code: Optional[str] = None
     referral_bonus_searches: int = 0
     total_referrals: int = 0
     successful_referrals: int = 0

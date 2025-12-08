@@ -85,7 +85,7 @@
     <script>
         // Check authentication
         if (!CVision.Utils.isAuthenticated()) {
-            window.location.href = '../login.html';
+            window.location.href = 'login.html';
         }
 
         function loadTickets() {
@@ -140,10 +140,7 @@
             }
         }
 
-        function logout() {
-            CVision.logout();
-            window.location.href = '../login.html';
-        }
+
 
         // Initial Load
         loadTickets();

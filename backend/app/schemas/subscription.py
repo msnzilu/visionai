@@ -104,8 +104,8 @@ class SubscriptionSchema:
                                 "bsonType": "array",
                                 "items": {"bsonType": "string"}
                             },
-                            "stripe_price_id": {"bsonType": ["string", "null"]},
-                            "stripe_product_id": {"bsonType": ["string", "null"]}
+                            "paystack_plan_code": {"bsonType": ["string", "null"]},
+                            "paystack_product_id": {"bsonType": ["string", "null"]}
                         }
                     },
                     "current_period_start": {
@@ -176,13 +176,13 @@ class SubscriptionSchema:
                         "bsonType": ["date", "null"],
                         "description": "Next usage reset date"
                     },
-                    "stripe_subscription_id": {
+                    "paystack_subscription_code": {
                         "bsonType": ["string", "null"],
-                        "description": "Stripe subscription ID"
+                        "description": "Paystack subscription code"
                     },
-                    "stripe_customer_id": {
+                    "paystack_customer_code": {
                         "bsonType": ["string", "null"],
-                        "description": "Stripe customer ID"
+                        "description": "Paystack customer code"
                     },
                     "next_billing_date": {
                         "bsonType": ["date", "null"],
@@ -236,9 +236,9 @@ class SubscriptionSchema:
             IndexModel([("created_at", DESCENDING)], name="created_at_desc_idx"),
             IndexModel([("cancelled_at", DESCENDING)], name="cancelled_at_desc_idx"),
             
-            # Stripe integration
-            IndexModel([("stripe_subscription_id", ASCENDING)], name="stripe_subscription_id_idx"),
-            IndexModel([("stripe_customer_id", ASCENDING)], name="stripe_customer_id_idx"),
+            # Paystack integration
+            IndexModel([("paystack_subscription_code", ASCENDING)], name="paystack_subscription_code_idx"),
+            IndexModel([("paystack_customer_code", ASCENDING)], name="paystack_customer_code_idx"),
             
             # Payment tracking
             IndexModel([("payment_failed_count", DESCENDING)], name="payment_failed_count_desc_idx"),
@@ -665,7 +665,7 @@ class PaymentMethodSchema:
                     },
                     "type": {
                         "bsonType": "string",
-                        "enum": ["card", "bank_account", "paypal", "apple_pay", "google_pay", "stripe"]
+                        "enum": ["card", "bank_account", "paypal", "apple_pay", "google_pay", "paystack"]
                     },
                     "is_default": {
                         "bsonType": "bool",
@@ -693,7 +693,7 @@ class PaymentMethodSchema:
                             "country": {"bsonType": "string"}
                         }
                     },
-                    "stripe_payment_method_id": {"bsonType": ["string", "null"]},
+                    "paystack_authorization_code": {"bsonType": ["string", "null"]},
                     "created_at": {"bsonType": "date"},
                     "updated_at": {"bsonType": "date"}
                 }
@@ -706,7 +706,7 @@ class PaymentMethodSchema:
             IndexModel([("user_id", ASCENDING)], name="user_id_idx"),
             IndexModel([("type", ASCENDING)], name="type_idx"),
             IndexModel([("is_default", ASCENDING)], name="is_default_idx"),
-            IndexModel([("stripe_payment_method_id", ASCENDING)], name="stripe_payment_method_id_idx"),
+            IndexModel([("paystack_authorization_code", ASCENDING)], name="paystack_authorization_code_idx"),
             IndexModel([("created_at", DESCENDING)], name="created_at_desc_idx")
         ]
 
@@ -798,7 +798,7 @@ class InvoiceSchema:
                     "invoice_date": {"bsonType": "date"},
                     "due_date": {"bsonType": ["date", "null"]},
                     "paid_date": {"bsonType": ["date", "null"]},
-                    "stripe_invoice_id": {"bsonType": ["string", "null"]},
+                    "paystack_invoice_code": {"bsonType": ["string", "null"]},
                     "created_at": {"bsonType": "date"}
                 }
             }
@@ -813,7 +813,7 @@ class InvoiceSchema:
             IndexModel([("status", ASCENDING)], name="status_idx"),
             IndexModel([("invoice_date", DESCENDING)], name="invoice_date_desc_idx"),
             IndexModel([("due_date", ASCENDING)], name="due_date_asc_idx"),
-            IndexModel([("stripe_invoice_id", ASCENDING)], name="stripe_invoice_id_idx")
+            IndexModel([("paystack_invoice_code", ASCENDING)], name="paystack_invoice_code_idx")
         ]
 
 

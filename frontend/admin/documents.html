@@ -102,8 +102,8 @@
     <script src="../assets/js/main.js"></script>
     <script>
         // Check Auth
-        if (!localStorage.getItem('token')) {
-            window.location.href = '../login.html';
+        if (!CVision.Utils.isAuthenticated()) {
+            window.location.href = 'login.html';
         }
 
         let currentPage = 1;
@@ -115,16 +115,10 @@
             const tableBody = document.getElementById('documentsTableBody');
 
             try {
-                let url = `/api/v1/admin/documents?page=${currentPage}&limit=${limit}`;
-                if (search) url += `&search=${encodeURIComponent(search)}`;
+                let endpoint = `/admin/documents?page=${currentPage}&limit=${limit}`;
+                if (search) endpoint += `&search=${encodeURIComponent(search)}`;
 
-                const response = await fetch(url, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!response.ok) throw new Error('Failed to fetch documents');
-
-                const data = await response.json();
+                const data = await CVision.API.request(endpoint);
 
                 document.getElementById('currentPage').textContent = data.page;
                 document.getElementById('totalPages').textContent = data.pages;
@@ -154,44 +148,34 @@
                 console.error('Error:', error);
                 alert('Error loading documents');
             }
-        }
 
-        async function deleteDocument(id) {
-            if (!confirm('Are you sure you want to delete this document? This cannot be undone.')) return;
+            async function deleteDocument(id) {
+                if (!confirm('Are you sure you want to delete this document? This cannot be undone.')) return;
 
-            const token = localStorage.getItem('token');
-            try {
-                const response = await fetch(`/api/v1/admin/documents/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
+                const token = localStorage.getItem('token');
+                try {
+                    await CVision.API.request(`/admin/documents/${id}`, {
+                        method: 'DELETE'
+                    });
                     loadDocuments();
-                } else {
-                    alert('Failed to delete document');
+                } catch (error) {
+                    alert('Error deleting document');
                 }
-            } catch (error) {
-                alert('Error deleting document');
             }
-        }
 
-        function changePage(delta) {
-            const total = parseInt(document.getElementById('totalPages').textContent);
-            const newPage = currentPage + delta;
-            if (newPage >= 1 && newPage <= total) {
-                currentPage = newPage;
-                loadDocuments();
+            function changePage(delta) {
+                const total = parseInt(document.getElementById('totalPages').textContent);
+                const newPage = currentPage + delta;
+                if (newPage >= 1 && newPage <= total) {
+                    currentPage = newPage;
+                    loadDocuments();
+                }
             }
-        }
 
-        function logout() {
-            localStorage.removeItem('token');
-            window.location.href = '../login.html';
-        }
 
-        // Init
-        loadDocuments();
+
+            // Init
+            loadDocuments();
     </script>
 </body>
 

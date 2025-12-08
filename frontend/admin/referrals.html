@@ -105,27 +105,21 @@
     <script src="../assets/js/main.js"></script>
     <script>
         // Check Auth
-        if (!localStorage.getItem('token')) {
-            window.location.href = '../login.html';
+        if (!CVision.Utils.isAuthenticated()) {
+            window.location.href = 'login.html';
         }
 
         let currentPage = 1;
         const limit = 50;
 
         async function loadReferrals() {
-            const token = localStorage.getItem('token');
+            const token = CVision.Utils.getToken();
             const tableBody = document.getElementById('referralsTableBody');
 
             try {
-                let url = `/api/v1/admin/referrals?page=${currentPage}&limit=${limit}`;
+                let endpoint = `/admin/referrals?page=${currentPage}&limit=${limit}`;
 
-                const response = await fetch(url, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!response.ok) throw new Error('Failed to fetch referrals');
-
-                const data = await response.json();
+                const data = await CVision.API.request(endpoint);
 
                 document.getElementById('currentPage').textContent = data.page;
                 document.getElementById('totalPages').textContent = data.pages;
@@ -166,10 +160,7 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem('token');
-            window.location.href = '../login.html';
-        }
+
 
         // Init
         loadReferrals();

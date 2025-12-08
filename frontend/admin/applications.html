@@ -106,29 +106,23 @@
     <script src="../assets/js/main.js"></script>
     <script>
         // Check Auth
-        if (!localStorage.getItem('token')) {
-            window.location.href = '../login.html';
+        if (!CVision.Utils.isAuthenticated()) {
+            window.location.href = 'login.html';
         }
 
         let currentPage = 1;
         const limit = 50;
 
         async function loadApplications() {
-            const token = localStorage.getItem('token');
+            const token = CVision.Utils.getToken();
             const status = document.getElementById('statusFilter').value;
             const tableBody = document.getElementById('applicationsTableBody');
 
             try {
-                let url = `/api/v1/admin/applications?page=${currentPage}&limit=${limit}`;
-                if (status) url += `&status=${status}`;
+                let endpoint = `/admin/applications?page=${currentPage}&limit=${limit}`;
+                if (status) endpoint += `&status=${status}`;
 
-                const response = await fetch(url, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!response.ok) throw new Error('Failed to fetch applications');
-
-                const data = await response.json();
+                const data = await CVision.API.request(endpoint);
 
                 document.getElementById('currentPage').textContent = data.page;
                 document.getElementById('totalPages').textContent = data.pages;
@@ -171,10 +165,6 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem('token');
-            window.location.href = '../login.html';
-        }
 
         // Init
         loadApplications();

@@ -121,8 +121,8 @@
     <script src="../assets/js/main.js"></script>
     <script>
         // Check Auth using token existence as simple check
-        if (!localStorage.getItem('token')) {
-            window.location.href = '../login.html';
+        if (!CVision.Utils.isAuthenticated()) {
+            window.location.href = 'login.html';
         }
 
         // Load Settings
@@ -155,10 +155,7 @@
             }, 2000);
         }
 
-        function logout() {
-            localStorage.removeItem('token');
-            window.location.href = '../login.html';
-        }
+
 
         // Init
         loadSettings();

@@ -49,7 +49,7 @@ class PaymentMethodType(str, Enum):
     PAYPAL = "paypal"
     APPLE_PAY = "apple_pay"
     GOOGLE_PAY = "google_pay"
-    STRIPE = "stripe"
+    PAYSTACK = "paystack"
 
 
 class InvoiceStatus(str, Enum):
@@ -181,9 +181,9 @@ class SubscriptionPlan(BaseModel):
     sort_order: int = 0
     metadata: Dict[str, Any] = {}
     
-    # Stripe integration
-    stripe_price_id: Optional[str] = None
-    stripe_product_id: Optional[str] = None
+    # Paystack integration
+    paystack_plan_code: Optional[str] = None
+    paystack_product_id: Optional[str] = None
 
 
 # Payment Method Models
@@ -215,7 +215,7 @@ class PaymentMethod(BaseModel):
     billing_email: Optional[EmailStr] = None
     
     # External provider details
-    stripe_payment_method_id: Optional[str] = None
+    paystack_authorization_code: Optional[str] = None
     paypal_account_id: Optional[str] = None
     
     # Metadata
@@ -276,8 +276,8 @@ class Subscription(SubscriptionBase, TimeStampedModel):
     usage_reset_date: Optional[datetime] = None
     
     # External provider data
-    stripe_subscription_id: Optional[str] = None
-    stripe_customer_id: Optional[str] = None
+    paystack_subscription_code: Optional[str] = None
+    paystack_customer_code: Optional[str] = None
     
     # Billing
     next_billing_date: Optional[datetime] = None
@@ -355,7 +355,7 @@ class Invoice(BaseModel):
     paid_date: Optional[datetime] = None
     
     # External provider
-    stripe_invoice_id: Optional[str] = None
+    paystack_invoice_code: Optional[str] = None
     hosted_invoice_url: Optional[str] = None
     invoice_pdf_url: Optional[str] = None
     
@@ -384,8 +384,8 @@ class Payment(BaseModel):
     payment_method_id: Optional[str] = None
     
     # External provider
-    stripe_payment_intent_id: Optional[str] = None
-    stripe_charge_id: Optional[str] = None
+    paystack_transaction_reference: Optional[str] = None
+    paystack_transaction_id: Optional[str] = None
     
     # Failure information
     failure_code: Optional[str] = None
@@ -416,7 +416,7 @@ class Refund(BaseModel):
     status: str = "pending"
     
     # External provider
-    stripe_refund_id: Optional[str] = None
+    paystack_refund_id: Optional[str] = None
     
     # Dates
     requested_at: datetime = Field(default_factory=datetime.utcnow)
@@ -499,7 +499,7 @@ class SubscriptionWebhook(BaseModel):
     subscription_id: str
     user_id: str
     event_data: Dict[str, Any]
-    stripe_event_id: Optional[str] = None
+    paystack_event_id: Optional[str] = None
     processed: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -556,7 +556,7 @@ class CustomerPortalSession(BaseModel):
     session_url: str
     return_url: str
     expires_at: datetime
-    stripe_session_id: Optional[str] = None
+    paystack_session_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -737,8 +737,8 @@ class InvoiceListResponse(BaseModel):
 
 
 # Webhook and Integration Models
-class StripeWebhookEvent(BaseModel):
-    """Stripe webhook event model"""
+class PaystackWebhookEvent(BaseModel):
+    """Paystack webhook event model"""
     id: str
     type: str
     data: Dict[str, Any]
@@ -797,6 +797,6 @@ __all__ = [
     "UsageEvent", "UsageSummary", "CustomerPortalSession", "SubscriptionChange", 
     "DunningAttempt", "ReferralProgram", "Referral", "TaxRate", "TaxCalculation", 
     "SubscriptionEvent", "SubscriptionFilter", "PaymentFilter", "SubscriptionListResponse", 
-    "PaymentListResponse", "InvoiceListResponse", "StripeWebhookEvent", "AccountCredit", 
+    "PaymentListResponse", "InvoiceListResponse", "PaystackWebhookEvent", "AccountCredit", 
     "CreditTransaction"
 ]

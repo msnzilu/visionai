@@ -150,31 +150,25 @@
     <script src="../assets/js/main.js"></script>
     <script>
         // Check Auth
-        if (!localStorage.getItem('token')) {
-            window.location.href = '../login.html';
+        if (!CVision.Utils.isAuthenticated()) {
+            window.location.href = 'login.html';
         }
 
         let currentPage = 1;
         const limit = 50;
 
         async function loadUsers() {
-            const token = localStorage.getItem('token');
+            const token = CVision.Utils.getToken();
             const search = document.getElementById('searchInput').value;
             const tier = document.getElementById('tierFilter').value;
             const tableBody = document.getElementById('usersTableBody');
 
             try {
-                let url = `/api/v1/admin/users?page=${currentPage}&limit=${limit}`;
-                if (search) url += `&search=${encodeURIComponent(search)}`;
-                if (tier) url += `&tier=${tier}`;
+                let endpoint = `/admin/users?page=${currentPage}&limit=${limit}`;
+                if (search) endpoint += `&search=${encodeURIComponent(search)}`;
+                if (tier) endpoint += `&tier=${tier}`;
 
-                const response = await fetch(url, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!response.ok) throw new Error('Failed to fetch users');
-
-                const data = await response.json();
+                const data = await CVision.API.request(endpoint);
 
                 document.getElementById('currentPage').textContent = data.page;
                 document.getElementById('totalPages').textContent = data.pages;
@@ -250,20 +244,14 @@
 
             try {
                 // Update Tier
-                const tierResponse = await fetch(`/api/v1/admin/users/${id}/tier?tier=${tier}`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                await CVision.API.request(`/admin/users/${id}/tier?tier=${tier}`, {
+                    method: 'PATCH'
                 });
-
-                if (!tierResponse.ok) throw new Error('Failed to update tier');
 
                 // Update Status
-                const statusResponse = await fetch(`/api/v1/admin/users/${id}/status?is_active=${isActive}`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                await CVision.API.request(`/admin/users/${id}/status?is_active=${isActive}`, {
+                    method: 'PATCH'
                 });
-
-                if (!statusResponse.ok) throw new Error('Failed to update status');
 
                 closeModal();
                 loadUsers();
@@ -275,10 +263,7 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem('token');
-            window.location.href = '../login.html';
-        }
+
 
         // Init
         loadUsers();

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
 import io
@@ -25,12 +25,12 @@ logger = logging.getLogger(__name__)
 # Request Models
 class CreateSubscriptionRequest(BaseModel):
     plan_id: str
-    payment_method_id: Optional[str] = None
+    reference: Optional[str] = None # Paystack transaction reference
     referral_code: Optional[str] = None
 
 class UpgradeSubscriptionRequest(BaseModel):
     new_plan_id: str
-    payment_method_id: Optional[str] = None
+    reference: Optional[str] = None # Paystack transaction reference
 
 class CancelSubscriptionRequest(BaseModel):
     cancel_immediately: bool = False
@@ -47,15 +47,20 @@ def get_user_id(current_user: dict) -> str:
     """Extract user_id from current_user dict"""
     return current_user.get("id") or current_user.get("_id") or current_user.get("sub")
 
-@router.get("/config/stripe")
-async def get_stripe_config():
-    """Get public Stripe configuration - no authentication required"""
+@router.get("/config/paystack")
+async def get_paystack_config():
+    """Get public Paystack configuration - no authentication required"""
     from app.core.config import settings
     
-    # Only return the publishable key (safe to expose publicly)
     return {
-        "publishable_key": getattr(settings, 'STRIPE_PUBLISHABLE_KEY', 'pk_test_placeholder')
+        "public_key": getattr(settings, 'PAYSTACK_PUBLIC_KEY', 'pk_test_placeholder'),
+        "user_email": None # Frontend will fill this from user profile
     }
+
+@router.get("/config/stripe")
+async def get_stripe_config_deprecated():
+    """Deprecated: Get public Paystack configuration for backward compatibility"""
+    return await get_paystack_config()
 
 # ==================== SUBSCRIPTION PLANS ====================
 
@@ -85,7 +90,7 @@ async def create_subscription(
     current_user: dict = Depends(get_current_active_user),
     db = Depends(get_database)
 ):
-    """Create a new subscription"""
+    """Create a new subscription (verify Paystack payment)"""
     user_id = get_user_id(current_user)
     service = SubscriptionService(db)
     
@@ -99,7 +104,7 @@ async def create_subscription(
         subscription = await service.create_subscription(
             user_id=user_id,
             plan_id=request.plan_id,
-            payment_method_id=request.payment_method_id
+            reference=request.reference
         )
         
         if request.referral_code:
@@ -120,48 +125,19 @@ async def get_my_subscription(
 ):
     """Get current user's subscription"""
     try:
-        # Debug: Log the current user
-        logger.debug(f"get_my_subscription called for user: {current_user}")
-        
         user_id = get_user_id(current_user)
-        logger.debug(f"Extracted user_id: {user_id}")
-        
-        # Debug: Check if user exists
-        user = await db.users.find_one({"_id": user_id})
-        logger.debug(f"User found in database: {user is not None}")
-        if user:
-            logger.debug(f"User tier: {user.get('subscription_tier', 'not set')}")
-        
         service = SubscriptionService(db)
-        logger.debug("SubscriptionService initialized")
-        
         subscription = await service.get_user_subscription(user_id)
-        logger.debug(f"Subscription retrieved: {subscription is not None}")
-        
-        if subscription:
-            logger.debug(f"Subscription details: id={subscription.id}, plan={subscription.plan_id}, status={subscription.status}")
-            logger.debug(f"Subscription dict keys: {subscription.dict().keys() if hasattr(subscription, 'dict') else 'N/A'}")
         
         if not subscription:
-            logger.warning(f"No subscription found for user {user_id}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscription found")
         
-        # Debug: Validate subscription data before returning
-        try:
-            subscription_dict = subscription.dict() if hasattr(subscription, 'dict') else subscription.__dict__
-            logger.debug(f"Subscription data being returned: {list(subscription_dict.keys())}")
-        except Exception as e:
-            logger.error(f"Error accessing subscription data: {e}")
-        
-        logger.info(f"Successfully returning subscription for user {user_id}")
         return subscription
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error in get_my_subscription: {e}", exc_info=True)
-        logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Error args: {e.args}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"
@@ -181,7 +157,7 @@ async def upgrade_subscription(
         subscription = await service.upgrade_subscription(
             user_id=user_id,
             new_plan_id=request.new_plan_id,
-            payment_method_id=request.payment_method_id
+            reference=request.reference
         )
         return subscription
     except ValueError as e:
@@ -456,123 +432,61 @@ async def complete_referral(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-# ==================== CUSTOMER PORTAL ====================
-class CreatePortalSessionRequest(BaseModel):
-    return_url: str
+# ==================== PAYSTACK WEBHOOKS ====================
 
-@router.post("/portal-session")
-async def create_portal_session(
-    request: CreatePortalSessionRequest,
-    current_user: dict = Depends(get_current_active_user),
-    db = Depends(get_database)
-):
-    """Create Stripe customer portal session"""
-    from app.integrations.stripe_client import StripeClient
-    
-    user_id = get_user_id(current_user)
-    service = SubscriptionService(db)
-    subscription = await service.get_user_subscription(user_id)
-    
-    if not subscription or not subscription.stripe_customer_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="No Stripe customer found. Please subscribe to a paid plan first."
-        )
-    
-    stripe_client = StripeClient()
-    
-    try:
-        session = await stripe_client.create_customer_portal_session(
-            customer_id=subscription.stripe_customer_id,
-            return_url=request.return_url  # ← Changed from return_url to request.return_url
-        )
-        return {"url": session["url"]}
-    except Exception as e:
-        logger.error(f"Portal session creation failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Failed to create portal session: {str(e)}"
-        )
-
-# ==================== STRIPE WEBHOOKS ====================
-
-@router.post("/webhooks/stripe")
-async def stripe_webhook(request: Request, db = Depends(get_database)):
-    """Handle Stripe webhook events"""
-    from app.integrations.stripe_client import StripeClient
+@router.post("/webhooks/paystack")
+async def paystack_webhook(request: Request, db = Depends(get_database)):
+    """Handle Paystack webhook events"""
+    from app.integrations.paystack_client import PaystackClient
     from app.core.config import settings
     
     payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
+    sig_header = request.headers.get("x-paystack-signature")
     
     if not sig_header:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing stripe-signature header")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing signature header")
     
-    stripe_client = StripeClient()
+    paystack_client = PaystackClient()
     
     try:
-        event = await stripe_client.verify_webhook_signature(
+        if not paystack_client.verify_webhook_signature(
             payload=payload,
             signature=sig_header,
-            webhook_secret=settings.STRIPE_WEBHOOK_SECRET
-        )
+            webhook_secret=getattr(settings, 'PAYSTACK_WEBHOOK_SECRET', settings.PAYSTACK_SECRET_KEY)
+        ):
+             raise ValueError("Invalid signature")
     except Exception as e:
         logger.error(f"Webhook signature verification failed: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature")
     
-    event_type = event["type"]
-    event_data = event["data"]["object"]
-    logger.info(f"Received Stripe webhook: {event_type}")
+    try:
+        event = await request.json()
+    except:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON")
+        
+    event_type = event.get("event")
+    event_data = event.get("data", {})
+    logger.info(f"Received Paystack webhook: {event_type}")
     
     try:
-        if event_type == "customer.subscription.created":
-            logger.info(f"Subscription created: {event_data['id']}")
+        if event_type == "charge.success":
+            # Successful payment
+            reference = event_data.get("reference")
+            logger.info(f"Payment success for reference: {reference}")
+            # Can be used to activate subscription if not already active
             
-        elif event_type == "customer.subscription.updated":
-            subscription_id = event_data["id"]
-            subscription = await db.subscriptions.find_one({"stripe_subscription_id": subscription_id})
+        elif event_type == "subscription.create":
+            # Subscription created
+            logger.info(f"Subscription created: {event_data.get('subscription_code')}")
             
-            if subscription:
-                await db.subscriptions.update_one(
-                    {"_id": subscription["_id"]},
-                    {"$set": {
-                        "status": event_data["status"],
-                        "current_period_start": datetime.fromtimestamp(event_data["current_period_start"]),
-                        "current_period_end": datetime.fromtimestamp(event_data["current_period_end"]),
-                        "updated_at": datetime.utcnow()
-                    }}
-                )
-            
-        elif event_type == "customer.subscription.deleted":
-            subscription_id = event_data["id"]
-            subscription = await db.subscriptions.find_one({"stripe_subscription_id": subscription_id})
-            
-            if subscription:
-                await db.subscriptions.update_one(
-                    {"_id": subscription["_id"]},
-                    {"$set": {
-                        "status": "cancelled",
-                        "cancelled_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow()
-                    }}
-                )
-            
-        elif event_type == "invoice.payment_succeeded":
-            logger.info(f"Payment succeeded for invoice: {event_data['id']}")
+        elif event_type == "subscription.disable":
+            # Subscription cancelled or expired
+            logger.info(f"Subscription disabled: {event_data.get('subscription_code')}")
+            # Find and update local subscription status if needed
             
         elif event_type == "invoice.payment_failed":
-            subscription_id = event_data.get("subscription")
-            if subscription_id:
-                subscription = await db.subscriptions.find_one({"stripe_subscription_id": subscription_id})
-                
-                if subscription:
-                    await db.subscriptions.update_one(
-                        {"_id": subscription["_id"]},
-                        {
-                            "$set": {"status": "past_due"},
-                            "$inc": {"payment_failed_count": 1}
-                        }
-                    )
+            # Payment failed
+            logger.info(f"Invoice payment failed")
         
         return {"status": "success"}
         

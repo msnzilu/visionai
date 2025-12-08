@@ -133,6 +133,11 @@ const Utils = {
         if (loading) {
             loading.remove();
         }
+    },
+
+    // Get appropriate login URL based on current context
+    getLoginUrl() {
+        return window.location.pathname.includes('/admin/') ? '/admin/login.html' : '/login.html';
     }
 };
 
@@ -163,7 +168,8 @@ const API = {
             if (response.status === 502 || response.status === 503) {
                 console.error('Backend is down or unavailable, redirecting to login...');
                 Utils.removeToken();
-                window.location.href = '/login.html';
+                Utils.removeToken();
+                window.location.href = Utils.getLoginUrl();
                 return;
             }
 
@@ -175,7 +181,8 @@ const API = {
                 // If JSON parse fails, backend is likely returning HTML (error page)
                 console.error('Backend returned invalid JSON, likely down. Redirecting to login...');
                 Utils.removeToken();
-                window.location.href = '/login.html';
+                Utils.removeToken();
+                window.location.href = Utils.getLoginUrl();
                 return;
             }
 
@@ -191,7 +198,8 @@ const API = {
                     // Refresh failed, redirect to login
                     console.error('Token refresh failed, redirecting to login...');
                     Utils.removeToken();
-                    window.location.href = '/login.html';
+                    Utils.removeToken();
+                    window.location.href = Utils.getLoginUrl();
                     return;
                 }
             }
@@ -200,7 +208,8 @@ const API = {
             if (response.status === 401) {
                 console.error('Unauthorized, redirecting to login...');
                 Utils.removeToken();
-                window.location.href = '/login.html';
+                Utils.removeToken();
+                window.location.href = Utils.getLoginUrl();
                 return;
             }
 
@@ -216,7 +225,8 @@ const API = {
             if (error.message.includes('fetch') || error.name === 'TypeError') {
                 console.error('Network error, backend may be down. Redirecting to login...');
                 Utils.removeToken();
-                window.location.href = '/login.html';
+                Utils.removeToken();
+                window.location.href = Utils.getLoginUrl();
                 return;
             }
 
@@ -503,7 +513,7 @@ function initUserInfo() {
 // Logout functionality
 function logout() {
     Utils.removeToken();
-    window.location.href = 'login.html';
+    window.location.href = Utils.getLoginUrl();
 }
 
 // Redirect authenticated users away from public pages

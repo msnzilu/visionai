@@ -200,12 +200,11 @@
 
     <script src="../assets/js/main.js"></script>
     <script>
-        const API_BASE = 'http://localhost:8000/api/v1';
         let currentPage = 1;
         let currentUserId = null;
 
         if (!CVision.Utils.isAuthenticated()) {
-            window.location.href = '../login.html';
+            window.location.href = 'login.html';
         }
 
         function toggleSidebar() {
@@ -222,25 +221,12 @@
                 const tier = document.getElementById('tierFilter').value;
                 const status = document.getElementById('statusFilter').value;
 
-                let url = `${API_BASE}/admin/users?page=${page}&limit=20`;
-                if (search) url += `&search=${encodeURIComponent(search)}`;
-                if (tier) url += `&tier=${tier}`;
-                if (status) url += `&is_active=${status}`;
+                let endpoint = `/admin/users?page=${page}&limit=20`;
+                if (search) endpoint += `&search=${encodeURIComponent(search)}`;
+                if (tier) endpoint += `&tier=${tier}`;
+                if (status) endpoint += `&is_active=${status}`;
 
-                const response = await fetch(url, {
-                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
-                });
-
-                if (!response.ok) {
-                    if (response.status === 403) {
-                        alert('Admin access required');
-                        window.location.href = '../dashboard.html';
-                        return;
-                    }
-                    throw new Error('Failed to load users');
-                }
-
-                const data = await response.json();
+                const data = await CVision.API.request(endpoint);
                 displayUsers(data.users);
                 updatePagination(data);
                 currentPage = page;
@@ -313,13 +299,7 @@
 
         async function editUser(userId) {
             try {
-                const response = await fetch(`${API_BASE}/admin/users/${userId}`, {
-                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
-                });
-
-                if (!response.ok) throw new Error('Failed to load user');
-
-                const user = await response.json();
+                const user = await CVision.API.request(`/admin/users/${userId}`);
                 currentUserId = userId;
 
                 document.getElementById('editEmail').value = user.email;
@@ -337,21 +317,13 @@
                 const tier = document.getElementById('editTier').value;
                 const isActive = document.getElementById('editStatus').value === 'true';
 
-                await fetch(`${API_BASE}/admin/users/${currentUserId}/tier`, {
+                await CVision.API.request(`/admin/users/${currentUserId}/tier`, {
                     method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${CVision.Utils.getToken()}`,
-                        'Content-Type': 'application/json'
-                    },
                     body: JSON.stringify({ tier })
                 });
 
-                await fetch(`${API_BASE}/admin/users/${currentUserId}/status`, {
+                await CVision.API.request(`/admin/users/${currentUserId}/status`, {
                     method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${CVision.Utils.getToken()}`,
-                        'Content-Type': 'application/json'
-                    },
                     body: JSON.stringify({ is_active: isActive })
                 });
 
@@ -381,9 +353,7 @@
             loadUsers(currentPage + 1);
         }
 
-        function logout() {
-            CVision.logout();
-        }
+
 
         loadUsers();
     </script>

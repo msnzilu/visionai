@@ -11,8 +11,9 @@ from datetime import datetime
 async def create_admin():
     from motor.motor_asyncio import AsyncIOMotorClient
     
-    client = AsyncIOMotorClient("mongodb://localhost:27017")
-    db = client.job_platform
+    # Use 'mongo' hostname for Docker environment
+    client = AsyncIOMotorClient("mongodb://mongo:27017")
+    db = client.vision_ai
     
     # Check if admin exists
     existing = await db.users.find_one({"email": "admin@cvision.com"})
