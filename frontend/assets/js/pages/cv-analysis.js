@@ -61,6 +61,11 @@ async function loadCVAnalysis() {
 
         const userData = await userResponse.json();
 
+        // Sync latest user data to local storage
+        if (userData && userData.id) {
+            CVision.Utils.setUser(userData);
+        }
+
         // Load all sections
         loadPersonalInfo(userData, cvData);
         loadProfessionalSummary(cvData);
@@ -706,7 +711,8 @@ async function toggleAutomation() {
     const badge = document.getElementById('premiumBadge');
 
     // Check if user has premium
-    const userTier = window.currentUser?.subscription_tier || 'free';
+    const user = CVision.Utils.getUser();
+    const userTier = user?.subscription_tier?.toLowerCase() || 'free';
 
     if (userTier === 'free' && !automationEnabled) {
         badge.style.display = 'block';

@@ -175,6 +175,9 @@ async function loadUserProfile() {
         if (response.success) {
             const user = response.data.user;
 
+            // Sync latest user data to local storage
+            CVision.Utils.setUser(user);
+
             const userTierEl = document.getElementById('userTier');
             if (userTierEl) {
                 userTierEl.textContent = user.subscription_tier.charAt(0).toUpperCase() + user.subscription_tier.slice(1);
@@ -522,9 +525,11 @@ function showGmailConnectedAlert(user) {
 // ============================================================================
 
 async function toggleAutomation() {
-    const userTier = document.getElementById('userTier')?.textContent?.toLowerCase() || 'free';
+    // consistently check from storage instead of scraping DOM
+    const user = CVision.Utils.getUser();
+    const userTier = user?.subscription_tier?.toLowerCase() || 'free';
 
-    if ((userTier.includes('free') && !automationEnabled)) {
+    if (userTier.includes('free') && !automationEnabled) {
         showPremiumModal();
         return;
     }

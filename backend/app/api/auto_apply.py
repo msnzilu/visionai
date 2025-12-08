@@ -20,7 +20,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/auto-apply", tags=["auto-apply"])
+router = APIRouter(tags=["auto-apply"])
 
 
 def require_premium(user: dict) -> bool:

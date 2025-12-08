@@ -435,7 +435,11 @@ const CVisionNavbar = (function () {
         getUserInfo,
         updateUserDisplay
     };
-})();
+};
+}) ();
+
+// Expose to window immediately
+window.CVisionNavbar = CVisionNavbar;
 
 
 // Smart auto-initialization: only proceed if navbar HTML is loaded
