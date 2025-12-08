@@ -397,6 +397,33 @@ jobs:
             rm -f /tmp/.env.production
           ENDSSH
 
+      - name: Ensure Admin User
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
+            ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }} << 'ENDSSH'
+            
+            echo "=== Creating Admin User ==="
+            # Wait a moment for services to stabilize if needed
+            sleep 10
+            
+            # Get one backend container ID
+            CONTAINER_ID=$(docker ps --filter "name=visionai_backend" -q | head -n 1)
+            
+            if [ -z "$CONTAINER_ID" ]; then
+              echo "⚠️  Warning: Backend container not found running on manager node."
+              echo "Note: In Swarm, the container might be on a worker node. Skipping admin creation for this run."
+              # In a robust setup, we might need `docker service ps` to find where it is or use a one-off service.
+              # However, for this single-node/small setup, it's likely on the manager or accessible.
+              # If we truly need to run it regardless of node:
+              # docker service create --restart-condition=none --name admin_creator --network visionai_default ...
+              # For now, we'll try the direct exec approach assuming single node or manager placement.
+            else
+              echo "Found backend container: $CONTAINER_ID"
+              echo "Running create_admin.py..."
+              docker exec $CONTAINER_ID python scripts/create_admin.py
+            fi
+          ENDSSH
+
       - name: Verify deployment
         continue-on-error: true
         run: |
