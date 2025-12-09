@@ -703,37 +703,9 @@ function showError() {
 // Automation toggle functions
 let automationEnabled = false;
 
-async function toggleAutomation() {
-    const toggle = document.getElementById('automationToggle');
-    const slider = document.getElementById('automationSlider');
-    const status = document.getElementById('automationStatus');
-    const panel = document.getElementById('automationPanel');
-    const badge = document.getElementById('premiumBadge');
-
-    // Check if user has premium
-    const user = CVision.Utils.getUser();
-    const userTier = user?.subscription_tier?.toLowerCase() || 'free';
-
-    if (userTier === 'free' && !automationEnabled) {
-        badge.style.display = 'block';
-        showPremiumModal();
-        return;
-    }
-
-    automationEnabled = !automationEnabled;
-
-    if (automationEnabled) {
-        toggle.style.background = '#10b981';
-        slider.style.left = '33px';
-        status.textContent = 'Automation enabled';
-        panel.style.display = 'block';
-    } else {
-        toggle.style.background = 'rgba(255,255,255,0.3)';
-        slider.style.left = '3px';
-        status.textContent = 'Click to enable full automation';
-        panel.style.display = 'none';
-        await disableAutomation();
-    }
+// Automation toggle removed
+function toggleAutomation() {
+    console.log('Automation toggle removed from this page');
 }
 
 // Show premium modal
@@ -764,34 +736,9 @@ function updateSliderValue(type, value) {
     }
 }
 
-async function saveAutomationSettings() {
-    const maxApps = parseInt(document.getElementById('maxAppsSlider').value);
-    const minScore = parseInt(document.getElementById('minScoreSlider').value) / 100;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/auto-apply/enable`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                max_daily_applications: maxApps,
-                min_match_score: minScore
-            })
-        });
-
-        if (response.ok) {
-            alert(`✅ Automation Enabled!\n\nThe system will now:\n✅ Find matching jobs every 6 hours\n✅ Generate custom CVs and cover letters\n✅ Apply automatically (up to ${maxApps} jobs/day)\n✅ Notify you of all applications\n\nYou can relax while we work for you! 🚀`);
-            document.getElementById('automationStatus').textContent = 'Active - Applying to jobs automatically';
-        } else {
-            const error = await response.json();
-            alert('Error: ' + (error.detail || 'Failed to enable automation'));
-        }
-    } catch (error) {
-        console.error('Error saving automation settings:', error);
-        alert('Error saving settings. Please try again.');
-    }
+// Settings save removed
+function saveAutomationSettings() {
+    console.log('Settings save removed from this page');
 }
 
 async function disableAutomation() {

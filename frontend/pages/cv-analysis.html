@@ -400,82 +400,14 @@
                                 <span>📤</span> Upload New CV
                             </button>
 
-                            <!-- Automate Everything Toggle -->
-                            <div
-                                style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; min-width: fit-content;">
-                                <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1.25rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; cursor: pointer; white-space: nowrap;"
-                                    onclick="toggleAutomation()">
-                                    <div>
-                                        <div style="font-weight: bold; font-size: 0.9rem;">🤖 Automate Everything</div>
-                                        <div style="font-size: 0.7rem; opacity: 0.9;" id="automationStatus">Click to
-                                            enable
-                                            full
-                                            automation</div>
-                                    </div>
-                                    <div id="automationToggle"
-                                        style="position: relative; width: 50px; height: 26px; background: rgba(255,255,255,0.3); border-radius: 13px; transition: all 0.3s; flex-shrink: 0;">
-                                        <div id="automationSlider"
-                                            style="position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: white; border-radius: 50%; transition: all 0.3s;">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div id="premiumBadge"
-                                    style="display: none; padding: 0.5rem 1rem; background: #fbbf24; color: #78350f; border-radius: 8px; font-size: 0.875rem; font-weight: bold;">
-                                    ⭐ Premium Feature
-                                </div>
-                            </div>
+                            <!-- Automate Everything Toggle Removed -->
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Automation Settings Panel (Hidden by default) -->
-            <div id="automationPanel"
-                style="display: none; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-                <h3 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;">⚙️ Automation Settings</h3>
-                <p style="color: #6b7280; margin-bottom: 1.5rem;">Configure how the system automatically applies to jobs
-                    on
-                    your behalf</p>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.5rem;">
-                    <div>
-                        <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Max Applications Per
-                            Day</label>
-                        <input type="range" min="1" max="10" value="5" id="maxAppsSlider" style="width: 100%;"
-                            oninput="updateSliderValue('maxApps', this.value)">
-                        <div style="text-align: center; margin-top: 0.5rem; font-weight: bold; color: #667eea;">
-                            <span id="maxAppsValue">5</span> applications/day
-                        </div>
-                    </div>
-                    <div>
-                        <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Minimum Match
-                            Score</label>
-                        <input type="range" min="50" max="90" value="70" id="minScoreSlider" style="width: 100%;"
-                            oninput="updateSliderValue('minScore', this.value)">
-                        <div style="text-align: center; margin-top: 0.5rem; font-weight: bold; color: #667eea;">
-                            <span id="minScoreValue">70</span>% minimum
-                        </div>
-                    </div>
-                </div>
-
-                <div style="background: #f9fafb; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                    <h4 style="font-weight: bold; margin-bottom: 0.75rem;">What Will Be Automated:</h4>
-                    <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ AI finds matching jobs (based on your CV)</li>
-                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Generates custom CV for each job</li>
-                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Writes personalized cover letters</li>
-                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Submits applications automatically</li>
-                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Monitors email for responses</li>
-                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Updates application status</li>
-                        <li style="padding: 0.5rem 0; color: #4b5563;">✅ Sends you notifications</li>
-                    </ul>
-                </div>
-
-                <button onclick="saveAutomationSettings()"
-                    style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;">
-                    Save Settings & Start Automation
-                </button>
-            </div>
+            <!-- Automation Settings Panel Removed -->
 
             <!-- Stats Bar -->
             <div class="stats-bar" id="statsBar" style="display: none;">

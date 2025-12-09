@@ -533,12 +533,8 @@ async function toggleAutomation() {
 
     const panel = document.getElementById('automationPanel');
 
-    if (userTier.includes('free') && !automationEnabled) {
-        console.log('User is free, blocking automation (DISABLED FOR DEBUGGING)');
-        showPremiumModal();
-        if (panel) panel.style.display = 'none'; // defensively ensure panel is closed
-        return;
-    }
+    // Allow free users to open panel to see Test Run
+    // if (userTier.includes('free') && !automationEnabled) { ... } -> Removed to allow access
 
 
 
@@ -630,6 +626,19 @@ async function saveAutomationSettings() {
     const maxApps = parseInt(document.getElementById('maxAppsSlider').value);
     const minScore = parseInt(document.getElementById('minScoreSlider').value) / 100;
 
+    // Check tier for Save
+    const user = CVision.Utils.getUser();
+    const userTier = user?.subscription_tier?.toLowerCase() || 'free';
+
+    // Free users cannot save settings
+    if (userTier === 'free' || userTier === 'freemium') {
+        showPremiumModal(
+            'Premium Feature',
+            'Saving automation settings is available for Basic and Premium users. Upgrade to unlock full automation control.'
+        );
+        return;
+    }
+
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/auto-apply/enable`, {
             method: 'POST',
@@ -667,6 +676,23 @@ async function saveAutomationSettings() {
 async function runTestAutomation() {
     const btn = document.getElementById('testRunBtn');
     if (!btn) return;
+
+    // Check tier and limits
+    const user = CVision.Utils.getUser();
+    const userTier = user?.subscription_tier?.toLowerCase() || 'free';
+
+    if (userTier === 'free' || userTier === 'freemium') {
+        const hasRunTest = localStorage.getItem(`has_run_test_${user.id || 'anon'}`);
+        if (hasRunTest) {
+            showPremiumModal(
+                'Test Run Limit Reached',
+                'You have used your 1 free test run. Upgrade to Premium for unlimited test runs and full automation capabilities.'
+            );
+            return;
+        }
+        // Mark as run (optimistic)
+        localStorage.setItem(`has_run_test_${user.id || 'anon'}`, 'true');
+    }
 
     // UI Elements
     const progressBar = document.getElementById('testProgressBar');
@@ -820,9 +846,20 @@ function updateSliderValue(type, value) {
 }
 
 // Premium Modal Functions
-function showPremiumModal() {
+function showPremiumModal(title, message) {
     const modal = document.getElementById('premiumModal');
     if (modal) {
+        // Update content if provided
+        if (title) {
+            const titleEl = document.getElementById('premiumModalTitle');
+            if (titleEl) titleEl.textContent = title;
+        }
+
+        if (message) {
+            const msgEl = document.getElementById('premiumModalDescription');
+            if (msgEl) msgEl.textContent = message;
+        }
+
         modal.style.display = 'flex';
         modal.style.pointerEvents = 'auto';
     }
