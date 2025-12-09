@@ -21,7 +21,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Load existing jobs from database on page load
     await loadJobsFromDB();
+
+    // Check for job ID in URL after jobs are loaded
+    const urlParams = new URLSearchParams(window.location.search);
+    const jobIdParam = urlParams.get('job');
+    if (jobIdParam) {
+        // Wait a bit to ensure DOM updates
+        setTimeout(() => {
+            // If job not in current list (search results usually 20), we might need to fetch it individually
+            // For now try to show from list, or fetch if missing
+            const jobInList = currentJobs.find(j => (j._id || j.id) === jobIdParam);
+            if (jobInList) {
+                showJobDetails(jobIdParam);
+            } else {
+                // Fetch individual job if not in current list
+                fetchJobAndShow(jobIdParam);
+            }
+        }, 500);
+    }
 });
+
+async function fetchJobAndShow(jobId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+        if (response.ok) {
+            const job = await response.json();
+            // Add to current jobs so modal can find it or just pass object
+            // Ideally push to currentJobs so next/prev works if implemented, but simpler to just show
+            // We need to push it to currentJobs because showJobDetails relies on finding it there
+            currentJobs.push(job);
+            showJobDetails(jobId);
+        }
+    } catch (e) {
+        console.error('Failed to load deep-linked job', e);
+    }
+}
 
 function initializeJobSearch() {
     // Search form submission
@@ -102,6 +138,39 @@ async function loadJobsFromDB() {
             updateResultsCount(data.total || currentJobs.length, currentJobs.length);
             if (data.pages > 1) {
                 updatePagination(data.page || 1, data.pages);
+            }
+
+            // Fetch saved jobs to check for generated documents
+            try {
+                const savedResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/saved/me?size=100`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+                if (savedResponse.ok) {
+                    const savedData = await savedResponse.json();
+                    const savedJobs = savedData.jobs || [];
+
+                    let needsUpdate = false;
+                    savedJobs.forEach(savedJob => {
+                        const jobIndex = currentJobs.findIndex(j => (j._id || j.id) === (savedJob._id || savedJob.id));
+                        if (jobIndex !== -1) {
+                            // Merge generated paths if they exist
+                            if (savedJob.generated_cv_path) {
+                                currentJobs[jobIndex].generated_cv_path = savedJob.generated_cv_path;
+                                needsUpdate = true;
+                            }
+                            if (savedJob.generated_cover_letter_path) {
+                                currentJobs[jobIndex].generated_cover_letter_path = savedJob.generated_cover_letter_path;
+                                needsUpdate = true;
+                            }
+                        }
+                    });
+
+                    if (needsUpdate) {
+                        displayJobs(currentJobs);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to sync saved job status:', e);
             }
         }
     } catch (error) {
@@ -403,18 +472,39 @@ function createJobCard(job) {
         </div>
 
         <!-- Footer Actions -->
-        <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex gap-3">
-             <button onclick="event.stopPropagation(); showCustomizeModal('${job._id || job.id}')" 
-                class="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg px-4 py-2 text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 group/btn">
-                <svg class="w-4 h-4 text-gray-500 group-hover/btn:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                Customize
-            </button>
-            
-            <button onclick="event.stopPropagation(); applyToJob('${job._id || job.id}')" 
-                class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 text-sm font-semibold hover:shadow-lg hover:-translate-y-0.5 transition-all shadow-md flex items-center justify-center gap-2">
-                Apply Now
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-            </button>
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex flex-col gap-3">
+             ${(job.generated_cv_path || job.generated_cover_letter_path) ? `
+                <div class="flex gap-2 mb-1">
+                    ${job.generated_cv_path ? `
+                        <button onclick="event.stopPropagation(); window.open('${job.generated_cv_path}', '_blank')" 
+                            class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            View CV
+                        </button>
+                    ` : ''}
+                    ${job.generated_cover_letter_path ? `
+                        <button onclick="event.stopPropagation(); window.open('${job.generated_cover_letter_path}', '_blank')" 
+                            class="flex-1 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            View Cover Letter
+                        </button>
+                    ` : ''}
+                </div>
+             ` : ''}
+             
+             <div class="flex gap-3">
+                 <button onclick="event.stopPropagation(); showCustomizeModal('${job._id || job.id}')" 
+                    class="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg px-4 py-2 text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 group/btn">
+                    <svg class="w-4 h-4 text-gray-500 group-hover/btn:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    Customize
+                </button>
+                
+                <button onclick="event.stopPropagation(); applyToJob('${job._id || job.id}')" 
+                    class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 text-sm font-semibold hover:shadow-lg hover:-translate-y-0.5 transition-all shadow-md flex items-center justify-center gap-2">
+                    Apply Now
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                </button>
+             </div>
         </div>
     `;
 
@@ -481,6 +571,40 @@ function showJobDetails(jobId) {
             </div>
         ` : ''}
 
+        ${job.generated_cv_path || job.generated_cover_letter_path ? `
+            <div class="mt-6 pt-6 border-t border-gray-100">
+                <h4 class="font-semibold text-lg mb-3">Generated Documents</h4>
+                <div class="flex flex-col gap-3">
+                     ${job.generated_cv_path ? `
+                        <div class="flex items-center gap-2">
+                             <span class="text-sm font-medium w-24">CV:</span>
+                             <a href="javascript:void(0)" onclick="window.open('${job.generated_cv_path}', '_blank')" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                View
+                             </a>
+                             <a href="${job.generated_cv_path}" download class="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Download
+                             </a>
+                        </div>
+                     ` : ''}
+                     ${job.generated_cover_letter_path ? `
+                        <div class="flex items-center gap-2">
+                             <span class="text-sm font-medium w-24">Cover Letter:</span>
+                             <a href="javascript:void(0)" onclick="window.open('${job.generated_cover_letter_path}', '_blank')" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                View
+                             </a>
+                             <a href="${job.generated_cover_letter_path}" download class="inline-flex items-center gap-2 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Download
+                             </a>
+                        </div>
+                     ` : ''}
+                </div>
+            </div>
+        ` : ''}
+
         ${job.external_url ? `
             <div class="mt-4">
                 <h4 class="font-semibold mb-2">Application Link</h4>
@@ -491,7 +615,19 @@ function showJobDetails(jobId) {
         ` : ''}
     `;
 
-    document.getElementById('modalSaveJob').onclick = () => saveJob(jobId);
+    const saveBtn = document.getElementById('modalSaveJob');
+    saveBtn.onclick = () => saveJob(jobId);
+    saveBtn.dataset.jobId = jobId; // Support for saveJob finding this button
+
+    // Check if already saved (this logic was missing in modal open)
+    // We can check if the job object has 'saved_at' or if we track saved jobs separately.
+    // Assuming backend returns 'is_saved' or similar would be better, but for now 
+    // let's rely on the user clicking it or it being updated if they click save.
+    // If the job in currentJobs has some indicator it's saved, we should show it.
+    // For now, reset to default state unless we know otherwise.
+    saveBtn.innerHTML = 'Save Job';
+    saveBtn.classList.remove('text-primary-600');
+    saveBtn.classList.add('text-gray-700');
 
     // Phase 3: Update customize button
     const customizeBtn = document.getElementById('modalCustomize');
@@ -520,31 +656,56 @@ function closeJobModal() {
     document.getElementById('jobModal').classList.remove('flex');
 }
 
-async function saveJob(jobId) {
+async function saveJob(jobId, silent = false, extraData = null) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/jobs/save/${jobId}`, {
+        const options = {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${CVision.Utils.getToken()}`
             }
-        });
+        };
+
+        if (extraData) {
+            options.headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify(extraData);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/jobs/save/${jobId}`, options);
 
         if (!response.ok) throw new Error('Failed to save job');
 
-        CVision.Utils.showAlert('Job saved successfully!', 'success');
+        if (!silent) {
+            CVision.Utils.showAlert('Job saved successfully!', 'success');
+        }
 
-        const saveBtn = document.querySelector(`[onclick*="saveJob('${jobId}')"]`);
-        if (saveBtn) {
-            saveBtn.innerHTML = `
+        // Update list button(s)
+        const listSaveBtns = document.querySelectorAll(`[onclick*="saveJob('${jobId}')"]`);
+        listSaveBtns.forEach(btn => {
+            btn.innerHTML = `
                 <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                 </svg>
             `;
-            saveBtn.classList.add('text-primary-600');
+            btn.classList.add('text-primary-600');
+        });
+
+        // Update modal button if it matches the current job
+        const modalSaveBtn = document.getElementById('modalSaveJob');
+        if (modalSaveBtn && modalSaveBtn.dataset.jobId === jobId) {
+            modalSaveBtn.innerHTML = `
+                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                </svg>
+                Saved
+            `;
+            modalSaveBtn.classList.remove('text-gray-700');
+            modalSaveBtn.classList.add('text-primary-600');
         }
     } catch (error) {
         console.error('Error saving job:', error);
-        CVision.Utils.showAlert('Failed to save job', 'error');
+        if (!silent) {
+            CVision.Utils.showAlert('Failed to save job', 'error');
+        }
     }
 }
 
@@ -805,6 +966,9 @@ async function applyToJob(jobId) {
             return;
         }
 
+        // Auto-save job when applying (as per requirement)
+        await saveJob(jobId, true);
+
         // Show modal to select CV and cover letter
         await showApplyModal(jobId);
 
@@ -991,6 +1155,11 @@ async function showCustomizeModal(jobId) {
         return;
     }
 
+    // Reset progress bar if available
+    if (typeof resetProgressBar === 'function') {
+        resetProgressBar();
+    }
+
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
@@ -1117,7 +1286,7 @@ async function startCustomization() {
         return;
     }
 
-    // Capture jobId locally before closing modal
+    // Capture jobId locally
     const jobId = currentJobIdForCustomize;
 
     const activeTemplate = document.querySelector('.template-option.active');
@@ -1129,22 +1298,102 @@ async function startCustomization() {
     const toneSelect = document.getElementById('toneSelect');
     const tone = toneSelect ? toneSelect.value : 'professional';
 
-    // Close modal after capturing jobId
-    closeCustomizeModal();
+    // Show progress bar and disable button
+    if (typeof showProgressBar === 'function') {
+        showProgressBar();
+    } else {
+        console.warn('showProgressBar function not found');
+        // Fallback or just continue
+    }
+
+    const generateBtn = document.querySelector('button[onclick="startCustomization()"]');
+    if (generateBtn) {
+        generateBtn.disabled = true;
+    }
 
     try {
         if (typeof GenerationModule !== 'undefined' && GenerationModule.customizeForJob) {
-            await GenerationModule.customizeForJob(cvId, jobId, {
+
+            // Step 1: Analyzing CV
+            if (typeof updateProgress === 'function') {
+                updateProgress(1, 'Analyzing your CV...');
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Step 2: Customizing for job
+            if (typeof updateProgress === 'function') {
+                updateProgress(2, 'Customizing for this job...');
+            }
+
+            // Call the generation API
+            const result = await GenerationModule.customizeForJob(cvId, jobId, {
                 template,
                 includeCoverLetter,
                 tone
             });
+
+            // Step 3: Generating CV PDF
+            if (typeof updateProgress === 'function') {
+                updateProgress(3, 'Generating CV PDF...');
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Step 4: Generating Cover Letter (if requested)
+            if (typeof updateProgress === 'function') {
+                if (includeCoverLetter) {
+                    updateProgress(4, 'Generating Cover Letter...');
+                } else {
+                    updateProgress(4, 'Finalizing...');
+                }
+            }
+
+            // Wait for all progress animations to complete
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Close modal
+            closeCustomizeModal();
+
+            if (generateBtn) {
+                generateBtn.disabled = false;
+            }
+
+            // Update local job data with new paths so buttons appear immediately
+            if (currentJobs) {
+                const jobIndex = currentJobs.findIndex(j => (j._id || j.id) === jobId);
+                if (jobIndex !== -1) {
+                    currentJobs[jobIndex].generated_cv_path = result.cv_pdf_url;
+                    currentJobs[jobIndex].generated_cover_letter_path = result.cover_letter_pdf_url;
+
+                    // Re-render this specific job card if possible, or all jobs
+                    // For simplicity, let's re-render all to ensure consistency
+                    displayJobs(currentJobs);
+                }
+            }
+
+            // Show detailed success modal
+            if (typeof GenerationModule.showGenerationModal === 'function') {
+                GenerationModule.showGenerationModal(result);
+            } else {
+                CVision.Utils.showAlert('Documents generated successfully!', 'success');
+            }
+
         } else {
             CVision.Utils.showAlert('Generation module not loaded. Please refresh the page.', 'error');
+            if (typeof showProgressError === 'function') {
+                showProgressError('Generation module not loaded');
+            }
         }
     } catch (error) {
         console.error('Customization failed:', error);
         CVision.Utils.showAlert('Customization failed: ' + error.message, 'error');
+
+        if (typeof showProgressError === 'function') {
+            showProgressError('Generation failed: ' + error.message);
+        }
+
+        if (generateBtn) {
+            generateBtn.disabled = false;
+        }
     }
 }
 

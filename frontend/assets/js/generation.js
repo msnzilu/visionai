@@ -55,7 +55,7 @@ const GenerationModule = (() => {
                 
                 <div class="space-y-3">
                     ${data.cv_document_id && data.cv_pdf_url ? `
-                        <a href="${data.cv_pdf_url}" 
+                        <a href="${API_BASE_URL}${data.cv_pdf_url}" 
                         download
                         class="flex items-center justify-between w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
                             <div class="flex items-center gap-3">
@@ -72,7 +72,7 @@ const GenerationModule = (() => {
                     ` : ''}
                     
                     ${data.cover_letter_id && data.cover_letter_pdf_url ? `
-                        <a href="${data.cover_letter_pdf_url}" 
+                        <a href="${API_BASE_URL}${data.cover_letter_pdf_url}" 
                         download
                         class="flex items-center justify-between w-full px-4 py-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
                             <div class="flex items-center gap-3">
@@ -106,8 +106,6 @@ const GenerationModule = (() => {
     // Main functions that use the utilities defined above
     const customizeForJob = async (documentId, jobId, options = {}) => {
         try {
-            InlineMessage.success('Generating customized documents...');
-
             const requestData = {
                 document_id: documentId,
                 job_id: jobId,
@@ -121,14 +119,22 @@ const GenerationModule = (() => {
             console.log('Job ID:', jobId);
             console.log('Full request:', JSON.stringify(requestData, null, 2));
 
-            const response = await fetch(`${API_BASE_URL}/generation/customize-cv`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${CVision.Utils.getToken()}`
-                },
-                body: JSON.stringify(requestData)
-            });
+            let response;
+            try {
+                response = await fetch(`${API_BASE_URL}/generation/customize-cv`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${CVision.Utils.getToken()}`
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                console.log('=== FETCH COMPLETED ===');
+            } catch (fetchError) {
+                console.error('=== NETWORK ERROR ===', fetchError);
+                hideLoading();
+                throw new Error(`Network error: ${fetchError.message}`);
+            }
 
             console.log('Response status:', response.status);
 
@@ -170,8 +176,24 @@ const GenerationModule = (() => {
             console.log('=== SUCCESS ===', result);
             currentGeneration = result;
 
-            CVision.Utils.showAlert('Documents generated successfully!', 'success');
-            showGenerationModal(result);
+            // Auto-save generated docs paths to the saved job
+            if (window.saveJob && jobId) {
+                // Ensure job is saved/updated with new docs paths
+                // We use silent=true to avoid double alerts (generation success alert is enough)
+                const updateData = {
+                    generated_cv_path: result.cv_pdf_url,
+                    generated_cover_letter_path: result.cover_letter_pdf_url
+                };
+                console.log('Updating saved job with docs:', updateData);
+                // Don't await this to keep UI responsive? Actually better to await to ensure consistency
+                await window.saveJob(jobId, true, updateData).catch(err =>
+                    console.error('Failed to update saved job with generation paths:', err)
+                );
+            }
+
+            // Don't show modal automatically - let caller decide
+            // CVision.Utils.showAlert('Documents generated successfully!', 'success');
+            // showGenerationModal(result);
 
             return result;
 

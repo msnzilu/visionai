@@ -3,14 +3,16 @@
 Job-related API endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, Body
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from typing import Optional, List
 from datetime import datetime
 
 from app.models.job import (
     JobSearch, JobResponse, 
-    JobCreate, JobUpdate, JobFilter
+    JobCreate, JobUpdate, JobFilter,
+    SavedJobResponse
 )
 from app.models.user import User
 from app.services.job_service import get_job_service
@@ -105,10 +107,11 @@ async def get_my_matched_jobs(
 @router.post("/save/{job_id}")
 async def save_job(
     job_id: str,
+    data: Optional[dict] = Body(None),
     current_user: User = Depends(get_current_active_user),
     db = Depends(get_db)
 ):
-    """Save/bookmark a job"""
+    """Save/bookmark a job or update saved job details"""
     
     # Check if already saved
     existing = await db.saved_jobs.find_one({
@@ -116,14 +119,30 @@ async def save_job(
         "job_id": job_id
     })
     
+    update_data = {}
+    if data:
+        if "generated_cv_path" in data:
+            update_data["generated_cv_path"] = data["generated_cv_path"]
+        if "generated_cover_letter_path" in data:
+            update_data["generated_cover_letter_path"] = data["generated_cover_letter_path"]
+    
     if existing:
+        if update_data:
+            await db.saved_jobs.update_one(
+                {"_id": existing["_id"]},
+                {"$set": update_data}
+            )
+            return {"message": "Saved job updated", "job_id": job_id}
         return {"message": "Job already saved", "job_id": job_id}
     
-    await db.saved_jobs.insert_one({
+    doc = {
         "user_id": str(current_user["_id"]),
         "job_id": job_id,
         "saved_at": datetime.utcnow()
-    })
+    }
+    doc.update(update_data)
+    
+    await db.saved_jobs.insert_one(doc)
     
     return {"message": "Job saved successfully", "job_id": job_id}
 
@@ -166,12 +185,19 @@ async def get_saved_jobs(
     job_ids = [s["job_id"] for s in saved_jobs]
     
     jobs = []
-    for job_id in job_ids:
+    for saved_item in saved_jobs:
+        job_id = saved_item["job_id"]
         job = await job_service.get_job_by_id(job_id)
         if job:
-            jobs.append(job)
+            # Convert to SavedJobResponse format
+            job_dict = job if isinstance(job, dict) else job.dict()
+            job_dict["saved_at"] = saved_item["saved_at"]
+            job_dict["generated_cv_path"] = saved_item.get("generated_cv_path")
+            job_dict["generated_cover_letter_path"] = saved_item.get("generated_cover_letter_path")
+            jobs.append(job_dict)
+
     
-    return JSONResponse(content={"jobs": jobs})
+    return JSONResponse(content={"jobs": jsonable_encoder(jobs)})
 
 
 @router.post("/trigger-scrape")

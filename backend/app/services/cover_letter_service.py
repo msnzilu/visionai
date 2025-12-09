@@ -30,7 +30,7 @@ class CoverLetterService:
     
     async def _get_db(self):
         """Get database instance"""
-        if not self.db:
+        if self.db is None:
             self.db = await get_database()
         return self.db
     

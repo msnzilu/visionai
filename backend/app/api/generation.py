@@ -7,7 +7,7 @@ Endpoints for CV customization, cover letter generation, and PDF creation
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
 
@@ -64,7 +64,7 @@ class RegenerationRequest(BaseModel):
 @router.post("/customize-cv", response_model=GenerationResponse)
 async def customize_cv_for_job(
     request: CVCustomizationRequest,
-    current_user: User = Depends(get_current_active_user)
+    current_user: Dict[str, Any] = Depends(get_current_active_user)
 ):
     """
     Generate customized CV and optionally cover letter for a specific job
@@ -96,7 +96,26 @@ async def customize_cv_for_job(
         if not cv_doc:
             raise HTTPException(status_code=404, detail="CV document not found")
         
-        cv_data = cv_doc.get("cv_data", {})
+        # Get cv_data and handle different formats
+        cv_data = cv_doc.get("cv_data")
+        
+        # Handle if cv_data is stored as JSON string
+        if isinstance(cv_data, str):
+            import json
+            try:
+                cv_data = json.loads(cv_data)
+            except json.JSONDecodeError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="CV data is corrupted. Please re-upload your CV."
+                )
+        
+        # Ensure cv_data is a dict and not empty
+        if not cv_data or not isinstance(cv_data, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="CV has not been parsed yet. Please re-upload or re-parse your CV."
+            )
         
         # Get job details
         job = await db.jobs.find_one({"_id": ObjectId(request.job_id)})
@@ -117,6 +136,10 @@ async def customize_cv_for_job(
         
         customized_cv = cv_result["customized_cv"]
         match_score = cv_result["job_match_score"]
+        
+        # Debug logging
+        logger.info(f"customized_cv type: {type(customized_cv)}")
+        logger.info(f"customized_cv keys: {customized_cv.keys() if isinstance(customized_cv, dict) else 'NOT A DICT'}")
         
         # Generate CV PDF
         should_watermark = subscription_tier == "free"

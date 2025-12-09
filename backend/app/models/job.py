@@ -393,11 +393,40 @@ class JobAlert(BaseModel):
         populate_by_name = True
 
 
+# Saved Job Models
+class SavedJob(BaseModel):
+    """Saved job model with user-specific data"""
+    user_id: str
+    job_id: str
+    saved_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_cv_path: Optional[str] = None
+    generated_cover_letter_path: Optional[str] = None
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
+
+
+class SavedJobResponse(JobResponse):
+    """Job response with saved job metadata"""
+    saved_at: datetime
+    generated_cv_path: Optional[str] = None
+    generated_cover_letter_path: Optional[str] = None
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None,
+            date: lambda v: v.isoformat() if v else None
+        }
+
+
 # Export all job-related models
 __all__ = [
     "JobSource", "JobStatus", "EmploymentType", "ExperienceLevel", "WorkArrangement",
     "CompanySize", "Industry", "SalaryRange", "JobBenefit", "JobRequirement",
     "CompanyInfo", "JobBase", "JobCreate", "JobUpdate", "Job", "JobResponse",
     "JobFilter", "JobSearch", "JobMatch", "JobListResponse", "JobStats",
-    "ScrapingConfig", "ScrapingResult", "ApplicationLink", "JobAlert"
+    "ScrapingConfig", "ScrapingResult", "ApplicationLink", "JobAlert",
+    "SavedJob", "SavedJobResponse"
 ]

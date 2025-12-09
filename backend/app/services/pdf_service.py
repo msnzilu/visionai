@@ -65,7 +65,7 @@ class PDFService:
     
     async def _get_db(self):
         """Get database instance"""
-        if not self.db:
+        if self.db is None:
             self.db = await get_database()
         return self.db
     
@@ -332,6 +332,13 @@ class PDFService:
         header_elements = []
         personal_info = cv_content.get("personal_info", {})
         
+        # Ensure personal_info is a dict
+        if not isinstance(personal_info, dict):
+            # If it's a string, just print it
+            if isinstance(personal_info, str):
+                header_elements.append(Paragraph(personal_info, styles["NameStyle"]))
+            return header_elements
+        
         # Name
         name = personal_info.get("name", "")
         if name:
@@ -412,6 +419,12 @@ class PDFService:
         elements.append(Paragraph("PROFESSIONAL EXPERIENCE", styles["CustomHeading"]))
         
         for exp in experience:
+            # Handle if exp is a string/non-dict
+            if not isinstance(exp, dict):
+                elements.append(Paragraph(f"• {str(exp)}", styles["BodyText"]))
+                elements.append(Spacer(1, 0.1*inch))
+                continue
+                
             # Job title and company
             title_text = f"<b>{exp.get('title', '')}</b> | {exp.get('company', '')}"
             elements.append(Paragraph(title_text, styles["CustomSubHeading"]))
@@ -424,9 +437,13 @@ class PDFService:
             # Responsibilities/Highlights
             highlights = exp.get('highlights', exp.get('responsibilities', []))
             if highlights:
-                for highlight in highlights[:5]:  # Limit to 5
-                    bullet = f"• {highlight}"
-                    elements.append(Paragraph(bullet, styles["BodyText"]))
+                # Handle if highlights is a string
+                if isinstance(highlights, str):
+                    elements.append(Paragraph(highlights, styles["BodyText"]))
+                elif isinstance(highlights, list):
+                    for highlight in highlights[:5]:  # Limit to 5
+                        bullet = f"• {highlight}"
+                        elements.append(Paragraph(bullet, styles["BodyText"]))
             
             elements.append(Spacer(1, 0.15*inch))
         
@@ -447,12 +464,17 @@ class PDFService:
             for category, skill_list in skills.items():
                 if skill_list:
                     category_title = category.replace("_", " ").title()
-                    skills_text = ", ".join(skill_list[:15])  # Limit skills
+                    # Handle if skill_list is not a list
+                    if isinstance(skill_list, list):
+                        skills_text = ", ".join(skill_list[:15])  # Limit skills
+                    else:
+                        skills_text = str(skill_list)
+                    
                     text = f"<b>{category_title}:</b> {skills_text}"
                     elements.append(Paragraph(text, styles["BodyText"]))
         elif isinstance(skills, list):
             # Flat skill list
-            skills_text = ", ".join(skills[:20])
+            skills_text = ", ".join([str(s) for s in skills[:20]])
             elements.append(Paragraph(skills_text, styles["BodyText"]))
         
         return elements
@@ -468,6 +490,12 @@ class PDFService:
         elements.append(Paragraph("EDUCATION", styles["CustomHeading"]))
         
         for edu in education:
+            # Handle if edu is a string/non-dict
+            if not isinstance(edu, dict):
+                elements.append(Paragraph(f"• {str(edu)}", styles["BodyText"]))
+                elements.append(Spacer(1, 0.1*inch))
+                continue
+                
             # Degree and institution
             degree_text = f"<b>{edu.get('degree', '')}</b> | {edu.get('institution', '')}"
             elements.append(Paragraph(degree_text, styles["CustomSubHeading"]))
@@ -529,8 +557,15 @@ class PDFService:
         doc_type: str
     ) -> str:
         """Save PDF to storage and return file path"""
-        filename = f"{user_id}_{job_id}_{doc_type}_{datetime.utcnow().timestamp()}.pdf"
-        filepath = self.upload_dir / filename
+        # Create structured directory: uploads/jobs/{job_id}
+        job_dir = self.upload_dir / "jobs" / job_id
+        job_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save as clean filename: {doc_type}.pdf (e.g. cv.pdf or cover_letter.pdf)
+        # We append timestamp ONLY if we want history, but user asked for specific path structure
+        # Let's keep it simple as requested: "job id, then docs"
+        filename = f"{doc_type}.pdf"
+        filepath = job_dir / filename
         
         with open(filepath, 'wb') as f:
             f.write(pdf_buffer.getvalue())
@@ -540,9 +575,89 @@ class PDFService:
     
     async def get_pdf_url(self, filepath: str) -> str:
         """Get public URL for PDF"""
-        # Return relative URL for serving via FastAPI static files
-        filename = Path(filepath).name
-        return f"/uploads/{filename}"
+        # Convert absolute path to relative URL
+        # Path structure: .../uploads/jobs/{job_id}/{filename} -> /uploads/jobs/{job_id}/{filename}
+        try:
+            rel_path = Path(filepath).relative_to(self.upload_dir)
+            return f"/uploads/{rel_path}".replace("\\", "/")
+        except ValueError:
+            # Fallback for old files or unexpected paths
+            return f"/uploads/{Path(filepath).name}"
+    
+    async def save_pdf(
+        self,
+        pdf_buffer: BytesIO,
+        user_id: str,
+        job_id: str,
+        doc_type: str  # "cv" or "cover_letter"
+    ) -> str:
+        """
+        Save PDF buffer to file system
+        
+        Args:
+            pdf_buffer: BytesIO containing PDF data
+            user_id: User ID
+            job_id: Job ID
+            doc_type: Type of document ("cv" or "cover_letter")
+            
+        Returns:
+            File path where PDF was saved
+        """
+        from datetime import datetime
+        import glob
+        import os
+        
+        # Create directory structure: uploads/users/{user_id}/jobs/{job_id}/
+        job_dir = self.upload_dir / "users" / user_id / "jobs" / job_id
+        job_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Delete old files of the same type for this job (PDF, HTML, HTM)
+        for ext in ['*.pdf', '*.html', '*.htm']:
+            old_files = glob.glob(str(job_dir / f"{doc_type}_{ext}"))
+            for old_file in old_files:
+                try:
+                    os.remove(old_file)
+                    logger.info(f"Deleted old {doc_type} file: {old_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete old file {old_file}: {e}")
+        
+        # Generate filename with timestamp
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        filename = f"{doc_type}_{timestamp}.pdf"
+        filepath = job_dir / filename
+        
+        # Write PDF to file
+        with open(filepath, "wb") as f:
+            f.write(pdf_buffer.getvalue())
+        
+        logger.info(f"Saved {doc_type} PDF to: {filepath}")
+        return str(filepath)
+    
+    async def get_pdf_url(self, filepath: str) -> str:
+        """
+        Convert file path to accessible URL
+        
+        Args:
+            filepath: Absolute file path
+            
+        Returns:
+            Relative URL path
+        """
+        try:
+            # Convert to Path object
+            path = Path(filepath)
+            
+            # Get relative path from upload_dir
+            rel_path = path.relative_to(self.upload_dir)
+            
+            # Return as URL with forward slashes
+            url = f"/uploads/{rel_path}".replace("\\", "/")
+            logger.info(f"Generated PDF URL: {url}")
+            return url
+        except ValueError as e:
+            logger.error(f"Failed to generate PDF URL for {filepath}: {e}")
+            # Fallback to filename only
+            return f"/uploads/{path.name}"
 
 
 # Create singleton instance
