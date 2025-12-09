@@ -632,10 +632,16 @@ async function saveAutomationSettings() {
 
     // Free users cannot save settings
     if (userTier === 'free' || userTier === 'freemium') {
-        showPremiumModal(
-            'Premium Feature',
-            'Saving automation settings is available for Basic and Premium users. Upgrade to unlock full automation control.'
-        );
+        if (typeof UpgradeModal !== 'undefined') {
+            UpgradeModal.show(
+                'Premium Feature',
+                'Saving automation settings is available for Basic and Premium users. Upgrade to unlock full automation control.'
+            );
+        } else {
+            // Fallback if component not loaded yet
+            console.error('UpgradeModal not loaded');
+            alert('Premium Feature: Saving settings is for Basic/Premium users.');
+        }
         return;
     }
 
@@ -684,10 +690,14 @@ async function runTestAutomation() {
     if (userTier === 'free' || userTier === 'freemium') {
         const hasRunTest = localStorage.getItem(`has_run_test_${user.id || 'anon'}`);
         if (hasRunTest) {
-            showPremiumModal(
-                'Test Run Limit Reached',
-                'You have used your 1 free test run. Upgrade to Premium for unlimited test runs and full automation capabilities.'
-            );
+            if (typeof UpgradeModal !== 'undefined') {
+                UpgradeModal.show(
+                    'Test Run Limit Reached',
+                    'You have used your 1 free test run. Upgrade to Premium for unlimited test runs and full automation capabilities.'
+                );
+            } else {
+                alert('Test Limit: 1 run allowed for free users.');
+            }
             return;
         }
         // Mark as run (optimistic)
@@ -845,38 +855,6 @@ function updateSliderValue(type, value) {
     }
 }
 
-// Premium Modal Functions
-function showPremiumModal(title, message) {
-    const modal = document.getElementById('premiumModal');
-    if (modal) {
-        // Update content if provided
-        if (title) {
-            const titleEl = document.getElementById('premiumModalTitle');
-            if (titleEl) titleEl.textContent = title;
-        }
-
-        if (message) {
-            const msgEl = document.getElementById('premiumModalDescription');
-            if (msgEl) msgEl.textContent = message;
-        }
-
-        modal.style.display = 'flex';
-        modal.style.pointerEvents = 'auto';
-    }
-}
-
-function closePremiumModal() {
-    const modal = document.getElementById('premiumModal');
-    if (modal) {
-        modal.style.display = 'none';
-        modal.style.pointerEvents = 'none';
-    }
-}
-
-function upgradeNow() {
-    window.location.href = 'pages/subscription.html';
-}
-
 async function connectGmail() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/auth/gmail/connect`, {
@@ -895,4 +873,8 @@ async function connectGmail() {
         console.error('Gmail connect error:', error);
         CVision.Utils.showAlert('Failed to connect Gmail', 'error');
     }
+}
+
+function upgradeNow() {
+    window.location.href = 'pages/subscription.html';
 }

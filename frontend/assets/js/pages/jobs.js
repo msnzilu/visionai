@@ -720,12 +720,85 @@ async function loadUserCVsForBatch() {
 // Phase 6: Browser Automation Apply Functions
 // ============================================================================
 
+// ============================================================================
+// Application Limits Logic
+// ============================================================================
+
+async function checkApplicationLimit() {
+    const user = CVision.Utils.getUser();
+    const userTier = user?.subscription_tier?.toLowerCase() || 'free';
+
+    // Limits definition
+    const LIMITS = {
+        'free': 5,
+        'basic': 30,
+        'premium': Infinity
+    };
+
+    const limit = LIMITS[userTier] || 5;
+
+    // Skip check for premium
+    if (limit === Infinity) return true;
+
+    try {
+        // Fetch stats from backend
+        const response = await fetch(`${API_BASE_URL}/api/v1/applications/stats/overview`, {
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch application stats');
+
+        const stats = await response.json();
+        const count = stats.applications_today || 0;
+
+        // Debug logging
+        console.log('[DEBUG-LIMITS-BACKEND]', {
+            tier: userTier,
+            limit: limit,
+            currentCount: count,
+            userId: user?.id,
+            isLimitReached: count >= limit
+        });
+
+        if (count >= limit) {
+            if (typeof UpgradeModal !== 'undefined') {
+                UpgradeModal.show(
+                    'Daily Application Limit Reached',
+                    `You have reached your daily limit of ${limit} applications. Upgrade your plan to apply to more jobs today.`
+                );
+            } else {
+                alert(`Daily Limit Reached: You have used your ${limit} free applications.`);
+            }
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error checking limits:', error);
+        console.warn('Falling back to simple allow on error');
+        return true;
+    }
+}
+
+// Legacy increment removed as backend handles it automatically
+function incrementApplicationCount() {
+    // No-op for backward compatibility if called
+}
+
 /**
  * Phase 6: Apply to job with browser automation
  * Opens modal for CV/cover letter selection, then starts browser autofill
  */
 async function applyToJob(jobId) {
     try {
+        // CHECK LIMITS BEFORE OPENING MODAL
+        const canApply = await checkApplicationLimit();
+        if (!canApply) {
+            return;
+        }
+
         const job = currentJobs.find(j => (j._id || j.id) === jobId);
         if (!job) {
             CVision.Utils.showAlert('Job not found', 'error');
@@ -740,10 +813,6 @@ async function applyToJob(jobId) {
         CVision.Utils.showAlert('Failed to open application modal', 'error');
     }
 }
-
-/**
- * Start Quick Apply (Email Agent)
- */
 async function startQuickApply(jobId) {
     const cvId = document.getElementById('applyModalCvSelect')?.value;
     const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
@@ -787,6 +856,9 @@ async function startQuickApply(jobId) {
 
         CVision.Utils.showAlert('Application sent successfully via email!', 'success');
         closeApplyModal();
+
+        // Increment usage count on success
+        incrementApplicationCount();
 
         // Update UI to show applied status
         const applyBtnInCard = document.querySelector(`button[onclick*="applyToJob('${jobId}')"]`);

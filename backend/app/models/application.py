@@ -379,6 +379,7 @@ class ApplicationListResponse(BaseModel):
 class ApplicationStats(BaseModel):
     """Application statistics"""
     total_applications: int = 0
+    applications_today: int = 0
     active_applications: int = 0
     applications_this_week: int = 0
     applications_this_month: int = 0

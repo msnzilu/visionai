@@ -1,0 +1,57 @@
+<div id="premiumModal" style="display: none;"
+    class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900 bg-opacity-60 backdrop-blur-sm transition-opacity">
+    <div style="background: white; border-radius: 20px; max-width: 480px; width: 90%; padding: 2rem; position: relative; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);"
+        class="animate-bounce-in">
+        <!-- Close Button -->
+        <button onclick="UpgradeModal.close()"
+            style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #9ca3af; transition: color 0.2s;"
+            class="hover:text-gray-800">
+            ✕
+        </button>
+
+        <!-- Icon -->
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <div
+                style="display: inline-block; padding: 1.25rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-bottom: 1rem; box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);">
+                <span style="font-size: 2.5rem;">🤖</span>
+            </div>
+            <h2 id="premiumModalTitle"
+                style="font-size: 1.5rem; font-weight: 800; color: #1f2937; margin: 0; letter-spacing: -0.025em;">
+                Premium Feature</h2>
+        </div>
+
+        <!-- Description -->
+        <p id="premiumModalDescription"
+            style="text-align: center; color: #4b5563; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">
+            Full automation requires a premium subscription. Upgrade now to unlock the power of AI-driven job
+            applications!
+        </p>
+
+        <!-- Benefits -->
+        <div style="background: #f3f4f6; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+            <ul class="space-y-2 text-sm">
+                <li class="flex items-center gap-2 text-gray-700 font-medium">
+                    <span class="text-emerald-500 font-bold">✓</span> Auto-apply to 5-10 jobs daily
+                </li>
+                <li class="flex items-center gap-2 text-gray-700 font-medium">
+                    <span class="text-emerald-500 font-bold">✓</span> AI-generated custom CVs
+                </li>
+                <li class="flex items-center gap-2 text-gray-700 font-medium">
+                    <span class="text-emerald-500 font-bold">✓</span> Personalized cover letters
+                </li>
+            </ul>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 0.75rem;">
+            <button onclick="UpgradeModal.close()"
+                class="flex-1 py-3 px-4 bg-gray-100 text-gray-600 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
+                Maybe Later
+            </button>
+            <button onclick="window.location.href='/pages/subscription.html'"
+                class="flex-1 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:-translate-y-0.5">
+                Upgrade Now 🚀
+            </button>
+        </div>
+    </div>
+</div>

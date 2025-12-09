@@ -368,10 +368,17 @@ class ApplicationTrackingService:
             
             response_rate = (responded_count / applied_count * 100) if applied_count > 0 else 0
             
-            # Calculate this week and month stats
+            # Calculate this week, month and TODAY stats
+            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
             week_ago = datetime.utcnow() - timedelta(days=7)
             month_ago = datetime.utcnow() - timedelta(days=30)
             
+            applications_today = await self.applications.count_documents({
+                "user_id": user_id,
+                "created_at": {"$gte": today_start},
+                "deleted_at": None
+            })
+
             applications_this_week = await self.applications.count_documents({
                 "user_id": user_id,
                 "created_at": {"$gte": week_ago},
@@ -390,6 +397,7 @@ class ApplicationTrackingService:
             
             return {
                 "total_applications": total_count,
+                "applications_today": applications_today,
                 "active_applications": total_count - status_counts.get("archived", 0) - status_counts.get("withdrawn", 0),
                 "applications_this_week": applications_this_week,
                 "applications_this_month": applications_this_month,
