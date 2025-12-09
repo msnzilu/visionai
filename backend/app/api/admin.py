@@ -176,10 +176,16 @@ async def get_user(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class UserStatusUpdate(BaseModel):
+    is_active: bool
+
+class UserTierUpdate(BaseModel):
+    tier: SubscriptionTier
+
 @router.patch("/users/{user_id}/status")
 async def update_user_status(
     user_id: str,
-    is_active: bool,
+    status_update: UserStatusUpdate,
     current_admin = Depends(require_admin),
     db = Depends(get_database)
 ):
@@ -187,18 +193,18 @@ async def update_user_status(
     
     result = await db.users.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": {"is_active": is_active, "updated_at": datetime.utcnow()}}
+        {"$set": {"is_active": status_update.is_active, "updated_at": datetime.utcnow()}}
     )
     
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {"message": f"User {'activated' if is_active else 'deactivated'}"}
+    return {"message": f"User {'activated' if status_update.is_active else 'deactivated'}"}
 
 @router.patch("/users/{user_id}/tier")
 async def update_user_tier(
     user_id: str,
-    tier: SubscriptionTier,
+    tier_update: UserTierUpdate,
     current_admin = Depends(require_admin),
     db = Depends(get_database)
 ):
@@ -206,7 +212,7 @@ async def update_user_tier(
     
     result = await db.users.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": {"subscription_tier": tier, "updated_at": datetime.utcnow()}}
+        {"$set": {"subscription_tier": tier_update.tier, "updated_at": datetime.utcnow()}}
     )
     
     if result.modified_count == 0:
