@@ -64,6 +64,7 @@ async def list_blog_posts(
     categories: Optional[str] = Query(None, description="Comma-separated categories"),
     tags: Optional[str] = Query(None, description="Comma-separated tags"),
     search: Optional[str] = None,
+    current_user: Optional[dict] = Depends(get_current_user),
     blog_service: BlogService = Depends(get_blog_service)
 ):
     """
@@ -76,8 +77,14 @@ async def list_blog_posts(
     category_list = categories.split(",") if categories else None
     tag_list = tags.split(",") if tags else None
     
+    # Check if user is admin
+    is_admin = False
+    if current_user and current_user.get("role") == "admin":
+        is_admin = True
+    
     # Default to published for public access
-    if status is None:
+    # Admins can see all posts (status=None) if they don't specify a status
+    if status is None and not is_admin:
         status = BlogStatus.PUBLISHED
     
     posts = await blog_service.list_posts(
