@@ -72,7 +72,7 @@ async def create_blog_post(
 async def list_blog_posts(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=50),
-    status: Optional[BlogStatus] = None,
+    status: Optional[str] = None,
     categories: Optional[str] = Query(None, description="Comma-separated categories"),
     tags: Optional[str] = Query(None, description="Comma-separated tags"),
     search: Optional[str] = None,
@@ -85,24 +85,51 @@ async def list_blog_posts(
     - Public users can only see published posts
     - Admins can see all posts
     """
+    # Debug logging
+    print(f"List Blog Posts Request: status={status}, user={current_user.get('_id') if current_user else 'None'}")
+    if current_user:
+        print(f"User Role: {current_user.get('role')}")
+
     # Parse comma-separated values
     category_list = categories.split(",") if categories else None
     tag_list = tags.split(",") if tags else None
     
     # Check if user is admin
     is_admin = False
-    if current_user and current_user.get("role") == "admin":
+    if current_user and str(current_user.get("role")) == "admin":
         is_admin = True
+        print("User identified as ADMIN")
     
-    # Default to published for public access
-    # Admins can see all posts (status=None) if they don't specify a status
-    if status is None and not is_admin:
-        status = BlogStatus.PUBLISHED
-    
+    # Handle status
+    final_status = None
+    if status:
+        # If status is passed, try to use it
+        try:
+            # Map "all" or empty string to None (All)
+            if status.lower() in ["all", ""]:
+                final_status = None
+            else:
+                final_status = BlogStatus(status)
+        except ValueError:
+            # If invalid status passed, ignore check? Or 400?
+            # For admin friendliness, let's just default to None if admin, or Published if public?
+            # To be safe, if public, ignore invalid status -> Published.
+            pass
+            
+    # Defaulting Logic
+    if not is_admin:
+        # Non-admin users can ONLY see published posts
+        final_status = BlogStatus.PUBLISHED
+    elif is_admin and final_status is None and status is None:
+        # Admin, no status specified -> See ALL (None)
+        final_status = None
+        
+    print(f"Final Status Filter: {final_status}")
+
     posts = await blog_service.list_posts(
         page=page,
         size=size,
-        status=status,
+        status=final_status,
         categories=category_list,
         tags=tag_list,
         search_query=search
