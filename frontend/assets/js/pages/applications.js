@@ -1365,7 +1365,7 @@ async function saveJob(jobId, silent = false, extraData = null) {
             options.body = JSON.stringify(extraData);
         }
 
-        const response = await fetch(`${API_BASE_URL} /api/v1 / jobs / save / ${jobId} `, options);
+        const response = await fetch(`${API_BASE_URL}/api/v1/jobs/save/${jobId}`, options);
 
         if (!response.ok) throw new Error('Failed to save job');
 

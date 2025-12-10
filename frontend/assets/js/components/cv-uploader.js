@@ -26,6 +26,7 @@ class CvUploader {
                 'application/msword',
                 'text/plain'
             ],
+            singleCvOnly: true, // Only allow one CV per user
             onSuccess: null,
             onError: null
         }, config);
@@ -33,6 +34,9 @@ class CvUploader {
         this.dropZone = document.getElementById(this.config.dropZoneId);
         this.fileInput = document.getElementById(this.config.fileInputId);
         this.loadingEl = document.getElementById(this.config.loadingId);
+
+        // Upload state management
+        this.isUploading = false;
 
         // Ensure API base URL is available
         this.apiBaseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL) || '';
@@ -86,7 +90,7 @@ class CvUploader {
 
             const files = e.dataTransfer.files;
             if (files.length > 0) {
-                this.fileInput.files = files; // Sync input
+                // Don't sync to fileInput.files - it triggers change event causing duplicate upload
                 this.processFile(files[0]);
             }
         });
@@ -100,12 +104,27 @@ class CvUploader {
     }
 
     async processFile(file) {
+        // Prevent concurrent uploads
+        if (this.isUploading) {
+            console.warn('Upload already in progress');
+            return;
+        }
+
         // Validate
         const validation = this.validateFile(file);
         if (!validation.valid) {
             this.handleError(validation.error);
             this.resetInput();
             return;
+        }
+
+        // Check single CV limit if enabled
+        if (this.config.singleCvOnly) {
+            const canUpload = await this.checkSingleCvLimit(file);
+            if (!canUpload) {
+                this.resetInput();
+                return;
+            }
         }
 
         // Upload
@@ -131,6 +150,7 @@ class CvUploader {
     }
 
     async uploadFile(file) {
+        this.isUploading = true;
         this.showLoading(true);
 
         try {
@@ -175,6 +195,7 @@ class CvUploader {
             console.error('CvUploader Error:', error);
             this.handleError(error.message);
         } finally {
+            this.isUploading = false;
             this.showLoading(false);
         }
     }
@@ -202,6 +223,83 @@ class CvUploader {
     resetInput() {
         if (this.fileInput) {
             this.fileInput.value = '';
+        }
+    }
+
+    async checkSingleCvLimit(file) {
+        try {
+            const token = window.CVision ? CVision.Utils.getToken() : localStorage.getItem('access_token');
+            const response = await fetch(`${this.apiBaseUrl}/api/v1/documents/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const documents = data.documents || data || [];
+
+                if (documents.length > 0) {
+                    // User already has a CV
+                    if (typeof Modal !== 'undefined') {
+                        Modal.confirm({
+                            title: 'Replace Existing CV?',
+                            message: `You already have a CV uploaded. The new CV will replace it and be automatically processed. Continue?`,
+                            confirmText: 'Replace & Process',
+                            confirmColor: 'blue',
+                            onConfirm: async () => {
+                                // Close modal
+                                Modal.close();
+
+                                // Show progress
+                                if (window.Toast) {
+                                    Toast.show('Deleting old CV...', 'info', 0);
+                                }
+
+                                // Delete existing CV(s)
+                                await this.deleteExistingCvs(documents);
+
+                                // Update progress
+                                if (window.Toast) {
+                                    Toast.show('Uploading and processing new CV...', 'info', 0);
+                                }
+
+                                // Upload new file
+                                await this.uploadFile(file);
+                            }
+                        });
+                        return false; // Block initial upload, wait for modal
+                    } else {
+                        const confirmed = confirm('You already have a CV uploaded. Replace it?');
+                        if (confirmed) {
+                            await this.deleteExistingCvs(documents);
+                            return true;
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true; // No existing CVs, proceed
+        } catch (error) {
+            console.error('Error checking CV limit:', error);
+            return true; // On error, allow upload
+        }
+    }
+
+    async deleteExistingCvs(documents) {
+        const token = window.CVision ? CVision.Utils.getToken() : localStorage.getItem('access_token');
+
+        for (const doc of documents) {
+            try {
+                await fetch(`${this.apiBaseUrl}/api/v1/documents/${doc.id || doc._id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            } catch (error) {
+                console.error('Error deleting document:', error);
+            }
         }
     }
 }

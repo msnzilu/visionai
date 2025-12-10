@@ -157,6 +157,15 @@ class JobApplyComponent {
      * @param {string} jobId 
      */
     async _handleAutoSave(jobId) {
+        // If job is from currentSavedJobs, it's already saved - skip
+        if (window.currentSavedJobs && Array.isArray(window.currentSavedJobs)) {
+            const isSaved = window.currentSavedJobs.some(j => (j._id || j.id) == jobId);
+            if (isSaved) {
+                console.log('JobApply: Job is from saved jobs, skipping auto-save');
+                return;
+            }
+        }
+
         // Check if we are on a page with save buttons (jobs.js context)
         // Saved buttons usually have 'text-primary-600' class when saved
         let isAlreadySaved = false;
