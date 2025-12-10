@@ -58,7 +58,7 @@ class BlogPostSummary(BaseModel):
     slug: str
     excerpt: Optional[str]
     featured_image: Optional[str]
-    author: BlogAuthor
+    author: Optional[BlogAuthor] = None
     categories: List[str]
     tags: List[str]
     status: BlogStatus
@@ -80,7 +80,7 @@ class BlogPostResponse(BaseModel):
     content: str
     excerpt: Optional[str]
     
-    author: BlogAuthor
+    author: Optional[BlogAuthor] = None
     featured_image: Optional[str]
     
     categories: List[str]
