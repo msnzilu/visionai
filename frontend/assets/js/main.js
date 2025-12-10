@@ -549,6 +549,29 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
 });
 
+// Load footer component
+async function loadFooter() {
+    const footerContainer = document.getElementById('footer-container');
+    if (footerContainer) {
+        try {
+            const response = await fetch('/components/footer.html');
+            if (response.ok) {
+                const html = await response.text();
+                footerContainer.innerHTML = html;
+            }
+        } catch (error) {
+            console.error('Failed to load footer:', error);
+        }
+    }
+}
+
+// Load footer on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadFooter);
+} else {
+    loadFooter();
+}
+
 // Expose globals
 window.CVision = {
     Utils,

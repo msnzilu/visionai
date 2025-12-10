@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Management - VisionAI Admin</title>
+
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+
+    <!-- Quill Rich Text Editor (No API key needed) -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Global Tailwind config for all pages
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div id="admin-sidebar"></div>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Header -->
+            <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+                <div class="px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-900">Blog Management</h2>
+                    <button onclick="logout()" class="text-sm text-gray-600 hover:text-gray-900">Logout</button>
+                </div>
+            </header>
+
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900">Blog Posts</h1>
+                    <div class="flex gap-4">
+                        <button onclick="window.blogAdmin.createMockPosts()"
+                            class="px-6 py-3 border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition font-semibold">
+                            Seed Data
+                        </button>
+                        <button id="new-post-btn"
+                            class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold">
+                            + New Post
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Posts List -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Title</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Status</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Categories</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Views</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Published</th>
+                                    <th
+                                        class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="posts-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Posts will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="table-loading" class="text-center py-12">
+                        <div
+                            class="inline-block w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin">
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="table-empty" class="hidden text-center py-12">
+                        <p class="text-gray-500">No blog posts yet. Create your first post!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editor Modal -->
+            <div id="editor-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+                <div class="min-h-screen px-4 py-8">
+                    <div class="bg-white rounded-lg max-w-5xl mx-auto shadow-xl">
+                        <!-- Modal Header -->
+                        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+                            <h2 id="modal-title" class="text-2xl font-bold text-gray-900">New Blog Post</h2>
+                            <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                        </div>
+
+                        <!-- Modal Body -->
+                        <div class="px-6 py-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+                            <form id="post-form" class="space-y-6">
+                                <!-- Title -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Title *</label>
+                                    <input type="text" id="post-title" required
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                </div>
+
+                                <!-- Slug -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Slug (URL)</label>
+                                    <input type="text" id="post-slug"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        placeholder="Auto-generated from title">
+                                </div>
+
+                                <!-- Excerpt -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Excerpt</label>
+                                    <textarea id="post-excerpt" rows="3"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        placeholder="Short summary (max 500 characters)"></textarea>
+                                </div>
+
+                                <!-- Content -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Content *</label>
+                                    <div id="post-content" style="height: 300px;"></div>
+                                </div>
+
+                                <!-- Featured Image URL -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Featured Image
+                                        URL</label>
+                                    <input type="url" id="post-image"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        placeholder="https://example.com/image.jpg">
+                                </div>
+
+                                <!-- Categories -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Categories
+                                        (comma-separated)</label>
+                                    <input type="text" id="post-categories"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        placeholder="AI, Career Tips, Job Search">
+                                </div>
+
+                                <!-- Tags -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Tags
+                                        (comma-separated)</label>
+                                    <input type="text" id="post-tags"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        placeholder="resume, automation, cv">
+                                </div>
+
+                                <!-- SEO Section -->
+                                <div class="border-t border-gray-200 pt-6">
+                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">SEO Settings</h3>
+
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Meta
+                                                Title</label>
+                                            <input type="text" id="seo-title"
+                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                placeholder="Leave blank to use post title">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Meta
+                                                Description</label>
+                                            <textarea id="seo-description" rows="2"
+                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                placeholder="Leave blank to use excerpt"></textarea>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Keywords
+                                                (comma-separated)</label>
+                                            <input type="text" id="seo-keywords"
+                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Status -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                                    <select id="post-status"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer">
+                                        <option value="draft">Draft</option>
+                                        <option value="published">Published</option>
+                                        <option value="archived">Archived</option>
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Modal Footer -->
+                        <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                            <button id="cancel-btn"
+                                class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                                Cancel
+                            </button>
+                            <button id="save-btn"
+                                class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold">
+                                Save Post
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="assets/js/admin-sidebar.js"></script>
+    <script src="../assets/js/main.js"></script>
+    <script>
+        // Check authentication
+        if (!CVision.Utils.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <script src="assets/js/blog-admin.js"></script>
+</body>
+
+</html>

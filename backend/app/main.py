@@ -290,6 +290,18 @@ try:
 except ImportError as e:
     logger.warning(f"Auto-apply router not available: {e}")
 
+try:
+    from app.api.blog import router as blog_router
+    app.include_router(
+        blog_router,
+        prefix=f"{settings.API_V1_STR}/blog",
+        tags=["Blog"]
+    )
+    logger.info("Blog router loaded")
+except ImportError as e:
+    logger.warning(f"Blog router not available: {e}")
+
+
 
 # Catch-all for missing routes during development
 @app.get("/api/v1/{path:path}")
