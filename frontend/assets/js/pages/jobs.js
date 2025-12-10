@@ -48,14 +48,37 @@ async function fetchJobAndShow(jobId) {
         });
         if (response.ok) {
             const job = await response.json();
-            // Add to current jobs so modal can find it or just pass object
-            // Ideally push to currentJobs so next/prev works if implemented, but simpler to just show
-            // We need to push it to currentJobs because showJobDetails relies on finding it there
-            currentJobs.push(job);
+
+            // Check if job already exists in list
+            const existingIndex = currentJobs.findIndex(j => (j._id || j.id) === (job._id || job.id));
+            if (existingIndex !== -1) {
+                currentJobs[existingIndex] = job;
+            } else {
+                currentJobs.push(job);
+            }
+
             showJobDetails(jobId);
         }
     } catch (e) {
         console.error('Failed to load deep-linked job', e);
+    }
+}
+
+function updateJobInList(jobId, updates) {
+    const validJobId = String(jobId);
+    if (!currentJobs) return;
+
+    // Update in current list
+    const jobIndex = currentJobs.findIndex(j => String(j._id || j.id) === validJobId);
+    if (jobIndex !== -1) {
+        // Merge updates
+        currentJobs[jobIndex] = { ...currentJobs[jobIndex], ...updates };
+
+        // Refresh display of this card if visible (or just all for simplicity)
+        displayJobs(currentJobs);
+        console.log(`Updated job ${validJobId} in list with`, updates);
+    } else {
+        console.warn(`Job ${validJobId} not found in current list to update`);
     }
 }
 
@@ -1412,6 +1435,7 @@ window.closeCustomizeModal = closeCustomizeModal;
 window.startCustomization = startCustomization;
 window.showApplyModal = showApplyModal;
 window.closeApplyModal = closeApplyModal;
+window.updateJobInList = updateJobInList;
 // window.startBrowserAutofill = startBrowserAutofill; // Deprecated - using openQuickApplyForm instead
 
 

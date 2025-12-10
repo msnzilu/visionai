@@ -1,0 +1,400 @@
+/**
+ * JobActions Component
+ * Handles the logic for:
+ * - Opening customization modal
+ * - Generating CVs/Cover Letters (via GenerationModule)
+ * - Viewing generated documents
+ * - Tracking generation progress
+ * - Rendering action buttons for cards
+ */
+class JobActionComponent {
+    constructor() {
+        this.currentJobId = null;
+        this.initialized = false;
+
+        // Bind methods
+        this.handleGenerate = this.handleGenerate.bind(this);
+        this.closeModal = this.closeModal.bind(this);
+    }
+
+    init() {
+        if (this.initialized) return;
+        this.injectModals();
+        this.attachGlobalListeners();
+        this.initialized = true;
+        console.log('JobActions initialized');
+    }
+
+    attachGlobalListeners() {
+        // Expose global functions for backward compatibility or inline onclicks if needed
+        window.JobActions = this;
+    }
+
+    /**
+     * Injects the required modals into the DOM if they don't exist
+     */
+    injectModals() {
+        if (!document.getElementById('customizeModal')) {
+            const customizeModalHTML = `
+                <div id="customizeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+                    <div class="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-6">
+                                <h2 class="text-2xl font-bold text-gray-900">Customize Documents</h2>
+                                <button onclick="JobActions.closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div id="generationProgress" class="hidden mb-6">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex-1 flex items-center">
+                                        ${this._getStepHTML(1)}
+                                        ${this._getStepLine()}
+                                        ${this._getStepHTML(2)}
+                                        ${this._getStepLine()}
+                                        ${this._getStepHTML(3)}
+                                        ${this._getStepLine()}
+                                        ${this._getStepHTML(4)}
+                                    </div>
+                                </div>
+                                <p id="progressText" class="text-sm text-gray-600 text-center">Preparing...</p>
+                            </div>
+
+                            <!-- Form -->
+                            <div id="customizeForm" class="space-y-6">
+                                <div>
+                                    <label for="cvSelect" class="block text-sm font-medium text-gray-700 mb-2">Select Your CV</label>
+                                    <select id="cvSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                        <option value="">Loading your CVs...</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">Choose Template</label>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        ${this._getTemplateOption('professional', 'Professional', 'gray', true)}
+                                        ${this._getTemplateOption('modern', 'Modern', 'blue')}
+                                        ${this._getTemplateOption('minimal', 'Minimal', 'green')}
+                                        ${this._getTemplateOption('creative', 'Creative', 'purple')}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="flex items-center mb-3 cursor-pointer">
+                                        <input type="checkbox" id="includeCoverLetter" checked class="rounded text-primary-600 focus:ring-primary-500">
+                                        <span class="ml-2 text-sm font-medium text-gray-700">Generate Cover Letter</span>
+                                    </label>
+                                    <div id="coverLetterOptions">
+                                        <label for="toneSelect" class="block text-sm font-medium text-gray-700 mb-2">Cover Letter Tone</label>
+                                        <select id="toneSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                            <option value="professional">Professional</option>
+                                            <option value="enthusiastic">Enthusiastic</option>
+                                            <option value="conversational">Conversational</option>
+                                            <option value="formal">Formal</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div id="usageWarning" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 hidden">
+                                    <div class="flex items-start">
+                                        <svg class="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" />
+                                        </svg>
+                                        <div class="ml-3">
+                                            <p class="text-sm font-medium text-yellow-800">
+                                                You have <strong id="remainingGenerations">0</strong> generations remaining.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row gap-4 mt-8">
+                                <button onclick="JobActions.closeModal()" class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-6 py-2 font-medium hover:bg-gray-50 transition-colors">Cancel</button>
+                                <button onclick="JobActions.handleGenerate()" class="flex-1 btn-gradient text-white rounded-lg px-6 py-2 font-medium hover:shadow-lg transition-all">Generate Documents</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', customizeModalHTML);
+            this._setupTemplateSelectors();
+        }
+
+        if (!document.getElementById('docPreviewModal')) {
+            const previewModalHTML = `
+                <div id="docPreviewModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[60] flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                            <h3 class="text-xl font-bold text-gray-900" id="docPreviewTitle">Document Preview</h3>
+                            <button onclick="JobActions.closePreview()" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 bg-gray-100 relative">
+                            <iframe id="docPreviewFrame" class="w-full h-full border-none" src=""></iframe>
+                            <div id="docPreviewLoader" class="absolute inset-0 flex items-center justify-center bg-white z-10 hidden">
+                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', previewModalHTML);
+        }
+    }
+
+    _getStepHTML(num) {
+        return `
+            <div class="flex items-center">
+                <div id="step${num}" class="step-indicator w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold transition-all duration-300">
+                    <span class="step-number">${num}</span>
+                    <svg class="step-check hidden w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+            </div>`;
+    }
+
+    _getStepLine() {
+        return `<div class="step-line w-full h-1 bg-gray-200 mx-1 transition-all duration-300"></div>`;
+    }
+
+    _getTemplateOption(id, name, color, active = false) {
+        return `
+            <div class="template-option ${active ? 'active border-primary-500' : 'border-gray-200'} cursor-pointer border-2 rounded-lg p-3 text-center hover:border-primary-300 hover:shadow-md transition-all" data-template="${id}">
+                <div class="bg-gradient-to-br from-${color}-200 to-${color}-300 h-20 rounded mb-2"></div>
+                <span class="text-sm font-medium">${name}</span>
+            </div>`;
+    }
+
+    _setupTemplateSelectors() {
+        const options = document.querySelectorAll('.template-option');
+        options.forEach(option => {
+            option.addEventListener('click', function () {
+                options.forEach(o => {
+                    o.classList.remove('active', 'border-primary-500');
+                    o.classList.add('border-gray-200');
+                });
+                this.classList.add('active', 'border-primary-500');
+                this.classList.remove('border-gray-200');
+            });
+        });
+
+        const clCheckbox = document.getElementById('includeCoverLetter');
+        if (clCheckbox) {
+            clCheckbox.addEventListener('change', (e) => {
+                const opts = document.getElementById('coverLetterOptions');
+                if (opts) opts.style.display = e.target.checked ? 'block' : 'none';
+            });
+        }
+    }
+
+    /**
+     * Opens the customization modal for a specific job
+     */
+    async openCustomizeModal(jobId) {
+        this.currentJobId = jobId;
+        const modal = document.getElementById('customizeModal');
+        if (!modal) return;
+
+        // Reset state
+        if (window.resetProgressBar) window.resetProgressBar();
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        await this.loadCVs();
+        this.checkLimits();
+    }
+
+    closeModal() {
+        const modal = document.getElementById('customizeModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        this.currentJobId = null;
+    }
+
+    async loadCVs() {
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/documents/?document_type=cv`, {
+                headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+            });
+
+            const select = document.getElementById('cvSelect');
+            if (response.ok && select) {
+                const data = await response.json();
+                const cvs = data.documents || [];
+
+                if (cvs.length > 0) {
+                    select.innerHTML = cvs.map(doc =>
+                        `<option value="${doc.id}">${doc.filename}</option>`
+                    ).join('');
+                } else {
+                    select.innerHTML = '<option value="">No CVs found - Upload a CV first</option>';
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load CVs', e);
+        }
+    }
+
+    async checkLimits() {
+        // Reusing existing logic pattern
+        try {
+            // Basic limit check visualization
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/applications/stats/overview`, {
+                headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+            });
+            // Implementation can be refined based on strict backend limit endpoints
+        } catch (e) { }
+    }
+
+    async handleGenerate() {
+        if (!this.currentJobId) {
+            CVision.Utils.showAlert('No job selected', 'error');
+            return;
+        }
+
+        const cvId = document.getElementById('cvSelect').value;
+        if (!cvId) {
+            CVision.Utils.showAlert('Please select a CV', 'error');
+            return;
+        }
+
+        const template = document.querySelector('.template-option.active')?.dataset.template || 'professional';
+        const includeCoverLetter = document.getElementById('includeCoverLetter').checked;
+        const tone = document.getElementById('toneSelect').value;
+
+        if (window.showProgressBar) window.showProgressBar();
+
+        try {
+            // Simulated steps for UI feedback if exact progress not available
+            if (window.updateProgress) window.updateProgress(1, 'Analyzing CV...');
+            await new Promise(r => setTimeout(r, 800));
+
+            if (window.updateProgress) window.updateProgress(2, 'Generating content...');
+
+            // Call Generation Module
+            if (window.GenerationModule) {
+                const result = await GenerationModule.customizeForJob(cvId, this.currentJobId, {
+                    template,
+                    includeCoverLetter,
+                    tone
+                });
+
+                if (window.updateProgress) window.updateProgress(4, 'Finalizing...');
+                await new Promise(r => setTimeout(r, 800));
+
+                this.closeModal();
+
+                // If on jobs page or applications page, we might want to refresh the item.
+                // We can dispatch a custom event that pages can listen to
+                document.dispatchEvent(new CustomEvent('job:updated', {
+                    detail: { jobId: this.currentJobId, result }
+                }));
+
+                // Fallback direct update if functions exist globally
+                if (window.updateJobInList) {
+                    window.updateJobInList(this.currentJobId, {
+                        generated_cv_path: result.cv_pdf_url,
+                        generated_cover_letter_path: result.cover_letter_pdf_url
+                    });
+                }
+            } else {
+                throw new Error('GenerationModule not found');
+            }
+
+        } catch (error) {
+            console.error('Generation failed', error);
+            if (window.showProgressError) window.showProgressError(error.message);
+            else CVision.Utils.showAlert(error.message, 'error');
+        }
+    }
+
+    openPreview(url, title) {
+        const modal = document.getElementById('docPreviewModal');
+        const frame = document.getElementById('docPreviewFrame');
+        const titleEl = document.getElementById('docPreviewTitle');
+        const loader = document.getElementById('docPreviewLoader');
+
+        if (!modal || !frame) return;
+
+        if (titleEl) titleEl.textContent = title || 'Document Preview';
+        if (loader) loader.classList.remove('hidden');
+
+        frame.src = url;
+        frame.onload = () => {
+            if (loader) loader.classList.add('hidden');
+        };
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex'); // Ensure flex is added for centering
+    }
+
+    closePreview() {
+        const modal = document.getElementById('docPreviewModal');
+        const frame = document.getElementById('docPreviewFrame');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        if (frame) frame.src = '';
+    }
+
+    /**
+     * Returns HTML for Action Buttons based on job state
+     * @param {Object} job - The job object
+     * @returns {string} HTML string
+     */
+    getButtonsHTML(job) {
+        const hasCV = !!job.generated_cv_path;
+        const hasCL = !!job.generated_cover_letter_path;
+
+        if (hasCV || hasCL) {
+            return `
+                <div class="flex gap-2">
+                    ${hasCV ? `
+                        <button onclick="JobActions.openPreview('${job.generated_cv_path}', 'CV Preview')" 
+                            class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            View CV
+                        </button>
+                    ` : ''}
+                    ${hasCL ? `
+                        <button onclick="JobActions.openPreview('${job.generated_cover_letter_path}', 'Cover Letter Preview')" 
+                            class="flex-1 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            View CL
+                        </button>
+                    ` : ''}
+                    <button onclick="JobActions.openCustomizeModal('${job._id || job.id}')" class="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded" title="Regenerate">
+                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    </button>
+                </div>`;
+        } else {
+            return `
+                <div class="flex gap-3">
+                    <button onclick="JobActions.openCustomizeModal('${job._id || job.id}')" 
+                        class="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg px-4 py-2 text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        Customize
+                    </button>
+                    <button onclick="applyToJob('${job._id || job.id}')" 
+                        class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 text-sm font-semibold hover:shadow-lg transition-all shadow-md flex items-center justify-center gap-2">
+                        Apply
+                    </button>
+                </div>`;
+        }
+    }
+}
+
+// Initialize
+const jobActions = new JobActionComponent();
+// Auto-init on load
+document.addEventListener('DOMContentLoaded', () => {
+    jobActions.init();
+});

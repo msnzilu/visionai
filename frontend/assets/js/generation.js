@@ -189,6 +189,13 @@ const GenerationModule = (() => {
                 await window.saveJob(jobId, true, updateData).catch(err =>
                     console.error('Failed to update saved job with generation paths:', err)
                 );
+
+                // Update frontend state immediately to fix "View" button (avoid stale .htm links)
+                if (window.updateJobInList) {
+                    window.updateJobInList(jobId, updateData);
+                } else {
+                    console.warn('updateJobInList not found, UI might be stale until reload');
+                }
             }
 
             // Don't show modal automatically - let caller decide
