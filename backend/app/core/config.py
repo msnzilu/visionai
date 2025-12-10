@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     REMEMBER_ME_REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(default=43200, env="REMEMBER_ME_REFRESH_TOKEN_EXPIRE_MINUTES")  # 30 days
 
     # CORS & Allowed Hosts
-    CORS_ORIGINS_RAW: Union[str, List[str]] = Field(default='["http://localhost", "http://localhost:80", "http://localhost:3000"]', alias="CORS_ORIGINS")
+    CORS_ORIGINS_RAW: Union[str, List[str]] = Field(default='["http://localhost", "http://localhost:80", "http://localhost:3000", "https://visionsai.store", "https://www.visionsai.store"]', alias="CORS_ORIGINS")
     ALLOWED_HOSTS: List[str] = ["*"]
     
     @property
