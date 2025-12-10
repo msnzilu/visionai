@@ -22,6 +22,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load existing jobs from database on page load
     await loadJobsFromDB();
 
+    // Fetch applied jobs to update UI state
+    try {
+        const appRes = await fetch(`${API_BASE_URL}/api/v1/applications/?page=1&size=100`, {
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+        if (appRes.ok) {
+            const appData = await appRes.json();
+            if (window.JobActions) {
+                window.JobActions.setAppliedJobs(appData.applications || []);
+                // Re-render job list to reflect status
+                displayJobs(currentJobs);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load application status', e);
+    }
+
     // Check for job ID in URL after jobs are loaded
     const urlParams = new URLSearchParams(window.location.search);
     const jobIdParam = urlParams.get('job');
@@ -46,6 +63,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             generated_cv_path: result.cv_pdf_url,
             generated_cover_letter_path: result.cover_letter_pdf_url
         });
+    });
+
+    // Listen for new applications to update buttons
+    document.addEventListener('job:applied', () => {
+        // Re-render current list to show "Applied" button
+        if (currentJobs) displayJobs(currentJobs);
     });
 
 });
@@ -158,6 +181,7 @@ async function loadJobsFromDB() {
 
         const data = await response.json();
         currentJobs = data.jobs || [];
+        window.currentJobs = currentJobs; // Expose globally for JobApply.js
 
         document.getElementById('loadingState').classList.add('hidden');
 
@@ -185,14 +209,16 @@ async function loadJobsFromDB() {
                     savedJobs.forEach(savedJob => {
                         const jobIndex = currentJobs.findIndex(j => (j._id || j.id) === (savedJob._id || savedJob.id));
                         if (jobIndex !== -1) {
+                            // Mark as saved for UI
+                            currentJobs[jobIndex].is_saved = true;
+                            needsUpdate = true;
+
                             // Merge generated paths if they exist
                             if (savedJob.generated_cv_path) {
                                 currentJobs[jobIndex].generated_cv_path = savedJob.generated_cv_path;
-                                needsUpdate = true;
                             }
                             if (savedJob.generated_cover_letter_path) {
                                 currentJobs[jobIndex].generated_cover_letter_path = savedJob.generated_cover_letter_path;
-                                needsUpdate = true;
                             }
                         }
                     });
@@ -455,11 +481,17 @@ function createJobCard(job) {
                     </h3>
                     <p class="text-base text-gray-600 font-medium mt-1 truncate">${decodeHtmlEntities(job.company_name)}</p>
                 </div>
-                <button class="save-job-btn p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition-colors flex-shrink-0" 
-                        onclick="event.stopPropagation(); saveJob('${job._id || job.id}')" title="Save Job">
+                <button class="save-job-btn p-2 rounded-full hover:bg-gray-100 ${job.is_saved ? 'text-primary-600' : 'text-gray-400'} hover:text-primary-600 transition-colors flex-shrink-0" 
+                        onclick="event.stopPropagation(); saveJob('${job._id || job.id}')" title="${job.is_saved ? 'Saved' : 'Save Job'}">
+                    ${job.is_saved ? `
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                    </svg>
+                    ` : `
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                     </svg>
+                    `}
                 </button>
             </div>
 
@@ -572,9 +604,10 @@ function showJobDetails(jobId) {
             </div>
         ` : ''}
 
+
         <div class="mt-6 pt-6 border-t border-gray-100">
-            <h4 class="font-semibold text-lg mb-3">Job Actions</h4>
-            ${window.JobActions ? window.JobActions.getButtonsHTML(job) : ''}
+            <h4 class="font-semibold text-lg mb-3">Generated Documents</h4>
+            ${window.JobActions ? window.JobActions.getButtonsHTML(job, false) : ''}
         </div>
 
 
@@ -589,37 +622,67 @@ function showJobDetails(jobId) {
         }
 `;
 
+    // Wire up Save Job button
     const saveBtn = document.getElementById('modalSaveJob');
-    saveBtn.onclick = () => saveJob(jobId);
-    saveBtn.dataset.jobId = jobId; // Support for saveJob finding this button
+    if (saveBtn) {
+        saveBtn.onclick = () => saveJob(jobId);
+        saveBtn.dataset.jobId = jobId;
 
-    // Check if already saved (this logic was missing in modal open)
-    // We can check if the job object has 'saved_at' or if we track saved jobs separately.
-    // Assuming backend returns 'is_saved' or similar would be better, but for now 
-    // let's rely on the user clicking it or it being updated if they click save.
-    // If the job in currentJobs has some indicator it's saved, we should show it.
-    // For now, reset to default state unless we know otherwise.
-    saveBtn.innerHTML = 'Save Job';
-    saveBtn.classList.remove('text-primary-600');
-    saveBtn.classList.add('text-gray-700');
+        if (job.is_saved) {
+            saveBtn.innerHTML = `
+                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+                Saved
+            `;
+            saveBtn.classList.remove('text-gray-700');
+            saveBtn.classList.add('text-primary-600');
+        } else {
+            saveBtn.innerHTML = 'Save Job';
+            saveBtn.classList.remove('text-primary-600');
+            saveBtn.classList.add('text-gray-700');
+        }
+    }
 
-    // Phase 3: Update customize button
+    // Check for applied status
+    const isApplied = window.JobActions && window.JobActions.appliedJobIds.has(String(jobId));
+
+    // Wire up Customize button
     const customizeBtn = document.getElementById('modalCustomize');
     if (customizeBtn) {
-        customizeBtn.onclick = () => {
-            closeJobModal();
-            showCustomizeModal(jobId);
-        };
+        if (isApplied) {
+            customizeBtn.style.display = 'none';
+        } else {
+            customizeBtn.style.display = 'flex';
+            customizeBtn.onclick = () => window.JobActions.openCustomizeModal(jobId);
+        }
     }
 
-    // Phase 6: Update apply button with browser automation
+    // Wire up Apply button
     const applyBtn = document.getElementById('modalApply');
     if (applyBtn) {
-        applyBtn.onclick = () => {
-            closeJobModal();
-            applyToJob(jobId);
-        };
+        if (isApplied) {
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Applied
+            `;
+            // Remove gradient classes and add applied styles
+            applyBtn.className = 'flex-1 bg-green-50 text-green-700 border border-green-200 rounded-lg px-4 py-2.5 text-sm font-semibold opacity-80 cursor-not-allowed flex items-center justify-center gap-2';
+            applyBtn.onclick = null;
+        } else {
+            applyBtn.disabled = false;
+            applyBtn.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Apply Now
+            `;
+            // Restore gradient classes
+            applyBtn.className = 'flex-1 btn-gradient text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:shadow-lg transition-all shadow-md flex items-center justify-center gap-2';
+            applyBtn.onclick = () => window.JobApply.openApplyModal(jobId, job);
+        }
     }
+
+
 
     document.getElementById('jobModal').classList.remove('hidden');
     document.getElementById('jobModal').classList.add('flex');
@@ -635,7 +698,7 @@ async function saveJob(jobId, silent = false, extraData = null) {
         const options = {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()} `
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
             }
         };
 
@@ -644,7 +707,7 @@ async function saveJob(jobId, silent = false, extraData = null) {
             options.body = JSON.stringify(extraData);
         }
 
-        const response = await fetch(`${API_BASE_URL} /api/v1 / jobs / save / ${jobId} `, options);
+        const response = await fetch(`${API_BASE_URL}/api/v1/jobs/save/${jobId}`, options);
 
         if (!response.ok) throw new Error('Failed to save job');
 
@@ -656,9 +719,9 @@ async function saveJob(jobId, silent = false, extraData = null) {
         const listSaveBtns = document.querySelectorAll(`[onclick *= "saveJob('${jobId}')"]`);
         listSaveBtns.forEach(btn => {
             btn.innerHTML = `
-    < svg class="w-6 h-6" fill = "currentColor" viewBox = "0 0 24 24" >
+    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
         <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg >
+    </svg>
     `;
             btn.classList.add('text-primary-600');
         });
@@ -667,9 +730,9 @@ async function saveJob(jobId, silent = false, extraData = null) {
         const modalSaveBtn = document.getElementById('modalSaveJob');
         if (modalSaveBtn && modalSaveBtn.dataset.jobId === jobId) {
             modalSaveBtn.innerHTML = `
-    < svg class="w-4 h-4 mr-2" fill = "currentColor" viewBox = "0 0 24 24" >
+    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
         <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg >
+    </svg>
     Saved
         `;
             modalSaveBtn.classList.remove('text-gray-700');
@@ -926,101 +989,7 @@ function incrementApplicationCount() {
  * Phase 6: Apply to job with browser automation
  * Opens modal for CV/cover letter selection, then starts browser autofill
  */
-async function applyToJob(jobId) {
-    try {
-        // CHECK LIMITS BEFORE OPENING MODAL
-        const canApply = await checkApplicationLimit();
-        if (!canApply) {
-            return;
-        }
-
-        const job = currentJobs.find(j => (j._id || j.id) === jobId);
-        if (!job) {
-            CVision.Utils.showAlert('Job not found', 'error');
-            return;
-        }
-
-        // Auto-save job when applying (as per requirement)
-        await saveJob(jobId, true);
-
-        // Show modal to select CV and cover letter
-        await showApplyModal(jobId);
-
-    } catch (error) {
-        console.error('Failed to open application modal:', error);
-        CVision.Utils.showAlert('Failed to open application modal', 'error');
-    }
-}
-async function startQuickApply(jobId) {
-    const cvId = document.getElementById('applyModalCvSelect')?.value;
-    const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
-
-    if (!cvId) {
-        CVision.Utils.showAlert('Please select a CV', 'warning');
-        return;
-    }
-
-    // Show loading state in button
-    const applyBtn = document.querySelector('#applyModal button.btn-gradient');
-    const originalText = applyBtn.innerHTML;
-    applyBtn.innerHTML = `
-    < svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns = "http://www.w3.org/2000/svg" fill = "none" viewBox = "0 0 24 24" >
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg >
-    Sending Application...
-`;
-    applyBtn.disabled = true;
-
-    try {
-        const response = await fetch(`${API_BASE_URL} /api/v1 / email - applications / apply`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${CVision.Utils.getToken()} `
-            },
-            body: JSON.stringify({
-                job_id: jobId,
-                cv_id: cvId,
-                cover_letter: coverLetterId || null
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.detail || 'Failed to send application');
-        }
-
-        CVision.Utils.showAlert('Application sent successfully via email!', 'success');
-        closeApplyModal();
-
-        // Increment usage count on success
-        incrementApplicationCount();
-
-        // Update UI to show applied status
-        const applyBtnInCard = document.querySelector(`button[onclick *= "applyToJob('${jobId}')"]`);
-        if (applyBtnInCard) {
-            applyBtnInCard.innerHTML = `
-    < svg class="w-4 h-4" fill = "none" stroke = "currentColor" viewBox = "0 0 24 24" >
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg >
-    Applied
-        `;
-            applyBtnInCard.classList.remove('btn-gradient');
-            applyBtnInCard.classList.add('bg-green-600', 'hover:bg-green-700');
-            applyBtnInCard.disabled = true;
-        }
-
-    } catch (error) {
-        console.error('Quick Apply failed:', error);
-        CVision.Utils.showAlert(error.message || 'Failed to send application', 'error');
-
-        // Reset button
-        applyBtn.innerHTML = originalText;
-        applyBtn.disabled = false;
-    }
-}
+// Quick Apply logic moved to quick-apply.js component
 
 /**
  * Track application in database (Legacy - now handled by backend)
@@ -1033,123 +1002,30 @@ async function trackApplication(jobId, cvId, coverLetterId) {
 /**
  * Show apply modal for job application
  */
+/**
+ * Show apply modal for job application
+ */
 async function showApplyModal(jobId) {
-    const job = currentJobs.find(j => (j._id || j.id) === jobId);
-    if (!job) {
-        CVision.Utils.showAlert('Job not found', 'error');
-        return;
+    if (window.JobApply) {
+        window.JobApply.openApplyModal(jobId);
+    } else {
+        console.error('JobApply component not loaded');
+        CVision.Utils.showAlert('Application component not loaded', 'error');
     }
-
-    // Store job ID for later use
-    currentJobIdForApply = jobId;
-
-    // Create modal HTML
-    const modalHTML = `
-    < div id = "applyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" >
-        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-900">Quick Apply</h3>
-                <button onclick="closeApplyModal()" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-
-            <div class="mb-4">
-                <p class="text-gray-600 mb-2">Applying to:</p>
-                <p class="font-semibold text-gray-900">${job.title}</p>
-                <p class="text-sm text-gray-500">${job.company_name}</p>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Select CV *</label>
-                    <select id="applyModalCvSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">Loading CVs...</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Cover Letter (Optional)</label>
-                    <select id="applyModalCoverLetterSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">Loading cover letters...</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="flex gap-3 mt-6">
-                <button onclick="closeApplyModal()" class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 font-medium hover:bg-gray-50 transition-colors">
-                    Cancel
-                </button>
-                <button onclick="proceedToQuickApply()" class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all">
-                    Next: Application Details
-                </button>
-            </div>
-        </div>
-        </div >
-    `;
-
-    // Remove existing modal if any
-    const existingModal = document.getElementById('applyModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-
-    // Add modal to body
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-    // Load documents after modal is added to DOM
-    await loadCVsForApply();
-    await loadCoverLettersForApply();
 }
+
+
 
 /**
  * Close apply modal
  */
-function closeApplyModal() {
-    const modal = document.getElementById('applyModal');
-    if (modal) {
-        modal.remove();
-    }
-}
+
 
 // ============================================================================
 // Phase 3: Customization Modal Functions
 // ============================================================================
 
-async function showCustomizeModal(jobId) {
-    console.log('showCustomizeModal called with jobId:', jobId);
-
-    currentJobIdForCustomize = jobId;
-
-    const modal = document.getElementById('customizeModal');
-    if (!modal) {
-        console.error('Customize modal not found');
-        return;
-    }
-
-    // Reset progress bar if available
-    if (typeof resetProgressBar === 'function') {
-        resetProgressBar();
-    }
-
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-
-    await loadUserCVs();
-    await checkGenerationLimits();
-    setupTemplateSelector();
-}
-
-function closeCustomizeModal() {
-    const modal = document.getElementById('customizeModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-    currentJobIdForCustomize = null;
-}
+// Legacy customization logic removed. Handled by JobActions.js
 
 // Customization logic moved to JobActions.js
 
@@ -1158,7 +1034,7 @@ function closeCustomizeModal() {
 // ============================================================================
 window.showJobDetails = showJobDetails;
 window.saveJob = saveJob;
-window.applyToJob = applyToJob;
+
 window.toggleJobSelection = toggleJobSelection;
 window.clearBatchSelection = clearBatchSelection;
 window.batchCustomize = batchCustomize;
@@ -1169,126 +1045,14 @@ window.toggleBatchMode = toggleBatchMode;
 // window.startBrowserAutofill = startBrowserAutofill; // Deprecated - using openQuickApplyForm instead
 
 
-/**
- * Load CVs for apply modal
- */
-async function loadCVsForApply() {
-    try {
-        const response = await CVision.API.request('/documents/?document_type=cv');
-        const cvSelect = document.getElementById('applyModalCvSelect');
+// Logic moved to JobApply.js
 
-        if (!cvSelect) return;
-
-        if (response.documents && response.documents.length > 0) {
-            cvSelect.innerHTML = response.documents.map(doc =>
-                `< option value = "${doc.id}" > ${doc.filename}</option > `
-            ).join('');
-        } else {
-            cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
-        }
-    } catch (error) {
-        console.error('Failed to load CVs:', error);
-    }
-}
-
-/**
- * Load cover letters for apply modal
- */
-async function loadCoverLettersForApply() {
-    try {
-        const response = await CVision.API.request('/documents/?document_type=cover_letter');
-        const clSelect = document.getElementById('applyModalCoverLetterSelect');
-
-        if (!clSelect) return;
-
-        if (response.documents && response.documents.length > 0) {
-            clSelect.innerHTML = '<option value="">No cover letter</option>' +
-                response.documents.map(doc =>
-                    `< option value = "${doc.id}" > ${doc.filename}</option > `
-                ).join('');
-        }
-    } catch (error) {
-        console.error('Failed to load cover letters:', error);
-    }
-}
+// Logic moved to JobApply.js
 
 /**
  * Generate email preview
  */
-function generateEmailPreview(job) {
-    const emailTo = job.application_email || job.employer_email || 'Not available';
-    const subject = `Application for ${job.title} Position`;
-    const body = `Dear Hiring Manager,
-
-    I am writing to express my interest in the ${job.title} position at ${job.company_name}.
-
-I have attached my CV for your review.I believe my skills and experience make me a strong candidate for this role.
-
-Thank you for considering my application.I look forward to hearing from you.
-
-Best regards`;
-
-    const emailToEl = document.getElementById('emailTo');
-    const emailSubjectEl = document.getElementById('emailSubject');
-    const emailBodyEl = document.getElementById('emailBody');
-
-    if (emailToEl) emailToEl.textContent = emailTo;
-    if (emailSubjectEl) emailSubjectEl.textContent = subject;
-    if (emailBodyEl) emailBodyEl.textContent = body;
-}
-
-/**
- * Send email application
- */
-async function sendEmailApplication() {
-    const cvId = document.getElementById('applyModalCvSelect')?.value;
-    const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
-
-    if (!cvId) {
-        CVision.Utils.showAlert('Please select a CV', 'warning');
-        return;
-    }
-
-    const job = currentJobs.find(j => (j._id || j.id) === currentJobIdForApply);
-    if (!job) {
-        CVision.Utils.showAlert('Job not found', 'error');
-        return;
-    }
-
-    const btn = document.getElementById('sendApplicationBtn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="animate-spin mr-2">⏳</span> Sending...';
-    }
-
-    try {
-        const response = await CVision.API.request('/applications/email-apply', {
-            method: 'POST',
-            body: JSON.stringify({
-                job_id: job._id || job.id,
-                cv_id: cvId,
-                cover_letter_id: coverLetterId || null
-            })
-        });
-
-        CVision.Utils.showAlert('Application sent successfully!', 'success');
-        closeApplyModal();
-
-        // Optionally redirect to applications page
-        setTimeout(() => {
-            window.location.href = '/pages/applications.html';
-        }, 1500);
-
-    } catch (error) {
-        console.error('Failed to send application:', error);
-        CVision.Utils.showAlert(error.message || 'Failed to send application', 'error');
-
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Send Application';
-        }
-    }
-}
+// Email application logic moved to JobApply.js
 
 /**
  * Connect Gmail account
@@ -1297,50 +1061,4 @@ function connectGmail() {
     window.location.href = `${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX} /auth/gmail / connect`;
 }
 
-// Store current job ID for apply
-let currentJobIdForApply = null;
-
-/**
- * Handle transition to Quick Apply Form (Step 2)
- */
-async function handleApplyNextStep(jobId) {
-    const cvId = document.getElementById('applyModalCvSelect')?.value;
-    const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
-
-    if (!cvId) {
-        CVision.Utils.showAlert('Please select a CV to proceed', 'warning');
-        return;
-    }
-
-    closeApplyModal();
-    // Use the global openQuickApplyForm which now passes args to the manager
-    openQuickApplyForm(jobId, cvId, coverLetterId);
-}
-
-/**
- * Alias for handleApplyNextStep - called from HTML button
- */
-function proceedToQuickApply() {
-    const jobId = currentJobIdForApply || getCurrentJobIdFromModal();
-    if (jobId) {
-        handleApplyNextStep(jobId);
-    } else {
-        console.error('No job ID available for quick apply');
-        CVision.Utils.showAlert('Unable to proceed. Please try again.', 'error');
-    }
-}
-
-/**
- * Get current job ID from the apply modal
- */
-function getCurrentJobIdFromModal() {
-    // Try to find job ID from modal title
-    const titleEl = document.getElementById('applyModalJobTitle');
-    if (titleEl) {
-        const titleText = titleEl.textContent;
-        // Find job by title match
-        const job = currentJobs.find(j => titleText.includes(j.title));
-        return job ? (job._id || job.id) : null;
-    }
-    return null;
-}
+// Logic migrated to JobApply.js component

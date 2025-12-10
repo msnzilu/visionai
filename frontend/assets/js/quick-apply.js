@@ -212,10 +212,34 @@ class QuickApplyManager {
                 }
             );
 
+            if (response.status === 409) {
+                // Already applied - update UI and show info
+                if (window.JobActions) {
+                    window.JobActions.markAsApplied(this.currentJobId);
+                    document.dispatchEvent(new CustomEvent('job:applied', { detail: { jobId: this.currentJobId } }));
+                }
+
+                this.injectSuccessModal(
+                    'You have already applied to this position.',
+                    'Application Exists',
+                    'text-blue-600',
+                    'bg-blue-100',
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+                );
+                this.closeQuickApplyForm();
+                return;
+            }
+
             const result = await response.json();
 
             if (result.success) {
                 this.showSuccess('Application sent successfully! Check your Gmail sent folder.');
+
+                if (window.JobActions) {
+                    window.JobActions.markAsApplied(this.currentJobId);
+                    document.dispatchEvent(new CustomEvent('job:applied', { detail: { jobId: this.currentJobId } }));
+                }
+
                 this.closeQuickApplyForm();
 
                 // Refresh applications list if on applications page
@@ -253,13 +277,58 @@ class QuickApplyManager {
     /**
      * Show success message
      */
+    /**
+     * Show success message with custom modal
+     */
     showSuccess(message) {
-        // Use existing notification system if available
-        if (typeof showNotification === 'function') {
-            showNotification(message, 'success');
-        } else {
-            alert(message);
+        this.injectSuccessModal(message);
+    }
+
+    injectSuccessModal(
+        message,
+        title = 'Application Sent!',
+        textColor = 'text-green-600',
+        bgColor = 'bg-green-100',
+        iconPath = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>'
+    ) {
+        const modalId = 'quickApplySuccessModal';
+        let modal = document.getElementById(modalId);
+
+        // Always remove existing to re-render with correct colors/icon if needed
+        if (modal) {
+            modal.remove();
         }
+
+        const modalHTML = `
+            <div id="${modalId}" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-[60] backdrop-blur-sm transition-opacity duration-300">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 transform transition-all scale-100 flex flex-col items-center text-center">
+                    <div class="w-16 h-16 ${bgColor} rounded-full flex items-center justify-center mb-4 shadow-inner">
+                        <svg class="w-8 h-8 ${textColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           ${iconPath}
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">${title}</h3>
+                    <p class="text-gray-600 mb-6" id="${modalId}Message">${message || 'The email agent has successfully processed your application.'}</p>
+                    
+                    <div class="space-y-3 w-full">
+                        <button onclick="window.location.href='applications.html'" class="w-full btn-gradient text-white rounded-xl px-4 py-3 font-semibold hover:shadow-lg transition-all shadow-md">
+                            View Applications
+                        </button>
+                        <button onclick="document.getElementById('${modalId}').remove()" class="w-full bg-gray-50 text-gray-700 rounded-xl px-4 py-3 font-semibold hover:bg-gray-100 transition-colors">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        modal = document.getElementById(modalId);
+
+        // Small timeout to allow transition
+        setTimeout(() => {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }, 10);
     }
 
     /**

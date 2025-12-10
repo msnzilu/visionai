@@ -32,142 +32,28 @@ async function initializeDashboard() {
     await loadDocuments();
     await loadSavedJobs();
 
-    // Initialize automation status
+    // setupAutomationStatus(); // Removed as it is undefined and logic is handled in loadAutomationStatus
     await loadAutomationStatus();
 
-    setupFileUpload();
-}
-
-function setupFileUpload() {
-
-    const fileInput = document.getElementById('fileInput');
-    const dropZone = document.getElementById('dropZone');
-
-    if (!fileInput) {
-        return;
-    }
-
-    if (!dropZone) {
-        return;
-    }
-
-
-    // Click handler for drop zone
-    dropZone.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        fileInput.click();
-    });
-
-    // File input change handler
-    fileInput.addEventListener('change', (e) => {
-        handleFileUpload(e);
-    });
-
-    // Drag over handler
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.add('border-primary-500', 'bg-primary-50');
-    });
-
-    // Drag leave handler
-    dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.remove('border-primary-500', 'bg-primary-50');
-    });
-
-    // Drop handler
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.remove('border-primary-500', 'bg-primary-50');
-
-        const files = e.dataTransfer.files;
-
-        if (files.length > 0) {
-            // Set the files to the input element
-            fileInput.files = files;
-            // Trigger the change event manually
-            const event = new Event('change', { bubbles: true });
-            fileInput.dispatchEvent(event);
-        }
-    });
-}
-
-async function handleFileUpload(event) {
-    const file = event.target.files[0];
-
-    if (!file) {
-        return;
-    }
-
-    // Validate file type
-    const allowedTypes = [
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/msword',
-        'text/plain'
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-        CVision.Utils.showAlert('Invalid file type. Please upload PDF, DOCX, DOC, or TXT files.', 'error');
-        event.target.value = '';
-        return;
-    }
-
-    // Validate file size (10MB max)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-        CVision.Utils.showAlert('File too large. Maximum size is 10MB.', 'error');
-        event.target.value = '';
-        return;
-    }
-
-
-    // Show upload progress
-    const uploadLoading = document.getElementById('uploadLoading');
-    uploadLoading.classList.remove('hidden');
-
-    try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const uploadUrl = `${API_BASE_URL}/api/v1/documents/upload`;
-
-        const response = await fetch(uploadUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            },
-            body: formData
+    // Initialize CV Uploader Component
+    if (typeof CvUploader !== 'undefined') {
+        const uploader = new CvUploader({
+            dropZoneId: 'dropZone',
+            fileInputId: 'fileInput',
+            onSuccess: async (result) => {
+                CVision.Utils.showAlert('CV uploaded successfully! Processing...', 'success');
+                setTimeout(async () => {
+                    await loadDocuments();
+                }, 1000);
+            }
         });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('❌ Upload error:', errorData);
-            throw new Error(errorData.detail || 'Upload failed');
-        }
-
-        const result = await response.json();
-
-        CVision.Utils.showAlert('CV uploaded successfully! Processing...', 'success');
-
-        // Reload documents
-        setTimeout(async () => {
-            await loadDocuments();
-        }, 1000);
-
-        // Clear the file input
-        event.target.value = '';
-
-    } catch (error) {
-        CVision.Utils.showAlert(`Upload failed: ${error.message}`, 'error');
-    } finally {
-        uploadLoading.classList.add('hidden');
+        uploader.init();
+    } else {
+        console.error('CvUploader component not loaded');
     }
 }
+
+// setupFileUpload and handleFileUpload removed - replaced by CvUploader component
 
 async function loadUserProfile() {
     try {
@@ -308,8 +194,23 @@ async function analyzeDocument(documentId) {
 }
 
 async function deleteDocument(documentId) {
-    if (!confirm('Delete this document?')) return;
+    if (typeof Modal !== 'undefined') {
+        Modal.confirm({
+            title: 'Delete Document?',
+            message: 'Are you sure you want to delete this document? This action cannot be undone.',
+            confirmText: 'Delete',
+            confirmColor: 'red',
+            onConfirm: async () => {
+                await performDeleteDocument(documentId);
+            }
+        });
+    } else {
+        if (!confirm('Delete this document?')) return;
+        await performDeleteDocument(documentId);
+    }
+}
 
+async function performDeleteDocument(documentId) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/documents/${documentId}`, {
             method: 'DELETE',
@@ -420,8 +321,23 @@ function viewJobDetails(jobId) {
 }
 
 async function unsaveJob(jobId) {
-    if (!confirm('Remove this job from saved?')) return;
+    if (typeof Modal !== 'undefined') {
+        Modal.confirm({
+            title: 'Remove Saved Job?',
+            message: 'Are you sure you want to remove this job from your saved list?',
+            confirmText: 'Remove',
+            confirmColor: 'red',
+            onConfirm: async () => {
+                await performUnsaveJob(jobId);
+            }
+        });
+    } else {
+        if (!confirm('Remove this job from saved?')) return;
+        await performUnsaveJob(jobId);
+    }
+}
 
+async function performUnsaveJob(jobId) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/jobs/save/${jobId}`, {
             method: 'DELETE',

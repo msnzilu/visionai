@@ -15,6 +15,9 @@ class JobActionComponent {
         // Bind methods
         this.handleGenerate = this.handleGenerate.bind(this);
         this.closeModal = this.closeModal.bind(this);
+
+        // Track applied jobs
+        this.appliedJobIds = new Set();
     }
 
     init() {
@@ -353,9 +356,28 @@ class JobActionComponent {
     /**
      * Returns HTML for Action Buttons based on job state
      * @param {Object} job - The job object
+     * @param {boolean} includeActions - Whether to include Apply/Customize buttons (default: true)
      * @returns {string} HTML string
      */
-    getButtonsHTML(job) {
+    /**
+     * Set the list of applied jobs
+     * @param {Array} applications 
+     */
+    setAppliedJobs(applications) {
+        this.appliedJobIds = new Set(applications.map(app => String(app.job_id || app._id)));
+    }
+
+    /**
+     * Mark a single job as applied
+     * @param {string} jobId 
+     */
+    markAsApplied(jobId) {
+        this.appliedJobIds.add(String(jobId));
+    }
+
+    getButtonsHTML(job, includeActions = true) {
+        const jobId = String(job._id || job.id);
+        const isApplied = this.appliedJobIds.has(jobId);
         const hasCV = !!job.generated_cv_path;
         const hasCL = !!job.generated_cover_letter_path;
 
@@ -381,19 +403,31 @@ class JobActionComponent {
                 </div>`;
         }
 
-        // Row 2: Action Buttons (Apply & Customize) - Always visible
-        html += `
+        // Row 2: Action Buttons
+        if (includeActions) {
+            html += `
             <div class="flex gap-3">
-                <button onclick="JobActions.openCustomizeModal('${job._id || job.id}')" 
+                ${!isApplied ? `
+                <button onclick="JobActions.openCustomizeModal('${jobId}')" 
                     class="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg px-4 py-2 text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2">
                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     ${hasCV || hasCL ? 'Customize' : 'Customize'}
                 </button>
-                <button onclick="applyToJob('${job._id || job.id}')" 
-                    class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 text-sm font-semibold hover:shadow-lg transition-all shadow-md flex items-center justify-center gap-2">
-                     Apply
-                </button>
+                ` : ''}
+                ${isApplied ? `
+                    <button disabled
+                        class="flex-1 bg-green-50 text-green-700 border border-green-200 rounded-lg px-4 py-2 text-sm font-semibold opacity-80 cursor-not-allowed flex items-center justify-center gap-2">
+                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                         Applied
+                    </button>
+                ` : `
+                    <button onclick="window.JobApply.openApplyModal('${jobId}')" 
+                        class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 text-sm font-semibold hover:shadow-lg transition-all shadow-md flex items-center justify-center gap-2">
+                         Apply
+                    </button>
+                `}
             </div>`;
+        };
 
         return html;
     }

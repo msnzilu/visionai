@@ -308,6 +308,10 @@ async function loadApplications() {
         });
         if (!response.ok) throw new Error('Failed');
         const data = await response.json();
+        window.allApplications = data.applications || [];
+        if (window.JobActions) {
+            window.JobActions.setAppliedJobs(data.applications || []);
+        }
         displayApplications(data.applications || []);
     } catch (error) {
         console.error('Load applications error:', error);
@@ -840,7 +844,7 @@ async function loadSavedJobs() {
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
         const jobs = data.jobs || data; // Handle both {jobs: [...]} and direct array
-        currentSavedJobs = jobs; // Store for modal access
+        window.currentSavedJobs = jobs; // Store for modal access globally
         const container = document.getElementById('savedJobsList');
         if (!container) return;
 
@@ -856,7 +860,7 @@ async function loadSavedJobs() {
         }
         container.innerHTML = jobs.map(j => `
             <div class="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 group relative">
-                <button onclick="unsaveJob('${j.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50" title="Remove from saved">
+                <button onclick="unsaveJob('${j._id || j.id}')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50" title="Remove from saved">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
@@ -864,7 +868,7 @@ async function loadSavedJobs() {
 
                 <div class="pr-12">
                     <h3 class="text-xl font-bold text-gray-900 group-hover:text-primary-600 transition-colors mb-1">
-                        <a href="javascript:void(0)" onclick="showJobDetails('${j.id}')" class="hover:underline">${j.title}</a>
+                        <a href="javascript:void(0)" onclick="showJobDetails('${j._id || j.id}')" class="hover:underline">${j.title}</a>
                     </h3>
                     <div class="flex items-center gap-2 mb-3">
                         <span class="text-gray-700 font-medium">${j.company_name}</span>
@@ -1167,10 +1171,15 @@ function displayApplicationModal(app, timeline) {
         
         <div class="mb-6">
             <h3 class="text-lg font-semibold mb-3">Quick Actions</h3>
+            <div class="mb-4">
+                ${window.JobActions ? window.JobActions.getButtonsHTML(app.job || app) : ''}
+            </div>
             <div class="grid grid-cols-3 gap-3">
                 <button onclick="updateStatus('${app._id || app.id}')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">Update Status</button>
                 <button onclick="scheduleInterview('${app._id || app.id}')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200">Schedule Interview</button>
-                <button onclick="setFollowUp('${app._id || app.id}')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">Set Follow-up</button>        </div>
+                <button onclick="setFollowUp('${app._id || app.id}')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">Set Follow-up</button>
+            </div>
+        </div>
         
         <div>
             <h3 class="text-lg font-semibold mb-3">Timeline</h3>
@@ -1193,11 +1202,14 @@ function displayApplicationModal(app, timeline) {
 // ==================== SAVED JOB MODAL FUNCTIONS ====================
 
 // Global variable to store saved jobs for modal access
-let currentSavedJobs = [];
+// Global variable to store saved jobs for modal access
+// window.currentSavedJobs is populated in loadSavedJobs
 
 function showJobDetails(jobId) {
     // Fallback if not found (e.g. direct call)
-    let job = currentSavedJobs.find(j => (j.id || j._id) === jobId);
+    // Relaxed comparison (==) to handle string/number differences
+    const savedJobs = window.currentSavedJobs || [];
+    let job = savedJobs.find(j => (j.id || j._id) == jobId);
 
     if (!job) {
         // If not found in memory (shouldn't happen if clicking from list), try to fetch
@@ -1247,34 +1259,7 @@ function showJobDetails(jobId) {
         ${job.generated_cv_path || job.generated_cover_letter_path ? `
             <div class="mb-6 pt-6 border-t border-gray-100">
                 <h4 class="font-semibold text-lg mb-3">Generated Documents</h4>
-                <div class="flex flex-col gap-3">
-                     ${job.generated_cv_path ? `
-                        <div class="flex items-center gap-2">
-                             <span class="text-sm font-medium w-24">CV:</span>
-                             <a href="javascript:void(0)" onclick="openDocPreview('${job.generated_cv_path}', 'CV Preview')" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                View
-                             </a>
-                             <a href="${job.generated_cv_path}" download class="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                Download
-                             </a>
-                        </div>
-                     ` : ''}
-                     ${job.generated_cover_letter_path ? `
-                        <div class="flex items-center gap-2">
-                             <span class="text-sm font-medium w-24">Cover Letter:</span>
-                             <a href="javascript:void(0)" onclick="openDocPreview('${job.generated_cover_letter_path}', 'Cover Letter Preview')" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                View
-                             </a>
-                             <a href="${job.generated_cover_letter_path}" download class="inline-flex items-center gap-2 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-sm font-medium">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                Download
-                             </a>
-                        </div>
-                     ` : ''}
-                </div>
+                 ${window.JobActions ? window.JobActions.getButtonsHTML(job, false) : ''}
             </div>
         ` : ''}
     `;
@@ -1282,24 +1267,51 @@ function showJobDetails(jobId) {
     // Setup actions
     const removeBtn = document.getElementById('jobModalUnsave');
     if (removeBtn) {
-        // Redefine onclick to local wrapper
         removeBtn.onclick = () => {
-            // We need to call unsaveJob, but note that unsaveJob was defined locally in loadSavedJobs previously (in one version),
-            // or globally. In this file, unsaveJob is defined globally around line 881.
-            // We'll use that function but wrap it to close modal.
-            // Need to call the GLOBAL unsaveJob function
             unsaveJob(jobId).then(() => closeJobDetailsModal());
         };
         removeBtn.classList.remove('hidden');
     }
 
+    // Check for applied status
+    // Saved jobs might have 'job_id' pointing to the original job, or just '_id' if flattened
+    const targetJobId = String(job.job_id || job._id || job.id);
+    const isApplied = window.JobActions && window.JobActions.appliedJobIds.has(targetJobId);
+
+    // Wire up Customize button
+    const customizeBtn = document.getElementById('jobModalCustomize');
+    if (customizeBtn) {
+        if (isApplied) {
+            customizeBtn.style.display = 'none';
+        } else {
+            customizeBtn.style.display = 'flex';
+            customizeBtn.onclick = () => window.JobActions.openCustomizeModal(job._id || job.id);
+        }
+    }
+
+    // Wire up Apply button
     const applyBtn = document.getElementById('jobModalApply');
     if (applyBtn) {
-        // Direct open of apply modal without redirect
-        applyBtn.onclick = () => {
-            closeJobDetailsModal();
-            showApplyModal(jobId);
-        };
+        if (isApplied) {
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Applied
+            `;
+            applyBtn.className = 'flex-1 bg-green-50 text-green-700 border border-green-200 rounded-lg px-4 py-2.5 text-sm font-semibold opacity-80 cursor-not-allowed flex items-center justify-center gap-2';
+            applyBtn.onclick = null;
+            applyBtn.style.display = 'flex';
+        } else {
+            applyBtn.disabled = false;
+            applyBtn.innerHTML = `Apply Now`; // Simplified as icon is likely inside or managed differently in app.js? No, reusing HTML structure is safer.
+            applyBtn.innerHTML = `
+                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                 Apply Now
+            `;
+            applyBtn.className = 'flex-1 btn-gradient text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:shadow-lg transition-all shadow-md flex items-center justify-center gap-2';
+            applyBtn.onclick = () => window.JobApply.openApplyModal(job._id || job.id, job);
+            applyBtn.style.display = 'flex';
+        }
     }
 
     const modal = document.getElementById('jobDetailsModal');
@@ -1313,164 +1325,7 @@ function closeJobDetailsModal() {
     modal.classList.remove('flex');
 }
 
-// ==================== QUICK APPLY MODAL FUNCTIONS (Ported from jobs.js) ====================
 
-let currentJobIdForApply = null;
-
-async function showApplyModal(jobId) {
-    const job = currentSavedJobs.find(j => (j.id || j._id) === jobId);
-    if (!job) {
-        CVision.Utils.showAlert('Job not found', 'error');
-        return;
-    }
-
-    currentJobIdForApply = jobId;
-
-    // Create modal HTML
-    const modalHTML = `
-        <div id="applyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-gray-900">Quick Apply</h3>
-                    <button onclick="closeApplyModal()" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="mb-4">
-                    <p class="text-gray-600 mb-2">Applying to:</p>
-                    <p class="font-semibold text-gray-900">${job.title}</p>
-                    <p class="text-sm text-gray-500">${job.company_name}</p>
-                </div>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Select CV *</label>
-                        <select id="applyModalCvSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                            <option value="">Loading CVs...</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Cover Letter (Optional)</label>
-                        <select id="applyModalCoverLetterSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                            <option value="">Loading cover letters...</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex gap-3 mt-6">
-                    <button onclick="closeApplyModal()" class="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 font-medium hover:bg-gray-50 transition-colors">
-                        Cancel
-                    </button>
-                    <button onclick="proceedToQuickApply()" class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all">
-                        Next: Application Details
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Remove existing modal if any
-    const existingModal = document.getElementById('applyModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-
-    // Add modal to body
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-    // Load documents after modal is added to DOM
-    await loadCVsForApply();
-    await loadCoverLettersForApply();
-}
-
-function closeApplyModal() {
-    const modal = document.getElementById('applyModal');
-    if (modal) {
-        modal.remove();
-    }
-}
-
-async function loadCVsForApply() {
-    try {
-        const response = await CVision.API.request('/documents/?document_type=cv');
-        const cvSelect = document.getElementById('applyModalCvSelect');
-
-        if (!cvSelect) return;
-
-        if (response.documents && response.documents.length > 0) {
-            cvSelect.innerHTML = response.documents.map(doc =>
-                `<option value="${doc.id}">${doc.filename}</option>`
-            ).join('');
-        } else {
-            cvSelect.innerHTML = '<option value="">No CVs available - Upload one first</option>';
-        }
-    } catch (error) {
-        console.error('Failed to load CVs:', error);
-    }
-}
-
-async function loadCoverLettersForApply() {
-    try {
-        const response = await CVision.API.request('/documents/?document_type=cover_letter');
-        const clSelect = document.getElementById('applyModalCoverLetterSelect');
-
-        if (!clSelect) return;
-
-        if (response.documents && response.documents.length > 0) {
-            clSelect.innerHTML = '<option value="">No cover letter</option>' +
-                response.documents.map(doc =>
-                    `<option value="${doc.id}">${doc.filename}</option>`
-                ).join('');
-        }
-    } catch (error) {
-        console.error('Failed to load cover letters:', error);
-    }
-}
-
-function getCurrentJobIdFromModal() {
-    // Try to find job ID from modal title
-    const titleEl = document.getElementById('applyModalJobTitle');
-    if (titleEl) {
-        // This selector might fail if we don't have this ID on the modal title in applications page override, 
-        // but we use currentJobIdForApply global usually.
-        return currentJobIdForApply;
-    }
-    return currentJobIdForApply;
-}
-
-// Logic to proceed to step 2
-function proceedToQuickApply() {
-    const jobId = currentJobIdForApply;
-    if (jobId) {
-        handleApplyNextStep(jobId);
-    } else {
-        console.error('No job ID available for quick apply');
-        CVision.Utils.showAlert('Unable to proceed. Please try again.', 'error');
-    }
-}
-
-async function handleApplyNextStep(jobId) {
-    const cvId = document.getElementById('applyModalCvSelect')?.value;
-    const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
-
-    if (!cvId) {
-        CVision.Utils.showAlert('Please select a CV to proceed', 'warning');
-        return;
-    }
-
-    closeApplyModal();
-    // Assuming openQuickApplyForm is available via quick-apply.js
-    if (typeof openQuickApplyForm === 'function') {
-        openQuickApplyForm(jobId, cvId, coverLetterId);
-    } else {
-        console.error('openQuickApplyForm not found');
-        CVision.Utils.showAlert('Application form module not loaded', 'error');
-    }
-}
 
 // ==================== DOCUMENT PREVIEW MODAL FUNCTIONS ====================
 
@@ -1483,7 +1338,7 @@ document.addEventListener('job:updated', (e) => {
 });
 
 // Alias for JobActions compatibility
-window.applyToJob = (jobId) => showApplyModal(jobId);
+window.applyToJob = (jobId) => window.JobApply.openApplyModal(jobId);
 
 // Ensure JobActions is available
 if (!window.JobActions) {
@@ -1501,7 +1356,7 @@ async function saveJob(jobId, silent = false, extraData = null) {
         const options = {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+                'Authorization': `Bearer ${CVision.Utils.getToken()} `
             }
         };
 
@@ -1510,7 +1365,7 @@ async function saveJob(jobId, silent = false, extraData = null) {
             options.body = JSON.stringify(extraData);
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/jobs/save/${jobId}`, options);
+        const response = await fetch(`${API_BASE_URL} /api/v1 / jobs / save / ${jobId} `, options);
 
         if (!response.ok) throw new Error('Failed to save job');
 

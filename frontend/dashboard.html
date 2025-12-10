@@ -365,8 +365,11 @@
         </div>
     </main>
 
-    <script src="assets/js/main.js"></script>
-    <script src="/assets/js/pages/dashboard.js"></script>
+    <script src="assets/js/components/ui/toast.js?v=1"></script>
+    <script src="assets/js/components/ui/modal.js?v=1"></script>
+    <script src="assets/js/main.js?v=1"></script>
+    <script src="/assets/js/components/cv-uploader.js?v=1"></script>
+    <script src="/assets/js/pages/dashboard.js?v=1"></script>
     <script src="/assets/js/components/navbar.js" defer></script>
     <script defer>
         // Load navbar component with proper initialization
@@ -400,9 +403,8 @@
             }
 
             // Your page logic here
-            if (typeof initializeDashboard === 'function') {
-                initializeDashboard();
-            }
+            // initializeDashboard() is handled in dashboard.js directly
+
         });
 
         // Quick action function

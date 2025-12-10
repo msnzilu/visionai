@@ -99,8 +99,14 @@ const Utils = {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     },
 
-    // Show alert message
+    // Show alert message (Uses Toast if available, falls back to DOM)
     showAlert(message, type = 'info') {
+        if (window.Toast) {
+            window.Toast.show(message, type);
+            return;
+        }
+
+        // Fallback for when Toast isn't loaded
         const alert = document.createElement('div');
         alert.className = `alert alert-${type}`;
         alert.textContent = message;
