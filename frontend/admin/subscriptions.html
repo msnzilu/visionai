@@ -21,6 +21,10 @@
                 <div class="px-6 py-4 flex justify-between items-center">
                     <h2 class="text-2xl font-bold text-gray-900">Subscription Management</h2>
                     <div class="flex items-center space-x-4">
+                        <button onclick="openAssignModal()"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">
+                            Assign Plan
+                        </button>
                         <span class="text-sm text-gray-600" id="adminName">Admin</span>
                         <button onclick="logout()" class="text-sm text-gray-600 hover:text-gray-900">Logout</button>
                     </div>
@@ -28,6 +32,28 @@
             </header>
 
             <div class="p-6">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div class="text-gray-500 text-sm font-medium mb-1">Est. Monthly Revenue</div>
+                        <div id="stat-revenue" class="text-3xl font-bold text-gray-900">$0</div>
+                        <div class="text-xs text-green-600 mt-1">Based on active plans</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div class="text-blue-600 text-sm font-medium mb-1">Active Subscriptions</div>
+                        <div id="stat-active-subs" class="text-3xl font-bold text-gray-900">0</div>
+                        <div class="text-xs text-gray-500 mt-1">Basic + Premium</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div class="text-purple-600 text-sm font-medium mb-1">Premium Users</div>
+                        <div id="stat-premium" class="text-3xl font-bold text-gray-900">0</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div class="text-indigo-600 text-sm font-medium mb-1">Basic Users</div>
+                        <div id="stat-basic" class="text-3xl font-bold text-gray-900">0</div>
+                    </div>
+                </div>
+
                 <!-- Data Table -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="p-4 border-b border-gray-100 flex justify-between items-center">
@@ -119,6 +145,40 @@
                 </div>
             </div>
 
+            <!-- Assign Plan Modal -->
+            <div id="assignModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 overflow-hidden">
+                    <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-gray-900">Assign Plan</h3>
+                        <button onclick="closeAssignModal()" class="text-gray-500 hover:text-gray-700">&times;</button>
+                    </div>
+                    <form onsubmit="assignPlan(event)" class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">User Email</label>
+                            <input type="email" id="assignEmail" required placeholder="Enter user email..."
+                                class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Must be an existing user.</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Select Plan</label>
+                            <select id="assignTier"
+                                class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="basic">Basic ($9/mo)</option>
+                                <option value="premium">Premium ($29/mo)</option>
+                                <option value="free">Free</option>
+                            </select>
+                        </div>
+                        <div class="pt-4 flex justify-end space-x-3">
+                            <button type="button" onclick="closeAssignModal()"
+                                class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium">Cancel</button>
+                            <button type="submit"
+                                class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Assign
+                                Plan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -177,7 +237,9 @@
                         <td class="px-6 py-4 text-sm text-gray-600">${new Date(user.created_at).toLocaleDateString()}</td>
                         <td class="px-6 py-4 text-sm">
                             <button onclick="openEditModal('${user.id}', '${user.email}', '${user.subscription_tier || 'free'}', ${user.is_active})" 
-                                class="text-blue-600 hover:text-blue-800 font-medium text-sm">Edit</button>
+                                class="text-blue-600 hover:text-blue-800 font-medium text-sm mr-3">Edit</button>
+                            <button onclick="cancelSubscription('${user.id}')" 
+                                class="text-red-600 hover:text-red-800 font-medium text-sm">Cancel</button>
                         </td>
                     </tr>
                 `).join('');
@@ -241,8 +303,99 @@
 
 
 
+        async function loadStats() {
+            try {
+                const stats = await CVision.API.request('/admin/stats');
+                const tiers = stats.users_by_tier || {};
+
+                const premiumCount = tiers.premium || 0;
+                const basicCount = tiers.basic || 0;
+                const freeCount = tiers.free || 0;
+
+                // Revenue calculation (Approximate)
+                const revenue = (premiumCount * 29) + (basicCount * 9);
+
+                document.getElementById('stat-revenue').textContent = '$' + revenue.toLocaleString();
+                document.getElementById('stat-active-subs').textContent = premiumCount + basicCount;
+                document.getElementById('stat-premium').textContent = premiumCount;
+                document.getElementById('stat-basic').textContent = basicCount;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function openAssignModal() {
+            document.getElementById('assignEmail').value = '';
+            document.getElementById('assignTier').value = 'basic';
+            document.getElementById('assignModal').classList.remove('hidden');
+            document.getElementById('assignModal').classList.add('flex');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assignModal').classList.add('hidden');
+            document.getElementById('assignModal').classList.remove('flex');
+        }
+
+        async function assignPlan(event) {
+            event.preventDefault();
+            const email = document.getElementById('assignEmail').value;
+            const tier = document.getElementById('assignTier').value;
+
+            try {
+                // First find the user ID by searching
+                const response = await CVision.API.request(`/admin/users?search=${encodeURIComponent(email)}&limit=1`);
+
+                if (!response.users || response.users.length === 0) {
+                    alert('User not found!');
+                    return;
+                }
+
+                // Verify exact email match to be safe
+                const user = response.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+                if (!user) {
+                    alert('User not found (exact match required)!');
+                    return;
+                }
+
+                // Update the tier
+                await CVision.API.request(`/admin/users/${user.id}/tier`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ tier: tier })
+                });
+
+                closeAssignModal();
+                loadUsers();
+                loadStats();
+                alert(`Plan assigned successfully to ${user.email}`);
+
+            } catch (error) {
+                console.error(error);
+                alert('Failed to assign plan: ' + (error.message || 'Unknown error'));
+            }
+        }
+
+        async function cancelSubscription(userId) {
+            if (!confirm('Are you sure you want to cancel this subscription? The user will be downgraded to FREE.')) {
+                return;
+            }
+
+            try {
+                await CVision.API.request(`/admin/users/${userId}/tier`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ tier: 'free' })
+                });
+                loadUsers();
+                loadStats();
+                alert('Subscription cancelled successfully');
+            } catch (error) {
+                console.error(error);
+                alert('Failed to cancel subscription');
+            }
+        }
+
         // Init
         loadUsers();
+        loadStats();
     </script>
 </body>
 

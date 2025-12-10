@@ -90,6 +90,9 @@ async def get_platform_stats(
     active_users = await db.users.count_documents({"is_active": True})
     total_documents = await db.documents.count_documents({})
     
+    total_applications = await db.applications.count_documents({})
+    total_referrals = await db.referrals.count_documents({})
+
     # Users by tier
     pipeline = [
         {"$group": {"_id": "$subscription_tier", "count": {"$sum": 1}}}
@@ -100,6 +103,8 @@ async def get_platform_stats(
         "total_users": total_users,
         "active_users": active_users,
         "total_documents": total_documents,
+        "total_applications": total_applications,
+        "total_referrals": total_referrals,
         "users_by_tier": {item["_id"]: item["count"] for item in tier_counts}
     }
 

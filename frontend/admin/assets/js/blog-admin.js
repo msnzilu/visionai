@@ -132,10 +132,12 @@
             return `
                 <tr>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">${post.title}</div>
-                        <a href="../pages/blog-post.html?slug=${post.slug}" target="_blank" class="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-1">
-                            ${post.slug} <span class="text-xs">↗</span>
+                        <a href="#" onclick="window.blogAdmin.editPost('${post.id}'); return false;" class="text-sm font-medium text-blue-600 hover:text-blue-900 hover:underline">
+                            ${post.title}
                         </a>
+                        <div class="text-xs text-gray-500 mt-0.5">
+                            /${post.slug}
+                        </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[post.status]}">

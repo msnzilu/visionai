@@ -19,7 +19,8 @@ from app.api.deps import (
 )
 from app.models.user import (
     UserUpdate, UserResponse, UserProfile, UserPreferences,
-    UserListResponse, UserUsageStats, LocationPreference, JobPreferences
+    UserListResponse, UserUsageStats, LocationPreference, JobPreferences,
+    UserRole, SubscriptionTier, UserCreate
 )
 from app.models.common import SuccessResponse, PaginatedResponse
 from app.services.auth_service import AuthService
@@ -444,7 +445,80 @@ async def deactivate_user_account(
         )
 
 
+
 # Admin-only endpoints
+
+@router.post("/", response_model=UserResponse)
+async def create_user_admin(
+    user_in: UserCreate,
+    role: UserRole = UserRole.USER,
+    tier: SubscriptionTier = SubscriptionTier.FREE,
+    is_verified: bool = True,
+    current_admin: Dict[str, Any] = Depends(get_current_admin_user)
+):
+    """
+    Create a new user (admin only)
+    """
+    try:
+        await track_api_usage("admin_create_user", current_admin)
+        
+        # Check if user exists
+        existing_user = await AuthService.get_user_by_email(user_in.email)
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this email already exists"
+            )
+            
+        # Create user using AuthService
+        # Note: AuthService.register_user handles password hashing and basic setup
+        new_user_token = await AuthService.register_user(user_in)
+        
+        # Get the new user
+        user = await AuthService.get_user_by_email(user_in.email)
+        
+        # Post-creation updates (Role, Tier, Verified Status)
+        update_data = {
+            "role": role,
+            "subscription_tier": tier,
+            "is_verified": is_verified
+        }
+        
+        # Apply updates directly to DB to bypass some checks if needed, 
+        # or use update_user_profile but keys might need to be 'set' directly.
+        users_collection = await get_users_collection()
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": update_data}
+        )
+        
+        # Fetch updated user
+        updated_user = await get_user_by_id(str(user["_id"]), current_admin)
+        
+        return UserResponse(
+            id=str(updated_user["_id"]),
+            email=updated_user["email"],
+            first_name=updated_user["first_name"],
+            last_name=updated_user["last_name"],
+            is_active=updated_user["is_active"],
+            is_verified=updated_user["is_verified"],
+            subscription_tier=updated_user["subscription_tier"],
+            usage_stats=updated_user.get("usage_stats", {}),
+            referral_code=updated_user["referral_code"],
+            created_at=updated_user["created_at"],
+            last_login=updated_user.get("last_login")
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating user: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create user"
+        )
+
+
 @router.get("/", response_model=UserListResponse)
 async def list_users(
     query_params: CommonQueryParams = Depends(),
