@@ -16,6 +16,7 @@
     const postsTableBody = document.getElementById('posts-table-body');
     const tableLoading = document.getElementById('table-loading');
     const tableEmpty = document.getElementById('table-empty');
+    const statusFilter = document.getElementById('status-filter');
 
     // Initialize
     async function init() {
@@ -69,6 +70,11 @@
         cancelBtn.addEventListener('click', closeModal);
         saveBtn.addEventListener('click', savePost);
 
+        // Status filter
+        statusFilter.addEventListener('change', () => {
+            loadPosts();
+        });
+
         // Auto-generate slug from title
         document.getElementById('post-title').addEventListener('input', (e) => {
             if (!currentEditingPost) {
@@ -83,11 +89,20 @@
         try {
             // Auth check moved to init()
 
-            const data = await CVision.API.request('/blog/posts?page=1&size=50');
+            let url = '/blog/posts?page=1&size=50';
+            const status = statusFilter.value;
+
+            if (status) {
+                url += `&status=${status}`;
+            }
+
+            const data = await CVision.API.request(url);
 
             tableLoading.classList.add('hidden');
+            tableEmpty.classList.add('hidden'); // Ensure empty state is hidden first
 
             if (data.posts.length === 0) {
+                postsTableBody.innerHTML = ''; // Clear table
                 tableEmpty.classList.remove('hidden');
             } else {
                 displayPosts(data.posts);
@@ -95,6 +110,7 @@
         } catch (error) {
             console.error('Error loading posts:', error);
             tableLoading.classList.add('hidden');
+            postsTableBody.innerHTML = '';
             tableEmpty.classList.remove('hidden');
         }
     }

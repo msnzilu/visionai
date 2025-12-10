@@ -174,7 +174,7 @@ class BlogService:
         
         # Filter by status
         if status:
-            query["status"] = status
+            query["status"] = status.value
         
         # Filter by categories
         if categories:
@@ -214,7 +214,7 @@ class BlogService:
     async def get_categories(self) -> List[CategoryResponse]:
         """Get all categories with post counts"""
         pipeline = [
-            {"$match": {"status": BlogStatus.PUBLISHED}},
+            {"$match": {"status": BlogStatus.PUBLISHED.value}},
             {"$unwind": "$categories"},
             {"$group": {"_id": "$categories", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}}
@@ -229,7 +229,7 @@ class BlogService:
     async def get_tags(self) -> List[TagResponse]:
         """Get all tags with post counts"""
         pipeline = [
-            {"$match": {"status": BlogStatus.PUBLISHED}},
+            {"$match": {"status": BlogStatus.PUBLISHED.value}},
             {"$unwind": "$tags"},
             {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}}
@@ -250,7 +250,7 @@ class BlogService:
         # Find posts with similar tags or categories
         query = {
             "_id": {"$ne": ObjectId(post_id)},
-            "status": BlogStatus.PUBLISHED,
+            "status": BlogStatus.PUBLISHED.value,
             "$or": [
                 {"tags": {"$in": post.get("tags", [])}},
                 {"categories": {"$in": post.get("categories", [])}}

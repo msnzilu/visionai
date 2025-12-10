@@ -55,6 +55,13 @@
                 <div class="flex justify-between items-center mb-8">
                     <h1 class="text-3xl font-bold text-gray-900">Blog Posts</h1>
                     <div class="flex gap-4">
+                        <select id="status-filter"
+                            class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 cursor-pointer bg-white text-gray-700">
+                            <option value="">All Statuses</option>
+                            <option value="published">Published</option>
+                            <option value="draft">Draft</option>
+                            <option value="archived">Archived</option>
+                        </select>
                         <button onclick="window.blogAdmin.createMockPosts()"
                             class="px-6 py-3 border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition font-semibold">
                             Seed Data
