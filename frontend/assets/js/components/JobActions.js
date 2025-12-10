@@ -291,6 +291,11 @@ class JobActionComponent {
 
                 this.closeModal();
 
+                // Show success modal with download links
+                if (result && window.GenerationModule && window.GenerationModule.showGenerationModal) {
+                    window.GenerationModule.showGenerationModal(result);
+                }
+
                 // If on jobs page or applications page, we might want to refresh the item.
                 // We can dispatch a custom event that pages can listen to
                 document.dispatchEvent(new CustomEvent('job:updated', {
@@ -354,47 +359,51 @@ class JobActionComponent {
         const hasCV = !!job.generated_cv_path;
         const hasCL = !!job.generated_cover_letter_path;
 
+        let html = '';
+
+        // Row 1: Document View Buttons (if exist)
         if (hasCV || hasCL) {
-            return `
-                <div class="flex gap-2">
+            html += `<div class="flex gap-2 mb-2">
                     ${hasCV ? `
                         <button onclick="JobActions.openPreview('${job.generated_cv_path}', 'CV Preview')" 
-                            class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                            class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             View CV
                         </button>
                     ` : ''}
                     ${hasCL ? `
                         <button onclick="JobActions.openPreview('${job.generated_cover_letter_path}', 'Cover Letter Preview')" 
-                            class="flex-1 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                            class="flex-1 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             View CL
                         </button>
                     ` : ''}
-                    <button onclick="JobActions.openCustomizeModal('${job._id || job.id}')" class="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded" title="Regenerate">
-                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    </button>
-                </div>`;
-        } else {
-            return `
-                <div class="flex gap-3">
-                    <button onclick="JobActions.openCustomizeModal('${job._id || job.id}')" 
-                        class="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg px-4 py-2 text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        Customize
-                    </button>
-                    <button onclick="applyToJob('${job._id || job.id}')" 
-                        class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 text-sm font-semibold hover:shadow-lg transition-all shadow-md flex items-center justify-center gap-2">
-                        Apply
-                    </button>
                 </div>`;
         }
+
+        // Row 2: Action Buttons (Apply & Customize) - Always visible
+        html += `
+            <div class="flex gap-3">
+                <button onclick="JobActions.openCustomizeModal('${job._id || job.id}')" 
+                    class="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg px-4 py-2 text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    ${hasCV || hasCL ? 'Customize' : 'Customize'}
+                </button>
+                <button onclick="applyToJob('${job._id || job.id}')" 
+                    class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 text-sm font-semibold hover:shadow-lg transition-all shadow-md flex items-center justify-center gap-2">
+                     Apply
+                </button>
+            </div>`;
+
+        return html;
     }
 }
 
 // Initialize
-const jobActions = new JobActionComponent();
+// Initialize and expose globally
+window.JobActions = new JobActionComponent();
+
 // Auto-init on load
 document.addEventListener('DOMContentLoaded', () => {
-    jobActions.init();
+    window.JobActions.init();
 });
