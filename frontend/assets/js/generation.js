@@ -182,7 +182,9 @@ const GenerationModule = (() => {
                 // We use silent=true to avoid double alerts (generation success alert is enough)
                 const updateData = {
                     generated_cv_path: result.cv_pdf_url,
-                    generated_cover_letter_path: result.cover_letter_pdf_url
+                    generated_cover_letter_path: result.cover_letter_pdf_url,
+                    generated_cv_id: result.cv_document_id,
+                    generated_cover_letter_id: result.cover_letter_id
                 };
                 console.log('Updating saved job with docs:', updateData);
                 // Don't await this to keep UI responsive? Actually better to await to ensure consistency

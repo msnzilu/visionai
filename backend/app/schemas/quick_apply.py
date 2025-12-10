@@ -28,7 +28,7 @@ class QuickApplyFormData(BaseModel):
     education_level: Optional[str] = Field(None, max_length=200)
     university: Optional[str] = Field(None, max_length=200)
     skills: Optional[List[str]] = []
-    cover_letter: Optional[str] = Field(None, max_length=5000)
+    cover_letter: Optional[str] = Field(None, max_length=10000)
     additional_info: Optional[str] = Field(None, max_length=2000)
 
 
@@ -39,7 +39,7 @@ class QuickApplySubmission(BaseModel):
     cv_document_id: str
     cover_letter_document_id: Optional[str] = None
     recipient_email: EmailStr
-    additional_message: Optional[str] = Field(None, max_length=2000)
+    additional_message: Optional[str] = Field(None, max_length=10000)
 
 
 class QuickApplyPrefillResponse(BaseModel):

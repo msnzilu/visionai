@@ -220,6 +220,12 @@ async function loadJobsFromDB() {
                             if (savedJob.generated_cover_letter_path) {
                                 currentJobs[jobIndex].generated_cover_letter_path = savedJob.generated_cover_letter_path;
                             }
+                            if (savedJob.generated_cv_id) {
+                                currentJobs[jobIndex].generated_cv_id = savedJob.generated_cv_id;
+                            }
+                            if (savedJob.generated_cover_letter_id) {
+                                currentJobs[jobIndex].generated_cover_letter_id = savedJob.generated_cover_letter_id;
+                            }
                         }
                     });
 

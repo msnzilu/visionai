@@ -120,32 +120,50 @@ class QuickApplyManager {
             const cvSelect = document.querySelector('[name="cv_document_id"]');
             const clSelect = document.querySelector('[name="cover_letter_document_id"]');
 
-            cvSelect.innerHTML = '<option value="">Select your CV...</option>';
-            clSelect.innerHTML = '<option value="">None</option>';
+            // --- CV Selection Logic ---
+            let cvOptions = '<option value="">Select your CV...</option>';
+            let generatedCvAdded = false;
 
-            documents.forEach(doc => {
-                const option = document.createElement('option');
-                option.value = doc._id || doc.id;
-                option.textContent = doc.filename || doc.original_filename;
-
-                if (doc.document_type === 'cv') {
-                    cvSelect.appendChild(option.cloneNode(true));
-                } else if (doc.document_type === 'cover_letter') {
-                    clSelect.appendChild(option.cloneNode(true));
-                }
-            });
-
-            // Handle selection logic
+            // 1. Explicitly check for generated CV for THIS job
             if (preSelectedCvId) {
+                // We trust the ID from the previous step implies a generated CV exists
+                cvOptions += `<option value="${preSelectedCvId}">Job CV/Resume</option>`;
+                generatedCvAdded = true;
+            }
+
+            // 2. Add other stats
+            const otherCVs = documents.filter(doc => doc.document_type === 'cv' && doc._id !== preSelectedCvId && doc.id !== preSelectedCvId);
+            cvOptions += otherCVs.map(doc => `<option value="${doc._id || doc.id}">${doc.filename || doc.original_filename}</option>`).join('');
+
+            cvSelect.innerHTML = cvOptions;
+
+            if (generatedCvAdded) {
                 cvSelect.value = preSelectedCvId;
             } else if (cvSelect.options.length > 1) {
                 // Auto-select first CV if available and no pre-selection
                 cvSelect.selectedIndex = 1;
             }
 
+            /* 
+            // Cover Letter dropdown removed as text is prefilled directly
+            // --- Cover Letter Selection Logic ---
+            let clOptions = '<option value="">None</option>';
+            let generatedClAdded = false;
+
             if (preSelectedClId) {
+                clOptions += `<option value="${preSelectedClId}">Generated Cover Letter for this Job</option>`;
+                generatedClAdded = true;
+            }
+
+            const otherCLs = documents.filter(doc => doc.document_type === 'cover_letter' && doc._id !== preSelectedClId && doc.id !== preSelectedClId);
+            clOptions += otherCLs.map(doc => `<option value="${doc._id || doc.id}">${doc.filename || doc.original_filename}</option>`).join('');
+
+            if (clSelect) clSelect.innerHTML = clOptions;
+
+            if (generatedClAdded && clSelect) {
                 clSelect.value = preSelectedClId;
             }
+            */
 
         } catch (error) {
             console.error('Error loading documents:', error);

@@ -401,6 +401,8 @@ class SavedJob(BaseModel):
     saved_at: datetime = Field(default_factory=datetime.utcnow)
     generated_cv_path: Optional[str] = None
     generated_cover_letter_path: Optional[str] = None
+    generated_cv_id: Optional[str] = None
+    generated_cover_letter_id: Optional[str] = None
     
     class Config:
         json_encoders = {
@@ -413,6 +415,8 @@ class SavedJobResponse(JobResponse):
     saved_at: datetime
     generated_cv_path: Optional[str] = None
     generated_cover_letter_path: Optional[str] = None
+    generated_cv_id: Optional[str] = None
+    generated_cover_letter_id: Optional[str] = None
     
     class Config:
         json_encoders = {

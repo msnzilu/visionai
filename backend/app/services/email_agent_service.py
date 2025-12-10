@@ -362,17 +362,42 @@ class EmailAgentService:
                 cover_letter=additional_message
             )
             
-            # Get CV document path
+            # Get CV document path (check both uploaded and generated documents)
             attachments = []
-            cv_doc = await db.documents.find_one({"_id": ObjectId(cv_document_id)})
-            if cv_doc and cv_doc.get("file_path"):
-                attachments.append(cv_doc.get("file_path"))
             
-            # Get cover letter document if provided
+            # 1. Try uploaded documents
+            cv_doc = await db.documents.find_one({"_id": ObjectId(cv_document_id)})
+            
+            # 2. If not found, try generated documents
+            if not cv_doc:
+                cv_doc = await db.generated_documents.find_one({"_id": ObjectId(cv_document_id)})
+                if cv_doc:
+                     logger.info(f"Found generated CV document: {cv_document_id}")
+            
+            if cv_doc:
+                # Generated documents might have 'file_path' or be content-based.
+                # Assuming PDF generation saves to file_path for generated docs too (based on previous context).
+                # If generated doc stores content directly but not file_path, we might need a different handling,
+                # but 'generated_cv_path' implies a path exists.
+                file_path = cv_doc.get("file_path") or cv_doc.get("pdf_path")
+                if file_path:
+                    attachments.append(file_path)
+                    logger.info(f"Attached CV file: {file_path}")
+                else:
+                    logger.warning(f"CV document {cv_document_id} found but has no file_path")
+            else:
+                logger.warning(f"CV document {cv_document_id} not found in documents or generated_documents")
+            
+            # Get cover letter document if provided (though mostly text now)
             if cover_letter_document_id:
                 cl_doc = await db.documents.find_one({"_id": ObjectId(cover_letter_document_id)})
-                if cl_doc and cl_doc.get("file_path"):
-                    attachments.append(cl_doc.get("file_path"))
+                if not cl_doc:
+                     cl_doc = await db.generated_documents.find_one({"_id": ObjectId(cover_letter_document_id)})
+                
+                if cl_doc:
+                     file_path = cl_doc.get("file_path") or cl_doc.get("pdf_path")
+                     if file_path:
+                        attachments.append(file_path)
             
             # Send email via Gmail
             logger.info(f"Sending application email to {recipient_email}")

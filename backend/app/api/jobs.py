@@ -125,6 +125,10 @@ async def save_job(
             update_data["generated_cv_path"] = data["generated_cv_path"]
         if "generated_cover_letter_path" in data:
             update_data["generated_cover_letter_path"] = data["generated_cover_letter_path"]
+        if "generated_cv_id" in data:
+            update_data["generated_cv_id"] = data["generated_cv_id"]
+        if "generated_cover_letter_id" in data:
+            update_data["generated_cover_letter_id"] = data["generated_cover_letter_id"]
     
     if existing:
         if update_data:
@@ -194,6 +198,8 @@ async def get_saved_jobs(
             job_dict["saved_at"] = saved_item["saved_at"]
             job_dict["generated_cv_path"] = saved_item.get("generated_cv_path")
             job_dict["generated_cover_letter_path"] = saved_item.get("generated_cover_letter_path")
+            job_dict["generated_cv_id"] = saved_item.get("generated_cv_id")
+            job_dict["generated_cover_letter_id"] = saved_item.get("generated_cover_letter_id")
             jobs.append(job_dict)
 
     

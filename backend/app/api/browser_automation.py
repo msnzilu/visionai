@@ -64,11 +64,35 @@ async def prefill_quick_apply_form(
         # Extract form data from CV
         logger.info(f"Extracting form data from CV for user {user_id}")
         form_data = await email_agent_service.extract_form_data_from_cv(user_id)
+        
+        # Check for generated cover letter
+        saved_job = await db.saved_jobs.find_one({
+             "user_id": user_id,
+             "job_id": job_id
+        })
+        
+        if saved_job and saved_job.get("generated_cover_letter_id"):
+             gen_cl_id = saved_job.get("generated_cover_letter_id")
+             try:
+                 gen_cl = await db.generated_documents.find_one({"_id": ObjectId(gen_cl_id)})
+                 if gen_cl and "content" in gen_cl:
+                      # Structure is content -> content -> full_text based on service
+                      full_text = gen_cl.get("content", {}).get("content", {}).get("full_text")
+                      if full_text:
+                           form_data["cover_letter"] = full_text
+                           logger.info(f"Injected generated cover letter text for user {user_id}")
+             except Exception as e:
+                 logger.warning(f"Failed to load generated cover letter content: {e}")
+
         logger.info(f"Extracted form data keys: {list(form_data.keys())}")
         logger.debug(f"Form data values: {form_data}")
         
-        # Determine recipient email (from job posting or company)
-        recipient_email = job.get("contact_email") or job.get("recruiter_email")
+        # Determine recipient email (prioritize application_email as per model)
+        recipient_email = (
+            job.get("application_email") or 
+            job.get("contact_email") or 
+            job.get("recruiter_email")
+        )
         
         response_data = QuickApplyPrefillResponse(
             success=True,
@@ -79,7 +103,7 @@ async def prefill_quick_apply_form(
             message="Form data loaded successfully"
         )
         
-        logger.info(f"Returning prefill response with {len(form_data)} fields")
+        logger.info(f"Returning prefill response with {len(form_data)} fields, recipient: {recipient_email}")
         return response_data
         
     except HTTPException:

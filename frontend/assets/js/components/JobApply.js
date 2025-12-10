@@ -83,6 +83,7 @@ class JobApplyComponent {
         `;
 
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+        console.log('JobApply: Modal injected into DOM');
     }
 
     /**
@@ -141,11 +142,23 @@ class JobApplyComponent {
             modal.classList.remove('hidden');
             modal.classList.add('flex');
 
-            // Load docs
-            await this.loadDocuments();
+            // Load docs with pre-selections from saved job data
+            await this.loadDocuments({
+                cvId: job.generated_cv_id,
+                clId: job.generated_cover_letter_id
+            });
         } else {
-            console.error('JobApply: Apply modal element not found in DOM');
-            // detailed re-check would be needed or just fail gracefully
+            console.warn('JobApply: Apply modal element not found in DOM, attempting to re-inject...');
+            this.injectModal();
+            modal = document.getElementById('applyModal');
+            if (modal) {
+                // Retry opening
+                return this.openApplyModal(jobId, jobObject);
+            } else {
+                console.error('JobApply: Failed to inject modal.');
+                alert('Application form could not be loaded. Please refresh.');
+                return;
+            }
         }
 
         // Auto-save the job if not already saved
@@ -218,9 +231,10 @@ class JobApplyComponent {
 
     /**
      * Load CVs and Cover Letters
+     * @param {Object} [preSelections] - Optional pre-defined selections { cvId, clId }
      */
-    async loadDocuments() {
-        console.log('JobApply: Loading documents...');
+    async loadDocuments(preSelections = {}) {
+        console.log('JobApply: Loading documents...', preSelections);
         try {
             // Load CVs
             const cvResponse = await fetch('/api/v1/documents/?document_type=cv', {
@@ -235,19 +249,37 @@ class JobApplyComponent {
                 console.log('JobApply: CV Data:', data);
 
                 const docs = data.documents || [];
-                if (docs.length > 0) {
-                    // Add default option
-                    let options = '<option value="">Select a CV...</option>';
-                    options += docs.map(doc => `<option value="${doc.id}">${doc.filename}</option>`).join('');
-                    cvSelect.innerHTML = options;
+                let options = '<option value="">Select a CV...</option>';
 
-                    // Auto-select the first one ONLY if exactly one exists
-                    if (docs.length === 1) {
-                        cvSelect.value = docs[0].id;
-                    }
-                } else {
-                    cvSelect.innerHTML = '<option value="">No CVs found</option>';
+                // 1. Explicitly check for generated CV for THIS job
+                let generatedCvAdded = false;
+                if (preSelections.cvId) {
+                    // We trust the ID from the saved job data implies a generated CV exists
+                    // We add it to the top of the list as "Generated CV for this Job"
+                    options += `<option value="${preSelections.cvId}">Job CV/Resume</option>`;
+                    generatedCvAdded = true;
                 }
+
+                // 2. Add other stats
+                // Filter out the generated one if it happens to be in the list to avoid duplicates
+                const otherDocs = docs.filter(doc => doc.id !== preSelections.cvId);
+                options += otherDocs.map(doc => `<option value="${doc.id}">${doc.filename}</option>`).join('');
+
+                cvSelect.innerHTML = options;
+
+                // Selection Logic:
+                if (generatedCvAdded) {
+                    cvSelect.value = preSelections.cvId;
+                } else if (docs.length >= 1) {
+                    // Fallback to default user CV (first in list)
+                    cvSelect.selectedIndex = preSelections.cvId ? 0 : 2; // If preSelections was passed but not added (invalid?), or just pick first real doc
+                    // Actually simpler: if we didn't add the generated one, pick the first available real doc if exists
+                    if (cvSelect.options.length > 1) {
+                        cvSelect.selectedIndex = 1;
+                    }
+                }
+            } else {
+                if (cvSelect) cvSelect.innerHTML = '<option value="">No CVs found</option>';
             }
 
             // Load Cover Letters
@@ -259,12 +291,25 @@ class JobApplyComponent {
             if (clResponse.ok && clSelect) {
                 const data = await clResponse.json();
                 const docs = data.documents || [];
-                if (docs.length > 0) {
-                    clSelect.innerHTML = '<option value="">No cover letter</option>' +
-                        docs.map(doc => `<option value="${doc.id}">${doc.filename}</option>`).join('');
-                } else {
-                    clSelect.innerHTML = '<option value="">No cover letters found</option>';
+
+                let options = '<option value="">No CL Found</option>';
+
+                let generatedClAdded = false;
+                if (preSelections.clId) {
+                    options += `<option value="${preSelections.clId}">Job Cover Letter </option>`;
+                    generatedClAdded = true;
                 }
+
+                const otherDocs = docs.filter(doc => doc.id !== preSelections.clId);
+                options += otherDocs.map(doc => `<option value="${doc.id}">${doc.filename}</option>`).join('');
+
+                clSelect.innerHTML = options;
+
+                if (generatedClAdded) {
+                    clSelect.value = preSelections.clId;
+                }
+            } else {
+                if (clSelect) clSelect.innerHTML = '<option value="">No CL found</option>';
             }
 
         } catch (error) {
@@ -305,4 +350,10 @@ class JobApplyComponent {
 
 // Initialize and expose globally as JobApply
 window.JobApply = new JobApplyComponent();
-window.JobApply.init();
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => window.JobApply.init());
+} else {
+    window.JobApply.init();
+}
