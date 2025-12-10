@@ -29,6 +29,7 @@
         initQuill();
         setupEventListeners();
         await loadPosts();
+        loadStats();
     }
 
     // Replace TinyMCE functions with Quill equivalents
@@ -132,7 +133,9 @@
                 <tr>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900">${post.title}</div>
-                        <div class="text-sm text-gray-500">${post.slug}</div>
+                        <a href="../pages/blog-post.html?slug=${post.slug}" target="_blank" class="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-1">
+                            ${post.slug} <span class="text-xs">↗</span>
+                        </a>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[post.status]}">
@@ -149,12 +152,27 @@
                         ${publishDate}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <a href="../pages/blog-post.html?slug=${post.slug}" target="_blank" class="text-gray-600 hover:text-gray-900 mr-3">View</a>
                         <button onclick="window.blogAdmin.editPost('${post.id}')" class="text-primary-600 hover:text-primary-900 mr-3">Edit</button>
                         <button onclick="window.blogAdmin.deletePost('${post.id}')" class="text-red-600 hover:text-red-900">Delete</button>
                     </td>
                 </tr>
             `;
         }).join('');
+    }
+
+    // Load stats
+    async function loadStats() {
+        try {
+            const stats = await CVision.API.request('/blog/stats');
+
+            document.getElementById('stat-total').textContent = stats.total_posts;
+            document.getElementById('stat-published').textContent = stats.published_count;
+            document.getElementById('stat-draft').textContent = stats.draft_count;
+            document.getElementById('stat-views').textContent = stats.total_views.toLocaleString();
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
     }
 
     // Open new post modal
@@ -208,6 +226,7 @@
             });
 
             await loadPosts();
+            loadStats();
         } catch (error) {
             console.error('Error deleting post:', error);
             alert('Failed to delete post');
@@ -267,6 +286,7 @@
 
             closeModal();
             await loadPosts();
+            loadStats();
         } catch (error) {
             console.error('Error saving post:', error);
             alert(`Failed to save post: ${error.message}`);
@@ -352,6 +372,7 @@
 
             alert(`Successfully created ${createdCount} mock posts!`);
             await loadPosts();
+            loadStats();
         } catch (error) {
             console.error('Error creating mock posts:', error);
             alert('Failed to create mock posts');

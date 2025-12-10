@@ -24,6 +24,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
 
+
+
 router = APIRouter()
 
 
@@ -33,6 +35,16 @@ async def get_blog_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> 
     await service.ensure_indexes()
     return service
 
+
+@router.get("/stats")
+async def get_blog_stats(
+    current_user: dict = Depends(require_admin),
+    blog_service: BlogService = Depends(get_blog_service)
+):
+    """
+    Get blog statistics (Admin only)
+    """
+    return await blog_service.get_blog_stats()
 
 @router.post("/posts", response_model=BlogPostResponse, status_code=status.HTTP_201_CREATED)
 async def create_blog_post(

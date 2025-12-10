@@ -284,3 +284,45 @@ class BlogService:
         # Truncate at word boundary
         excerpt = clean_content[:max_length].rsplit(' ', 1)[0]
         return excerpt + "..."
+
+    async def get_blog_stats(self) -> Dict[str, Any]:
+        """
+        Get blog statistics (counts by status, views, etc.)
+        """
+        pipeline = [
+            {
+                "$group": {
+                    "_id": None,
+                    "total_posts": {"$sum": 1},
+                    "total_views": {"$sum": "$views"},
+                    "published_count": {
+                        "$sum": {
+                            "$cond": [{"$eq": ["$status", BlogStatus.PUBLISHED.value]}, 1, 0]
+                        }
+                    },
+                    "draft_count": {
+                        "$sum": {
+                            "$cond": [{"$eq": ["$status", BlogStatus.DRAFT.value]}, 1, 0]
+                        }
+                    },
+                    "archived_count": {
+                        "$sum": {
+                            "$cond": [{"$eq": ["$status", BlogStatus.ARCHIVED.value]}, 1, 0]
+                        }
+                    }
+                }
+            }
+        ]
+
+        result = await self.collection.aggregate(pipeline).to_list(1)
+        
+        if not result:
+            return {
+                "total_posts": 0,
+                "total_views": 0,
+                "published_count": 0,
+                "draft_count": 0,
+                "archived_count": 0
+            }
+            
+        return {k: v for k, v in result[0].items() if k != "_id"}
