@@ -8,6 +8,8 @@ from .user import *
 from .job import *
 from .application import *
 from .subscription import *
+from .email_analysis import *
+
 
 __all__ = [
     # Common models
@@ -78,4 +80,11 @@ __all__ = [
     "PaymentMethod",
     "Invoice",
     "SubscriptionStats",
+    
+    # Email Analysis models
+    "EmailResponseCategory",
+    "EmailAnalysisResult",
+    "ApplicationUpdateResult",
+    "AnalyzeEmailRequest",
+    "EmailResponseData",
 ]

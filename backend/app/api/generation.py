@@ -128,10 +128,20 @@ async def customize_cv_for_job(
             job_data=job
         )
         
-        if not cv_result["success"]:
+        # Handle if cv_result is not a dict (shouldn't happen, but defensive programming)
+        if not isinstance(cv_result, dict):
+            logger.error(f"cv_result is not a dict: {type(cv_result)}, value: {cv_result}")
             raise HTTPException(
                 status_code=500,
-                detail=f"CV customization failed: {cv_result.get('error', 'Unknown error')}"
+                detail=f"CV customization failed: Invalid response type"
+            )
+        
+        if not cv_result.get("success"):
+            error_msg = cv_result.get('error', 'Unknown error')
+            logger.error(f"CV customization failed: {error_msg}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"CV customization failed: {error_msg}"
             )
         
         customized_cv = cv_result["customized_cv"]

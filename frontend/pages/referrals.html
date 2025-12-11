@@ -22,7 +22,7 @@
                 <div>
                     <h1 class="text-4xl font-bold mb-4">Earn Rewards by Referring Friends</h1>
                     <p class="text-xl text-blue-100 mb-6">Share CVision AI with your network and get rewarded with bonus
-                        job searches!</p>
+                        applications!</p>
                     <ul class="space-y-3 text-blue-50">
                         <li class="flex items-start">
                             <svg class="w-6 h-6 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -30,7 +30,7 @@
                                     d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                     clip-rule="evenodd" />
                             </svg>
-                            <span>Get bonus searches for each successful referral</span>
+                            <span>Get 5 manual + 5 auto applications per 5 paid referrals</span>
                         </li>
                         <li class="flex items-start">
                             <svg class="w-6 h-6 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -115,16 +115,16 @@
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-sm font-medium text-gray-600">Bonus Searches</h3>
+                    <h3 class="text-sm font-medium text-gray-600">Bonus Applications</h3>
                     <div class="bg-purple-100 rounded-full p-2">
                         <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
                 </div>
-                <p id="bonusSearches" class="text-3xl font-bold text-gray-900">0</p>
-                <p class="text-sm text-gray-500 mt-1">Searches earned</p>
+                <p id="bonusApplications" class="text-3xl font-bold text-gray-900">0</p>
+                <p class="text-sm text-gray-500 mt-1">Applications earned</p>
             </div>
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -144,141 +144,12 @@
 
         <!-- Rewards Tier Explanation -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
-            <h2 class="text-2xl font-bold mb-6">Rewards by Subscription Tier</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="border-2 border-gray-200 rounded-lg p-6 hover:border-blue-500 transition-colors">
-                    <div class="flex items-center mb-4">
-                        <div class="bg-gray-100 rounded-full p-3 mr-3">
-                            <svg class="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                                <path fill-rule="evenodd"
-                                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-bold">Free Tier</h3>
-                    </div>
-                    <p class="text-gray-600 mb-4">Build your referral base</p>
-                    <ul class="space-y-2">
-                        <li class="flex items-start text-sm">
-                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span>1 bonus search per 5 referrals</span>
-                        </li>
-                        <li class="flex items-start text-sm">
-                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span>Unlimited referral invites</span>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="border-2 border-blue-500 rounded-lg p-6 relative">
-                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                        <span class="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-semibold">POPULAR</span>
-                    </div>
-                    <div class="flex items-center mb-4">
-                        <div class="bg-blue-100 rounded-full p-3 mr-3">
-                            <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                                <path fill-rule="evenodd"
-                                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-bold">Basic Tier</h3>
-                    </div>
-                    <p class="text-gray-600 mb-4">Accelerate your rewards</p>
-                    <ul class="space-y-2">
-                        <li class="flex items-start text-sm">
-                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span><strong>2 bonus searches</strong> per referral</span>
-                        </li>
-                        <li class="flex items-start text-sm">
-                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span>Instant reward activation</span>
-                        </li>
-                        <li class="flex items-start text-sm">
-                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span>Priority referral tracking</span>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="border-2 border-purple-500 rounded-lg p-6">
-                    <div class="flex items-center mb-4">
-                        <div class="bg-purple-100 rounded-full p-3 mr-3">
-                            <svg class="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                                <path fill-rule="evenodd"
-                                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-bold">Premium Tier</h3>
-                    </div>
-                    <p class="text-gray-600 mb-4">Maximum earning potential</p>
-                    <ul class="space-y-2">
-                        <li class="flex items-start text-sm">
-                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span><strong>5 bonus searches</strong> per referral</span>
-                        </li>
-                        <li class="flex items-start text-sm">
-                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span>Bonus multiplier events</span>
-                        </li>
-                        <li class="flex items-start text-sm">
-                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span>Dedicated referral support</span>
-                        </li>
-                        <li class="flex items-start text-sm">
-                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span>Exclusive referral contests</span>
-                        </li>
-                    </ul>
+            <h2 class="text-2xl font-bold mb-6">Referral Rewards by Subscription Tier</h2>
+            <div id="tierCardsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Tier cards will be dynamically loaded from backend -->
+                <div class="text-center py-12 col-span-3">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                    <p class="text-gray-500 mt-4">Loading tier information...</p>
                 </div>
             </div>
         </div>

@@ -43,33 +43,33 @@ class SubscriptionService:
                 id="plan_free",
                 name="Free Plan",
                 tier=SubscriptionTier.FREE,
-                description="Get started with basic features",
+                description="Get started with manual applications",
                 price=Money(amount=0, currency=Currency.USD),
                 billing_interval="monthly",
                 trial_period_days=0,
                 limits=SubscriptionLimits(
-                    monthly_job_searches=create_limit("monthly_job_searches", 10),
-                    monthly_applications=create_limit("monthly_applications", 5),
-                    monthly_cv_generations=create_limit("monthly_cv_generations", 1),
-                    monthly_cover_letters=create_limit("monthly_cover_letters", 0),
+                    monthly_job_searches=create_limit("monthly_job_searches", 9999),  # Unlimited searches
+                    monthly_applications=create_limit("monthly_applications", 5),  # 5 manual apps/month
+                    monthly_cv_generations=create_limit("monthly_cv_generations", 0),  # No CV customization
+                    monthly_cover_letters=create_limit("monthly_cover_letters", 0),  # No cover letters
                     concurrent_applications=create_limit("concurrent_applications", 1, "instant", False),
-                    max_jobs_per_search=3,
+                    max_jobs_per_search=50,  # Unlimited search results
                     api_rate_limit_per_minute=10,
-                    storage_mb=10,
+                    storage_mb=50,
                     team_members=1,
                     advanced_analytics=False,
                     priority_support=False,
                     white_label=False,
                     custom_integrations=False,
                     bulk_operations=False,
-                    export_formats=["pdf"],
+                    export_formats=[],  # No exports
                     ai_model_version="basic",
-                    data_retention_days=7
+                    data_retention_days=30
                 ),
                 features=[
-                    "10 job searches per month",
-                    "Up to 3 jobs per search",
-                    "Basic CV customization",
+                    "5 manual applications per month",
+                    "No auto-apply",
+                    "No CV customization",
                     "Email support"
                 ],
                 is_active=True,
@@ -80,35 +80,35 @@ class SubscriptionService:
                 name="Basic Plan",
                 tier=SubscriptionTier.BASIC,
                 description="Perfect for active job seekers",
-                price=Money(amount=2000, currency=Currency.USD),
+                price=Money(amount=2000, currency=Currency.USD),  # $20/month
                 billing_interval="monthly",
                 trial_period_days=7,
                 limits=SubscriptionLimits(
-                    monthly_job_searches=create_limit("monthly_job_searches", 100),
-                    monthly_applications=create_limit("monthly_applications", 50),
-                    monthly_cv_generations=create_limit("monthly_cv_generations", 20),
-                    monthly_cover_letters=create_limit("monthly_cover_letters", 20),
-                    concurrent_applications=create_limit("concurrent_applications", 5, "instant", False),
-                    max_jobs_per_search=10,
-                    api_rate_limit_per_minute=30,
-                    storage_mb=100,
+                    monthly_job_searches=create_limit("monthly_job_searches", 9999),  # Unlimited searches
+                    monthly_applications=create_limit("monthly_applications", 9999),  # Unlimited manual apps
+                    monthly_cv_generations=create_limit("monthly_cv_generations", 9999),
+                    monthly_cover_letters=create_limit("monthly_cover_letters", 9999),
+                    concurrent_applications=create_limit("concurrent_applications", 20, "daily", True),  # 20 auto-apps/day
+                    max_jobs_per_search=50,
+                    api_rate_limit_per_minute=50,
+                    storage_mb=500,
                     team_members=1,
-                    advanced_analytics=False,
+                    advanced_analytics=True,
                     priority_support=True,
                     white_label=False,
                     custom_integrations=False,
                     bulk_operations=True,
                     export_formats=["pdf", "docx"],
                     ai_model_version="standard",
-                    data_retention_days=30
+                    data_retention_days=60
                 ),
                 features=[
-                    "100 job searches per month",
-                    "Up to 10 jobs per search",
+                    "Unlimited manual applications",
+                    "20 auto-applications per day",
                     "Premium CV templates",
                     "AI-powered cover letters",
                     "Priority support",
-                    "Basic analytics"
+                    "Advanced analytics"
                 ],
                 is_popular=True,
                 is_active=True,
@@ -120,19 +120,19 @@ class SubscriptionService:
                 name="Premium Plan",
                 tier=SubscriptionTier.PREMIUM,
                 description="Full automation for serious professionals",
-                price=Money(amount=4900, currency=Currency.USD),
+                price=Money(amount=4900, currency=Currency.USD),  # $49/month
                 billing_interval="monthly",
                 trial_period_days=14,
                 limits=SubscriptionLimits(
-                    monthly_job_searches=create_limit("monthly_job_searches", 9999),
-                    monthly_applications=create_limit("monthly_applications", 9999),
+                    monthly_job_searches=create_limit("monthly_job_searches", 9999),  # Unlimited searches
+                    monthly_applications=create_limit("monthly_applications", 9999),  # Unlimited manual apps
                     monthly_cv_generations=create_limit("monthly_cv_generations", 9999),
                     monthly_cover_letters=create_limit("monthly_cover_letters", 9999),
-                    concurrent_applications=create_limit("concurrent_applications", 20, "instant", False),
-                    max_jobs_per_search=50,
-                    api_rate_limit_per_minute=100,
-                    storage_mb=1000,
-                    team_members=3,
+                    concurrent_applications=create_limit("concurrent_applications", 9999, "instant", False),  # Unlimited auto-apps
+                    max_jobs_per_search=100,
+                    api_rate_limit_per_minute=200,
+                    storage_mb=2000,
+                    team_members=5,
                     advanced_analytics=True,
                     priority_support=True,
                     white_label=True,
@@ -140,17 +140,18 @@ class SubscriptionService:
                     bulk_operations=True,
                     export_formats=["pdf", "docx", "html", "json"],
                     ai_model_version="advanced",
-                    data_retention_days=90
+                    data_retention_days=180
                 ),
                 features=[
-                    "Unlimited job searches",
-                    "Unlimited applications",
-                    "All premium features",
+                    "Unlimited manual applications",
+                    "Unlimited auto-applications",
+                    "Full automation enabled",
                     "Advanced ML autofill",
                     "24/7 priority support",
                     "Advanced analytics dashboard",
-                    "Team collaboration (3 seats)",
-                    "API access"
+                    "Team collaboration (5 seats)",
+                    "API access",
+                    "White-label options"
                 ],
                 is_active=True,
                 sort_order=2,

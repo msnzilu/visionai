@@ -45,7 +45,7 @@ class CVCustomizationService:
             
             # Call OpenAI for customization
             logger.debug("Calling OpenAI chat completion")
-            customization_result = await openai_client.chat_completion(
+            customized_content = await openai_client.chat_completion(
                 messages=[
                     {
                         "role": "system",
@@ -59,9 +59,8 @@ class CVCustomizationService:
                 temperature=0.7,
                 max_tokens=3000
             )
-            logger.debug(f"OpenAI response: {customization_result}")
+            logger.debug(f"OpenAI response: {customized_content}")
             
-            customized_content = customization_result.get("content", "")
             if not customized_content:
                 logger.error("Empty response from OpenAI")
                 return {
@@ -85,7 +84,6 @@ class CVCustomizationService:
             return {
                 "success": True,
                 "customized_cv": customized_cv,
-                "optimization_notes": customization_result.get("metadata", {}),
                 "job_match_score": match_score
             }
             

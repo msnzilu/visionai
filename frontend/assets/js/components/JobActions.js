@@ -203,13 +203,132 @@ class JobActionComponent {
         const modal = document.getElementById('customizeModal');
         if (!modal) return;
 
+        // Check generation limits first
+        const canGenerate = await this.checkGenerationLimits();
+        if (!canGenerate) {
+            // Show upgrade prompt instead of opening modal
+            this.showUpgradePrompt();
+            return;
+        }
+
         // Reset state
         if (window.resetProgressBar) window.resetProgressBar();
         modal.classList.remove('hidden');
         modal.classList.add('flex');
 
         await this.loadCVs();
-        this.checkLimits();
+    }
+
+    async checkGenerationLimits() {
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/users/me`, {
+                headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+            });
+
+            if (response.ok) {
+                const user = await response.json();
+                const tier = user.subscription_tier || 'free';
+                
+                // Get usage stats
+                const statsResponse = await fetch(`${CONFIG.API_BASE_URL}/api/v1/applications/stats/overview`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    const generationsUsed = stats.cv_generations_this_month || 0;
+                    
+                    // Check limits based on tier
+                    const limits = {
+                        'free': 0,  // Free tier has no CV customization
+                        'basic': 9999,  // Unlimited for basic
+                        'premium': 9999  // Unlimited for premium
+                    };
+
+                    const limit = limits[tier] || 0;
+                    return generationsUsed < limit;
+                }
+            }
+            return true; // If we can't check, allow it (will fail at backend)
+        } catch (error) {
+            console.error('Failed to check limits:', error);
+            return true; // If we can't check, allow it
+        }
+    }
+
+    showUpgradePrompt() {
+        const closeModal = () => {
+            // Try to close SweetAlert if it exists
+            if (window.Swal) {
+                Swal.close();
+            }
+            // Try to close fallback modal
+            const fallbackModal = document.getElementById('upgradePromptModal');
+            if (fallbackModal) {
+                fallbackModal.remove();
+            }
+        };
+
+        const message = `
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">CV Customization Not Available</h3>
+                <p class="text-sm text-gray-500 mb-4">CV customization is only available for Basic and Premium subscribers.</p>
+                <div class="flex gap-3 justify-center">
+                    <button id="upgradePromptCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <a href="subscription.html" class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg">
+                        Upgrade Now
+                    </a>
+                </div>
+            </div>
+        `;
+
+        // Use SweetAlert2 if available, otherwise use native alert
+        if (window.Swal) {
+            Swal.fire({
+                html: message,
+                showConfirmButton: false,
+                showCloseButton: true,
+                customClass: {
+                    popup: 'rounded-xl'
+                },
+                didOpen: () => {
+                    document.getElementById('upgradePromptCancel')?.addEventListener('click', closeModal);
+                }
+            });
+        } else {
+            // Fallback to custom modal
+            const modalHTML = `
+                <div id="upgradePromptModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div class="bg-white rounded-xl max-w-md w-full p-6">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Attach event listeners
+            setTimeout(() => {
+                const modal = document.getElementById('upgradePromptModal');
+                const cancelBtn = document.getElementById('upgradePromptCancel');
+                
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', closeModal);
+                }
+                
+                if (modal) {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) closeModal();
+                    });
+                }
+            }, 100);
+        }
     }
 
     closeModal() {
@@ -272,6 +391,21 @@ class JobActionComponent {
         const includeCoverLetter = document.getElementById('includeCoverLetter').checked;
         const tone = document.getElementById('toneSelect').value;
 
+        // Disable the generate button to prevent multiple clicks
+        const generateBtn = event?.target || document.querySelector('button[onclick*="handleGenerate"]');
+        const originalBtnText = generateBtn?.innerHTML;
+        if (generateBtn) {
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 mr-2 inline" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating...
+            `;
+            generateBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        }
+
         if (window.showProgressBar) window.showProgressBar();
 
         try {
@@ -320,6 +454,13 @@ class JobActionComponent {
             console.error('Generation failed', error);
             if (window.showProgressError) window.showProgressError(error.message);
             else CVision.Utils.showAlert(error.message, 'error');
+        } finally {
+            // Re-enable the button
+            if (generateBtn) {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = originalBtnText || 'Generate Documents';
+                generateBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
         }
     }
 

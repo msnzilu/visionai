@@ -32,7 +32,7 @@ function updateProgress(step, text) {
                 const prevStepCheck = prevStepEl.querySelector('.step-check');
 
                 if (prevStepNumber) {
-                    prevStepNumber.classList.add('hidden', 'text-white');
+                    prevStepNumber.classList.add('text-white');
                 }
                 if (prevStepCheck) {
                     prevStepCheck.classList.remove('hidden');
@@ -65,9 +65,7 @@ function updateProgress(step, text) {
             // Mark the step element as completed
             stepEl.setAttribute('data-completed', 'true');
 
-            if (stepNumber) {
-                stepNumber.classList.add('hidden');
-            }
+            // Show checkmark alongside number (don't hide number)
             const stepCheck = stepEl.querySelector('.step-check');
             if (stepCheck) {
                 stepCheck.classList.remove('hidden');

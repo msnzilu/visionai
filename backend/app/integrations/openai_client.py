@@ -273,42 +273,165 @@ class OpenAIClient:
             logger.error(f"OpenAI API error: {e}")
             raise
     
-    async def chat_completion(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: int = 3000) -> Dict[str, Any]:
+    async def chat_completion(self, messages: List[Dict[str, str]], 
+                            temperature: float = 0.7, max_tokens: int = 3000):
         """
         Generic method for chat completions with OpenAI
         """
         if not self.client:
-            logger.warning("OpenAI client not configured - returning empty response")
-            return {
-                "content": "",
-                "error": "OpenAI client not configured"
-            }
-
+            logger.warning("OpenAI client not available, returning mock response")
+            return "Mock response - OpenAI not configured"
+        
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                max_tokens=max_tokens,
-                temperature=temperature
+                temperature=temperature,
+                max_tokens=max_tokens
             )
-
-            return {
-                "content": response.choices[0].message.content.strip(),
-                "metadata": {
-                    "model": response.model,
-                    "usage": {
-                        "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
-                        "completion_tokens": response.usage.completion_tokens if response.usage else 0,
-                        "total_tokens": response.usage.total_tokens if response.usage else 0
-                    } if response.usage else {}
-                }
-            }
-
+            
+            return response.choices[0].message.content
+            
         except Exception as e:
-            logger.error(f"OpenAI chat completion error: {e}")
+            logger.error(f"Error in OpenAI chat completion: {e}")
+            if "rate_limit" in str(e).lower():
+                raise HTTPException(
+                    status_code=429,
+                    detail="OpenAI API rate limit exceeded. Please try again later."
+                )
+            elif "insufficient_quota" in str(e).lower():
+                raise HTTPException(
+                    status_code=402,
+                    detail="OpenAI API quota exceeded. Please check your billing."
+                )
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error generating AI response: {str(e)}"
+                )
+    
+    async def analyze_email_response(
+        self,
+        email_content: str,
+        email_subject: str,
+        context: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Analyze email response using GPT-4 to determine intent and category
+        
+        Args:
+            email_content: Email body text
+            email_subject: Email subject line
+            context: Optional context (sender email, application details, etc.)
+            
+        Returns:
+            {
+                "category": str,  # One of: interview_invitation, rejection, offer, etc.
+                "confidence": float,  # 0.0 to 1.0
+                "reasoning": str,  # Explanation of classification
+                "suggested_action": str,  # Recommended action
+                "key_information": Dict[str, Any]  # Extracted dates, times, requirements
+            }
+        """
+        if not self.client:
+            logger.warning("OpenAI client not available for email analysis")
             return {
-                "content": "",
-                "error": str(e)
+                "category": "unknown",
+                "confidence": 0.0,
+                "reasoning": "OpenAI not configured",
+                "suggested_action": "manual_review",
+                "key_information": {}
+            }
+        
+        try:
+            system_prompt = """You are an expert email classifier for job applications. 
+Analyze the email and classify it into one of these categories:
+- interview_invitation: Email inviting candidate to interview
+- rejection: Email rejecting the application
+- offer: Email extending a job offer
+- information_request: Email requesting additional information/documents
+- follow_up_required: Email requiring follow-up from candidate
+- acknowledgment: Email acknowledging receipt of application
+- scheduling_request: Email requesting candidate to schedule/confirm time
+- unknown: Cannot determine category
+
+Return a JSON object with:
+{
+    "category": "<category>",
+    "confidence": <0.0-1.0>,
+    "reasoning": "<brief explanation>",
+    "suggested_action": "<what should happen next>",
+    "key_information": {
+        "dates": [],
+        "times": [],
+        "requirements": [],
+        "deadline": null,
+        "interviewer_name": null,
+        "meeting_link": null
+    }
+}
+
+Be conservative with confidence scores. Only give >0.9 for very clear cases."""
+
+            user_prompt = f"""Subject: {email_subject}
+
+Content: {email_content}
+
+Context: {json.dumps(context or {})}
+
+Analyze this email and classify it."""
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+            
+            response = await self.chat_completion(
+                messages=messages,
+                temperature=0.3,  # Lower temperature for more consistent classification
+                max_tokens=500
+            )
+            
+            # Parse JSON response
+            try:
+                result = json.loads(response)
+                
+                # Validate and normalize
+                if "category" not in result:
+                    result["category"] = "unknown"
+                if "confidence" not in result:
+                    result["confidence"] = 0.5
+                if "reasoning" not in result:
+                    result["reasoning"] = "No reasoning provided"
+                if "suggested_action" not in result:
+                    result["suggested_action"] = "review"
+                if "key_information" not in result:
+                    result["key_information"] = {}
+                
+                # Ensure confidence is in valid range
+                result["confidence"] = max(0.0, min(1.0, float(result["confidence"])))
+                
+                return result
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse AI response as JSON: {e}")
+                logger.error(f"Response was: {response}")
+                return {
+                    "category": "unknown",
+                    "confidence": 0.0,
+                    "reasoning": "Failed to parse AI response",
+                    "suggested_action": "manual_review",
+                    "key_information": {}
+                }
+            
+        except Exception as e:
+            logger.error(f"Error in AI email analysis: {e}")
+            return {
+                "category": "unknown",
+                "confidence": 0.0,
+                "reasoning": f"Error: {str(e)}",
+                "suggested_action": "manual_review",
+                "key_information": {}
             }
 
     def _get_mock_cv_data(self) -> Dict[str, Any]:

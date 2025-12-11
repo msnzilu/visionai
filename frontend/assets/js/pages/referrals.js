@@ -17,10 +17,103 @@ document.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([
         loadReferralCode(),
         loadReferralStats(),
+        loadTierCards(),
         loadReferralList(),
         loadRecentActivity()
     ]);
 });
+
+/**
+ * Load tier cards from backend subscription plans
+ */
+async function loadTierCards() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/plans`);
+        
+        if (response.ok) {
+            const plans = await response.json();
+            displayTierCards(plans);
+        } else {
+            throw new Error('Failed to load plans');
+        }
+    } catch (error) {
+        console.error('Error loading tier cards:', error);
+        document.getElementById('tierCardsContainer').innerHTML = `
+            <div class="text-center py-12 col-span-3">
+                <p class="text-red-500">Failed to load tier information</p>
+                <button onclick="loadTierCards()" class="mt-4 text-blue-600 hover:text-blue-700">Try Again</button>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Display tier cards
+ */
+function displayTierCards(plans) {
+    const container = document.getElementById('tierCardsContainer');
+    const tierColors = {
+        'free': { border: 'border-gray-200', bg: 'bg-gray-100', text: 'text-gray-600' },
+        'basic': { border: 'border-blue-500', bg: 'bg-blue-100', text: 'text-blue-600' },
+        'premium': { border: 'border-purple-500', bg: 'bg-purple-100', text: 'text-purple-600' }
+    };
+    
+    container.innerHTML = plans.map(plan => {
+        const tier = plan.tier || 'free';
+        const colors = tierColors[tier] || tierColors.free;
+        const isPopular = plan.is_popular;
+        
+        // Determine referral reward text
+        let rewardText = '';
+        if (tier === 'free') {
+            rewardText = 'No rewards (only paid referrals count)';
+        } else {
+            rewardText = '<strong>5 manual + 5 auto applications</strong> per 5 paid referrals';
+        }
+        
+        return `
+            <div class="border-2 ${colors.border} rounded-lg p-6 ${isPopular ? 'relative' : ''} hover:shadow-lg transition-shadow">
+                ${isPopular ? `
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <span class="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-semibold">POPULAR</span>
+                    </div>
+                ` : ''}
+                <div class="flex items-center mb-4">
+                    <div class="${colors.bg} rounded-full p-3 mr-3">
+                        <svg class="w-6 h-6 ${colors.text}" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                            <path fill-rule="evenodd"
+                                d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold">${plan.name}</h3>
+                </div>
+                <p class="text-gray-600 mb-4">${plan.description}</p>
+                <ul class="space-y-2">
+                    <li class="flex items-start text-sm">
+                        <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        <span>${rewardText}</span>
+                    </li>
+                    ${plan.features.slice(0, 3).map(feature => `
+                        <li class="flex items-start text-sm">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            <span>${feature}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+    }).join('');
+}
 
 /**
  * Load user's referral code
@@ -86,9 +179,13 @@ function updateStatsDisplay() {
     if (!referralStats) return;
 
     document.getElementById('totalReferrals').textContent = referralStats.total_referrals || 0;
-    document.getElementById('activeReferrals').textContent = referralStats.active_referrals || 0;
-    document.getElementById('bonusSearches').textContent = referralStats.total_rewards_earned || 0;
-    document.getElementById('pendingRewards').textContent = referralStats.pending_rewards || 0;
+    document.getElementById('activeReferrals').textContent = referralStats.paid_referrals || 0;
+    
+    // Show total bonus applications (manual + auto)
+    const bonusApps = (referralStats.bonus_manual_applications || 0) + (referralStats.bonus_auto_applications || 0);
+    document.getElementById('bonusApplications').textContent = bonusApps;
+    
+    document.getElementById('pendingRewards').textContent = referralStats.next_reward_in || 0;
 }
 
 /**
@@ -201,7 +298,7 @@ function displayReferralList(referrals, total, totalPages) {
                 <div class="text-right">
                     ${ref.reward_amount ? `
                         <p class="text-2xl font-bold text-green-600">+${ref.reward_amount}</p>
-                        <p class="text-xs text-gray-500">searches</p>
+                        <p class="text-xs text-gray-500">applications</p>
                     ` : `
                         <p class="text-sm text-gray-500">No reward yet</p>
                     `}
@@ -383,7 +480,7 @@ function shareViaEmail() {
     const subject = encodeURIComponent('Join me on CVision AI - AI-Powered Job Applications');
     const body = encodeURIComponent(
         `Hey! I've been using CVision AI for my job search and it's amazing. It uses AI to automatically find and apply to jobs that match my profile.\n\n` +
-        `Use my referral code ${userReferralCode} when you sign up and we both get bonus searches!\n\n` +
+        `Use my referral code ${userReferralCode} when you sign up and we both get bonus applications!\n\n` +
         `Sign up here: ${window.location.origin}/signup.html?ref=${userReferralCode}`
     );
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
@@ -394,7 +491,7 @@ function shareViaEmail() {
  */
 function shareViaTwitter() {
     const text = encodeURIComponent(
-        `I'm using CVision AI for automated job applications. Join me with code ${userReferralCode} and get bonus searches!`
+        `I'm using CVision AI for automated job applications. Join me with code ${userReferralCode} and get bonus applications!`
     );
     const url = encodeURIComponent(`${window.location.origin}/signup.html?ref=${userReferralCode}`);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
@@ -536,6 +633,7 @@ setInterval(() => {
 }, 60000);
 
 // Make functions globally available
+window.loadTierCards = loadTierCards;
 window.copyReferralCode = copyReferralCode;
 window.copyReferralLink = copyReferralLink;
 window.shareViaEmail = shareViaEmail;

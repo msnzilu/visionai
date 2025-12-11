@@ -630,6 +630,15 @@ async function setFollowUp(appId) {
     showActionModal('followup', appId);
 }
 
+// Make saveJob available globally for generation.js
+window.saveJob = saveJob;
+
+// ==================== EMAIL ANALYSIS - USE COMPONENT ====================
+// Email analysis functionality is now handled by the EmailAnalysisComponent
+// The component is loaded via /assets/js/components/EmailAnalysis.js
+// Usage: EmailAnalysisComponent.renderAnalysisSection(app, 'containerId')
+//        EmailAnalysisComponent.analyzeEmail(appId)
+
 async function loadUpcomingInterviews() {
     const container = document.getElementById('interviewsList');
     if (!container) return;
@@ -1169,6 +1178,8 @@ function displayApplicationModal(app, timeline) {
         </div>
         ` : ''}
         
+        <div id="emailAnalysisSection"></div>
+        
         <div class="mb-6">
             <h3 class="text-lg font-semibold mb-3">Quick Actions</h3>
             <div class="mb-4">
@@ -1196,6 +1207,11 @@ function displayApplicationModal(app, timeline) {
     const modal = document.getElementById('applicationModal');
     if (modal) {
         modal.classList.remove('hidden');
+    }
+    
+    // Render email analysis section using component
+    if (window.EmailAnalysisComponent) {
+        window.EmailAnalysisComponent.renderAnalysisSection(app, 'emailAnalysisSection');
     }
 }
 

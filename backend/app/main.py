@@ -301,6 +301,18 @@ try:
 except ImportError as e:
     logger.warning(f"Blog router not available: {e}")
 
+try:
+    from app.api.email_analysis import router as email_analysis_router
+    app.include_router(
+        email_analysis_router,
+        prefix=f"{settings.API_V1_STR}/email-analysis",
+        tags=["Email Analysis"]
+    )
+    logger.info("Email analysis router loaded")
+except ImportError as e:
+    logger.warning(f"Email analysis router not available: {e}")
+
+
 
 
 # Catch-all for missing routes during development

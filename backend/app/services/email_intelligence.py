@@ -7,10 +7,12 @@ from bson import ObjectId
 from app.models.user import User, GmailAuth
 from app.models.application import Application, ApplicationStatus
 from app.services.gmail_service import gmail_service
+from app.services.email_response_analyzer import email_response_analyzer
 from app.database import get_applications_collection, get_users_collection
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 class EmailIntelligenceService:
     def __init__(self, db):
@@ -42,28 +44,18 @@ class EmailIntelligenceService:
 
     async def _check_thread_for_updates(self, app: Dict, auth: GmailAuth, collection):
         """
-        Check a specific thread for new messages.
+        Check a specific thread for new messages and analyze them.
         """
         thread_id = app["email_thread_id"]
         try:
-            # Get thread details
-            # We need to implement get_thread in GmailService or just use get_message for the latest
-            # But list_messages with q=threadId might be better to see if there are new ones
-            
-            # Simplified: List messages in thread
+            # List messages in thread
             messages = gmail_service.list_messages(auth, query=f"threadId:{thread_id}", max_results=10)
             
             if not messages:
                 return
 
-            # Sort by internalDate (timestamp)
-            # We need to fetch details for the latest message
-            latest_msg_id = messages[0]["id"] # List returns latest first usually? No, order not guaranteed.
-            
-            # Actually list_messages returns a list of message summaries.
-            # We should get the thread details to be sure.
-            # For now, let's just get the latest message content.
-            
+            # Get the latest message
+            latest_msg_id = messages[0]["id"]
             message_detail = gmail_service.get_message(auth, latest_msg_id)
             
             # Check if this message is newer than our last check
@@ -72,9 +64,9 @@ class EmailIntelligenceService:
             
             last_email_at = app.get("last_email_at")
             if last_email_at and msg_date <= last_email_at:
-                return # No new messages
+                return  # No new messages
             
-            # Analyze message
+            # Extract email details
             headers = {h["name"]: h["value"] for h in message_detail["payload"]["headers"]}
             sender = headers.get("From", "")
             subject = headers.get("Subject", "")
@@ -83,49 +75,60 @@ class EmailIntelligenceService:
             # If sender is NOT the user (it's a reply)
             if auth.email_address and auth.email_address not in sender:
                 # It's a reply!
-                logger.info(f"New reply detected for app {app['_id']}")
+                logger.info(f"New reply detected for app {app['_id']} from {sender}")
                 
-                # Basic Sentiment/Keyword Analysis
-                new_status = self._analyze_reply(snippet, subject)
+                # Analyze email using new analyzer
+                analysis = await email_response_analyzer.analyze_email_response(
+                    email_content=snippet,
+                    email_subject=subject,
+                    sender_email=sender,
+                    application_id=str(app["_id"]),
+                    use_ai=True
+                )
                 
+                logger.info(
+                    f"Email analysis: category={analysis.category}, "
+                    f"confidence={analysis.confidence:.2f}, "
+                    f"ai_used={analysis.ai_used}"
+                )
+                
+                # Update last email timestamp
                 update_data = {
                     "last_email_at": msg_date,
                     "email_status": "replied"
                 }
                 
-                if new_status and new_status != app.get("status"):
-                    old_status = app.get("status", "unknown")
-                    update_data["status"] = new_status
+                # Process analysis results if confidence is high enough
+                if analysis.confidence >= email_response_analyzer.MIN_CONFIDENCE_FOR_STATUS_UPDATE and analysis.requires_action:
+                    logger.info(f"Processing analysis actions for app {app['_id']}")
                     
-                    # Trigger status notification email
-                    from app.workers.email_campaigns import send_status_notification
-                    send_status_notification.delay(
-                        str(app["_id"]),
-                        old_status,
-                        new_status
+                    # Use analyzer to update application
+                    update_result = await email_response_analyzer.update_application_from_analysis(
+                        application_id=str(app["_id"]),
+                        analysis_result=analysis,
+                        user_id=app["user_id"]
                     )
-                
-                await collection.update_one(
-                    {"_id": app["_id"]},
-                    {"$set": update_data}
-                )
+                    
+                    if update_result.success:
+                        logger.info(
+                            f"Successfully updated application {app['_id']}: "
+                            f"{', '.join(update_result.actions_taken)}"
+                        )
+                    else:
+                        logger.error(
+                            f"Failed to update application {app['_id']}: "
+                            f"{update_result.error_message}"
+                        )
+                else:
+                    # Low confidence or no action required, just update timestamp
+                    logger.info(
+                        f"Low confidence ({analysis.confidence:.2f}) or no action required "
+                        f"for app {app['_id']}, updating timestamp only"
+                    )
+                    await collection.update_one(
+                        {"_id": app["_id"]},
+                        {"$set": update_data}
+                    )
 
         except Exception as e:
             logger.error(f"Error checking thread {thread_id}: {e}")
-
-    def _analyze_reply(self, snippet: str, subject: str) -> Optional[str]:
-        """
-        Analyze email content to determine status.
-        """
-        text = (subject + " " + snippet).lower()
-        
-        if any(w in text for w in ["interview", "schedule", "availability", "chat", "call"]):
-            return ApplicationStatus.INTERVIEW_SCHEDULED
-        
-        if any(w in text for w in ["unfortunately", "regret", "not moving forward", "other candidates"]):
-            return ApplicationStatus.REJECTED
-            
-        if any(w in text for w in ["offer", "pleased to offer", "join our team"]):
-            return ApplicationStatus.OFFER_RECEIVED
-            
-        return None

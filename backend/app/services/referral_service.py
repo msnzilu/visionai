@@ -17,20 +17,11 @@ class ReferralService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         
-        # Referral rewards per tier
+        # Referral rewards: 5 applications (manual + auto) per 5 paid referrals
         self.REFERRAL_REWARDS = {
-            SubscriptionTier.FREE: {
-                "searches_per_referral": 0.2,  # 1 search per 5 referrals
-                "minimum_referrals": 5
-            },
-            SubscriptionTier.BASIC: {
-                "searches_per_referral": 2,
-                "minimum_referrals": 1
-            },
-            SubscriptionTier.PREMIUM: {
-                "searches_per_referral": 5,
-                "minimum_referrals": 1
-            }
+            "applications_per_milestone": 5,  # 5 bonus apps per milestone
+            "milestone_referrals": 5,  # Every 5 paid referrals
+            "paid_tiers": [SubscriptionTier.BASIC.value, SubscriptionTier.PREMIUM.value]
         }
     
     def generate_referral_code(self, user_id: str) -> str:
@@ -189,34 +180,43 @@ class ReferralService:
         if not program:
             return
         
-        # Get referrer's subscription tier
-        user = await self.db.users.find_one({"_id": referrer_user_id})
-        tier = SubscriptionTier(user.get("subscription_tier", "free"))
-        
-        reward_config = self.REFERRAL_REWARDS.get(tier, {})
-        searches_per_referral = reward_config.get("searches_per_referral", 0)
-        
-        # Count successful referrals
-        successful_referrals = await self.db.referrals.count_documents({
+        # Count PAID referrals (Basic or Premium subscribers only)
+        paid_referrals = await self.db.referrals.count_documents({
             "referrer_user_id": referrer_user_id,
-            "status": "completed"
+            "status": "completed",
+            "referee_user_id": {"$exists": True}
         })
         
-        # Calculate bonus searches
-        if tier == SubscriptionTier.FREE:
-            # Free tier: 1 search per 5 referrals
-            bonus_searches = successful_referrals // 5
-        else:
-            bonus_searches = int(successful_referrals * searches_per_referral)
-        
-        # Update user's bonus searches
-        await self.db.users.update_one(
-            {"_id": referrer_user_id},
-            {
-                "$set": {"referral_bonus_searches": bonus_searches},
-                "$inc": {"total_referrals": 1}
-            }
-        )
+        # Get referee's subscription to check if it's paid
+        referee_id = referral.get("referee_user_id")
+        if referee_id:
+            referee = await self.db.users.find_one({"_id": referee_id})
+            if referee:
+                referee_tier = referee.get("subscription_tier", "free")
+                
+                # Only count if referee is on paid tier (Basic or Premium)
+                if referee_tier in self.REFERRAL_REWARDS["paid_tiers"]:
+                    # Calculate milestones reached
+                    milestone_referrals = self.REFERRAL_REWARDS["milestone_referrals"]
+                    milestones_reached = paid_referrals // milestone_referrals
+                    
+                    if milestones_reached > 0:
+                        # Grant bonus applications
+                        bonus_apps = milestones_reached * self.REFERRAL_REWARDS["applications_per_milestone"]
+                        
+                        # Update user's bonus applications
+                        await self.db.users.update_one(
+                            {"_id": referrer_user_id},
+                            {
+                                "$set": {
+                                    "referral_bonus_manual_applications": bonus_apps,
+                                    "referral_bonus_auto_applications": bonus_apps
+                                },
+                                "$inc": {"total_referrals": 1}
+                            }
+                        )
+                        
+                        logger.info(f"Granted {bonus_apps} bonus applications to user {referrer_user_id} for {paid_referrals} paid referrals")
         
         # Mark reward as paid
         await self.db.referrals.update_one(
@@ -291,20 +291,40 @@ class ReferralService:
             "status": "pending"
         })
         
-        # Get user's tier and calculate bonus
-        user = await self.db.users.find_one({"_id": user_id})
-        tier = SubscriptionTier(user.get("subscription_tier", "free"))
+        # Count paid referrals (Basic or Premium subscribers)
+        paid_referrals_count = 0
+        completed_refs = await self.db.referrals.find({
+            "referrer_user_id": user_id,
+            "status": "completed",
+            "referee_user_id": {"$exists": True}
+        }).to_list(length=None)
         
-        reward_config = self.REFERRAL_REWARDS.get(tier, {})
-        bonus_searches = user.get("referral_bonus_searches", 0)
+        for ref in completed_refs:
+            referee_id = ref.get("referee_user_id")
+            if referee_id:
+                referee = await self.db.users.find_one({"_id": referee_id})
+                if referee and referee.get("subscription_tier") in self.REFERRAL_REWARDS["paid_tiers"]:
+                    paid_referrals_count += 1
+        
+        # Get user's bonus applications
+        user = await self.db.users.find_one({"_id": user_id})
+        bonus_manual_apps = user.get("referral_bonus_manual_applications", 0)
+        bonus_auto_apps = user.get("referral_bonus_auto_applications", 0)
+        
+        # Calculate next milestone
+        milestone_referrals = self.REFERRAL_REWARDS["milestone_referrals"]
+        next_reward_in = milestone_referrals - (paid_referrals_count % milestone_referrals)
         
         return {
             "total_referrals": total_referrals,
             "successful_referrals": successful_referrals,
             "pending_referrals": pending_referrals,
-            "bonus_searches_earned": bonus_searches,
+            "paid_referrals": paid_referrals_count,
+            "bonus_manual_applications": bonus_manual_apps,
+            "bonus_auto_applications": bonus_auto_apps,
+            "bonus_searches_earned": 0,  # Deprecated
             "referral_code": user.get("referral_code"),
-            "next_reward_in": reward_config.get("minimum_referrals", 1) - (successful_referrals % reward_config.get("minimum_referrals", 1))
+            "next_reward_in": next_reward_in if next_reward_in < milestone_referrals else 0
         }
     
     async def validate_referral_code(self, referral_code: str) -> bool:

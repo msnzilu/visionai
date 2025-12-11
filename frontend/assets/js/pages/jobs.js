@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initializeJobSearch();
 
+    // Parse and populate from URL parameters
+    populateFromURLParams();
+
     // Load existing jobs from database on page load
     await loadJobsFromDB();
 
@@ -72,6 +75,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
 });
+
+/**
+ * Populate search and filters from URL parameters
+ */
+function populateFromURLParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Populate search query
+    const search = urlParams.get('search');
+    if (search) {
+        document.getElementById('searchQuery').value = decodeURIComponent(search);
+        currentQuery = decodeURIComponent(search);
+    }
+    
+    // Populate location
+    const location = urlParams.get('location');
+    if (location) {
+        document.getElementById('searchLocation').value = decodeURIComponent(location);
+        currentLocation = decodeURIComponent(location);
+    }
+    
+    // Populate employment type checkboxes
+    const employmentType = urlParams.get('employment_type');
+    if (employmentType) {
+        const types = employmentType.split(',');
+        types.forEach(type => {
+            const checkbox = document.querySelector(`.employment-type[value="${type.trim()}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+    
+    // Populate work arrangement checkboxes
+    const workArrangement = urlParams.get('work_arrangement');
+    if (workArrangement) {
+        const arrangements = workArrangement.split(',');
+        arrangements.forEach(arrangement => {
+            const checkbox = document.querySelector(`.work-arrangement[value="${arrangement.trim()}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+    
+    // Populate salary range
+    const salaryMin = urlParams.get('salary_min');
+    if (salaryMin) {
+        document.getElementById('salaryMin').value = salaryMin;
+    }
+    
+    const salaryMax = urlParams.get('salary_max');
+    if (salaryMax) {
+        document.getElementById('salaryMax').value = salaryMax;
+    }
+    
+    // If search or filters are populated, trigger search automatically
+    if (search || location || employmentType || workArrangement || salaryMin || salaryMax) {
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+            performSearch();
+        }, 100);
+    }
+}
 
 async function fetchJobAndShow(jobId) {
     try {

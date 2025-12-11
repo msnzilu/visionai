@@ -349,7 +349,8 @@ async function handlePaymentSubmit(e) {
         const paystackConfig = {
             key: cleanKey,
             email: cleanEmail,
-            // currency: 'USD', 
+            // USD for global customers (Kenya and international)
+            // Paystack supports: NGN, GHS, ZAR, USD
             currency: 'USD',
             metadata: {
                 custom_fields: [

@@ -1,0 +1,32 @@
+<!-- Email Analysis Component HTML Template -->
+<!-- This can be included in any page that needs email analysis functionality -->
+
+<div id="emailAnalysisSection"></div>
+
+<style>
+    /* Email Analysis Component Styles */
+    #emailAnalysisSection .analysis-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    #emailAnalysisSection .confidence-bar {
+        transition: width 0.5s ease-in-out;
+    }
+
+    #emailAnalysisSection details summary {
+        list-style: none;
+    }
+
+    #emailAnalysisSection details summary::-webkit-details-marker {
+        display: none;
+    }
+
+    #emailAnalysisSection details[open] summary {
+        margin-bottom: 0.5rem;
+    }
+</style>
