@@ -125,88 +125,48 @@
 
         <!-- Tabs -->
         <div class="mb-6 border-b border-gray-200">
-            <nav class="-mb-px flex space-x-8 overflow-x-auto">
+            <nav class="-mb-px flex space-x-4 md:space-x-8 overflow-x-auto scrollbar-hide" aria-label="Tabs">
                 <button onclick="switchTab('applications')" id="tab-applications"
-                    class="tab-button border-b-2 border-primary-600 text-primary-600 py-4 px-1 text-sm font-medium whitespace-nowrap">Applications</button>
+                    class="tab-button border-b-2 border-primary-600 text-primary-600 py-4 px-1 text-sm font-medium whitespace-nowrap">
+                    <span class="md:hidden">Apps</span>
+                    <span class="hidden md:inline">Applications</span>
+                </button>
                 <button onclick="switchTab('responses')" id="tab-responses"
-                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">Received
-                    Responses</button>
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">
+                    <span class="md:hidden">Responses</span>
+                    <span class="hidden md:inline">Received Responses</span>
+                </button>
                 <button onclick="switchTab('followups')" id="tab-followups"
-                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">Need
-                    Follow Up</button>
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">
+                    <span class="md:hidden">Follow Up</span>
+                    <span class="hidden md:inline">Need Follow Up</span>
+                </button>
                 <button onclick="switchTab('interviews')" id="tab-interviews"
-                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">Upcoming
-                    Interviews</button>
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">
+                    <span class="md:hidden">Interviews</span>
+                    <span class="hidden md:inline">Upcoming Interviews</span>
+                </button>
                 <button onclick="switchTab('saved')" id="tab-saved"
-                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">Saved
-                    Jobs</button>
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">
+                    <span class="md:hidden">Saved</span>
+                    <span class="hidden md:inline">Saved Jobs</span>
+                </button>
             </nav>
         </div>
 
-        <div id="content-applications" class="tab-content">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                <!-- Filters (same as before) -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select id="filter-status" onchange="loadApplications()"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                            <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="applied">Applied</option>
-                            <option value="screening">Screening</option>
-                            <option value="interview">Interview</option>
-                            <option value="offer">Offer</option>
-                            <option value="accepted">Accepted</option>
-                            <option value="rejected">Rejected</option>
-                            <option value="withdrawn">Withdrawn</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                        <select id="filter-priority" onchange="loadApplications()"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                            <option value="">All Priorities</option>
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
-                        <input type="text" id="filter-company" onchange="loadApplications()"
-                            placeholder="Filter by company" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    </div>
-                    <div class="flex items-end">
-                        <button onclick="clearFilters()"
-                            class="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
-                            Clear Filters
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div id="applicationsList" class="space-y-4"></div>
-        </div>
+        <div id="content-applications" class="tab-content"></div>
 
         <!-- Responses Tab (New) -->
-        <div id="content-responses" class="tab-content hidden">
-            <div id="responsesList" class="space-y-4"></div>
-        </div>
+        <div id="content-responses" class="tab-content hidden"></div>
 
         <!-- Interviews Tab -->
-        <div id="content-interviews" class="tab-content hidden">
-            <div id="interviewsList" class="space-y-4"></div>
-        </div>
+        <div id="content-interviews" class="tab-content hidden"></div>
 
         <!-- Follow-ups Tab -->
-        <div id="content-followups" class="tab-content hidden">
-            <div id="followupsList" class="space-y-4"></div>
-        </div>
+        <div id="content-followups" class="tab-content hidden"></div>
 
         <!-- Saved Jobs Tab -->
-        <div id="content-saved" class="tab-content hidden">
-            <div id="savedJobsList" class="space-y-4"></div>
-        </div>
+        <div id="content-saved" class="tab-content hidden"></div>
     </main>
 
     <!-- Modal -->
@@ -328,15 +288,8 @@
             .catch(error => console.error('Error loading quick apply form:', error));
 
         // Your page-specific JavaScript
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!CVision.Utils.isAuthenticated()) {
-                window.location.href = '../login.html';
-                return;
-            }
-
-            // Your page logic here
-            loadApplications();
-        });
+        // Your page-specific JavaScript
+        // Initialization is handled in applications.js
     </script>
 
     <!-- Chatbot -->
