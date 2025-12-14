@@ -11,6 +11,7 @@ from bson import ObjectId
 
 from app.database import get_database
 from app.services.gmail_service import gmail_service
+from app.services.email_response_analyzer import email_response_analyzer
 from app.models.user import GmailAuth
 from app.core.config import settings
 
@@ -475,13 +476,14 @@ class EmailAgentService:
     
     
     @staticmethod
-    async def monitor_application_responses(user_id: str, days_back: int = 7) -> List[Dict[str, Any]]:
+    async def monitor_application_responses(user_id: str, days_back: int = 30, application_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Monitor Gmail for application responses
         
         Args:
             user_id: User ID
             days_back: Number of days to look back
+            application_id: Optional specific application ID to check
             
         Returns:
             List of detected responses
@@ -500,13 +502,22 @@ class EmailAgentService:
             # Calculate the cutoff date
             cutoff_date = datetime.utcnow() - timedelta(days=days_back)
             
-            # Get recent applications sent via email
-            applications = await db.applications.find({
-                "user_id": user_id,  # Already a string from the function parameter
-                "source": "auto_apply",  # Only check email-sent applications
-                "recipient_email": {"$exists": True},
-                "email_sent_at": {"$exists": True, "$gte": cutoff_date}
-            }).to_list(length=100)
+            # Build query
+            query = {
+                "user_id": user_id,
+                "recipient_email": {"$exists": True}
+            }
+            
+            if application_id:
+                query["_id"] = ObjectId(application_id)
+            else:
+                query["$or"] = [
+                    {"email_sent_at": {"$exists": True, "$gte": cutoff_date}},
+                    {"created_at": {"$gte": cutoff_date}}
+                ]
+            
+            # Get applications
+            applications = await db.applications.find(query).to_list(length=100)
             
             logger.info(f"Found {len(applications)} applications to check for responses")
             
@@ -516,11 +527,19 @@ class EmailAgentService:
             for app in applications:
                 try:
                     recipient_email = app.get("recipient_email")
-                    email_sent_at = app.get("email_sent_at")
+                    # Fallback to applied_date or created_at if email_sent_at missing
+                    email_sent_at = app.get("email_sent_at") or app.get("applied_date") or app.get("created_at")
+                    # Ensure it's a datetime object (applied_date might be string in some legacy data, but model says datetime)
+                    if isinstance(email_sent_at, str):
+                        try:
+                            email_sent_at = datetime.fromisoformat(email_sent_at.replace('Z', '+00:00'))
+                        except:
+                            email_sent_at = datetime.utcnow() - timedelta(days=7) # Fallback
+
                     gmail_thread_id = app.get("gmail_thread_id")
                     
                     if not recipient_email or not email_sent_at:
-                        logger.debug(f"Skipping app {app.get('_id')}: missing recipient or send date")
+                        logger.debug(f"Skipping app {app.get('_id')}: missing recipient or date")
                         continue
                     
                     messages = []
@@ -555,8 +574,16 @@ class EmailAgentService:
                         # Extract domain from recipient email
                         domain = recipient_email.split('@')[-1] if '@' in recipient_email else None
                         
+                        # Determine date for search
+                        # For auto-apply, we want emails after we sent the application
+                        # For manual apps, we look back 30 days to catch recent context
+                        if app.get("source") == "auto_apply":
+                             search_date = email_sent_at
+                        else:
+                             search_date = datetime.utcnow() - timedelta(days=30)
+
                         # Format date for Gmail API (YYYY/MM/DD format)
-                        after_date = email_sent_at.strftime('%Y/%m/%d')
+                        after_date = search_date.strftime('%Y/%m/%d')
                         
                         # Build search query
                         # Search for emails from the recipient address or domain, received after we sent
@@ -576,7 +603,81 @@ class EmailAgentService:
                     if messages:
                         logger.info(f"Found {len(messages)} response(s) for application {app.get('_id')}")
                         
-                        # Update application status
+                        # Process the latest message for analysis
+                        # (Assume messages are returned in some order, but safer to sort or just pick the first found if logic implies recency)
+                        # Gmail API list usually returns newest first.
+                        latest_msg_summary = messages[0] 
+                        
+                        try:
+                            # Fetch full message details for analysis
+                            full_msg = gmail_service.get_message(gmail_auth, latest_msg_summary.get('id'))
+                            
+                            if full_msg:
+                                # Extract subject
+                                subject = ""
+                                for header in full_msg.get('payload', {}).get('headers', []):
+                                    if header.get('name', '').lower() == 'subject':
+                                        subject = header.get('value', '')
+                                        break
+
+                                # Extract content (Body)
+                                body_content = ""
+                                if 'parts' in full_msg.get('payload', {}):
+                                    for part in full_msg['payload']['parts']:
+                                        if part.get('mimeType') == 'text/plain' and 'data' in part.get('body', {}):
+                                            import base64
+                                            try:
+                                                data = part['body']['data']
+                                                body_content = base64.urlsafe_b64decode(data).decode('utf-8')
+                                                break
+                                            except Exception as e:
+                                                logger.warning(f"Failed to decode body: {e}")
+                                
+                                # Fallback to snippet if body extraction failed or no parts
+                                if not body_content:
+                                    body_content = full_msg.get('snippet', '')
+                                
+                                snippet = full_msg.get('snippet', '')
+                                
+                                # Analyze the email
+                                logger.info(f"Analyzing email response for application {app.get('_id')}")
+                                analysis_result = await email_response_analyzer.analyze_email_response(
+                                    email_content=body_content or snippet,
+                                    email_subject=subject,
+                                    sender_email=recipient_email or "unknown",
+                                    application_id=str(app.get('_id')),
+                                    use_ai=True
+                                )
+                                
+                                # Update application based on analysis
+                                update_result = await email_response_analyzer.update_application_from_analysis(
+                                    application_id=str(app.get('_id')),
+                                    analysis_result=analysis_result,
+                                    user_id=user_id
+                                )
+                                
+                                logger.info(f"Analysis complete: {analysis_result.category} -> {update_result.new_status}")
+                        
+                        except Exception as analysis_error:
+                            logger.error(f"Failed to analyze email content: {analysis_error}")
+                            # Ensure body_content is defined even on error to save raw message
+                            if 'body_content' not in locals():
+                                body_content = latest_msg_summary.get('snippet', '')
+                            subject = subject if 'subject' in locals() else "Response Received"
+                        
+                        # Create communication record
+                        new_communication = {
+                            "type": "email",
+                            "direction": "inbound",
+                            "subject": subject,
+                            "content": body_content,
+                            "contact_email": recipient_email,
+                            "timestamp": datetime.utcnow(),
+                            "message_id": latest_msg_summary.get('id')
+                        }
+
+                        # Fallback/Base Update: Mark as response received even if analysis fails or changes nothing
+                        # AND push the communication
                         await db.applications.update_one(
                             {"_id": app["_id"]},
                             {
@@ -585,6 +686,9 @@ class EmailAgentService:
                                     "response_count": len(messages),
                                     "last_response_at": datetime.utcnow(),
                                     "updated_at": datetime.utcnow()
+                                },
+                                "$push": {
+                                    "communications": new_communication
                                 }
                             }
                         )
@@ -595,12 +699,23 @@ class EmailAgentService:
                             "company_name": app.get("company_name"),
                             "job_title": app.get("job_title"),
                             "response_count": len(messages),
-                            "detected_at": datetime.utcnow().isoformat()
+                            "detected_at": datetime.utcnow().isoformat(),
+                            "analysis": analysis_result.category.value if 'analysis_result' in locals() else "unknown"
                         })
                     else:
                         logger.debug(f"No responses found for application {app.get('_id')}")
                         
                 except Exception as app_error:
+                    error_str = str(app_error)
+                    if "invalid_grant" in error_str or "Token has been expired" in error_str:
+                        logger.error(f"Gmail auth expired for user {user_id}: {app_error}")
+                        # Invalidate Gmail auth
+                        await db.users.update_one(
+                            {"_id": ObjectId(user_id)},
+                            {"$unset": {"gmail_auth": ""}}
+                        )
+                        raise ValueError("Gmail authentication expired")
+                    
                     logger.error(f"Error checking application {app.get('_id')}: {app_error}")
                     continue
             

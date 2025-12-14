@@ -86,7 +86,7 @@ function filterNotifications(filter) {
 }
 
 function displayNotifications() {
-    const container = document.getElementById('notificationsList');
+    const container = document.getElementById('pageNotificationsList');
     const loadingState = document.getElementById('loadingState');
     const emptyState = document.getElementById('emptyState');
     const pagination = document.getElementById('pagination');
@@ -334,7 +334,7 @@ function nextPage() {
 
 function showLoading() {
     document.getElementById('loadingState').classList.remove('hidden');
-    document.getElementById('notificationsList').classList.add('hidden');
+    document.getElementById('pageNotificationsList').classList.add('hidden');
     document.getElementById('emptyState').classList.add('hidden');
 }
 

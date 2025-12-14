@@ -466,6 +466,14 @@ class BulkApplicationAction(BaseModel):
     reason: Optional[str] = None
 
 
+
+class EmailReplyRequest(BaseModel):
+    """Request model for sending an email reply via Gmail agent"""
+    subject: str
+    content: str
+    to_email: Optional[str] = None
+
+
 # Export all application-related models
 __all__ = [
     "ApplicationStatus", "ApplicationSource", "InterviewType", "DocumentType", 
@@ -476,5 +484,5 @@ __all__ = [
     "ApplicationUpdate", "Application", "ApplicationResponse", 
     "ApplicationListResponse", "ApplicationStats", "ApplicationFilter", 
     "ApplicationSearch", "ApplicationTracking", "ApplicationTemplate",
-    "BulkApplicationUpdate", "BulkApplicationAction"
+    "BulkApplicationUpdate", "BulkApplicationAction", "EmailReplyRequest"
 ]

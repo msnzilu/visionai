@@ -167,6 +167,8 @@ class NotificationService:
                 .limit(limit)\
                 .to_list(length=limit)
             
+            logger.debug(f"Found {len(notifications)} notifications for user {user_id}")
+            
             # Convert ObjectId to string
             for notif in notifications:
                 notif["_id"] = str(notif["_id"])

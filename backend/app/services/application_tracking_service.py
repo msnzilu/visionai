@@ -227,22 +227,28 @@ class ApplicationTrackingService:
         user_id: Optional[str] = None,
         days_ahead: int = 7
     ) -> List[Dict[str, Any]]:
-        """Get upcoming interviews within specified days"""
+        """Get upcoming interviews within specified days or needing scheduling"""
         try:
             start_date = datetime.utcnow()
             end_date = start_date + timedelta(days=days_ahead)
             
+            # Query for:
+            # 1. Scheduled interviews within the date range
+            # 2. Applications marked as 'interview_scheduled' but with NO date (scheduling required)
             query = {
-                "interview_date": {
-                    "$gte": start_date,
-                    "$lte": end_date
-                },
-                "status": "interview_scheduled"
+                "status": "interview_scheduled",
+                "$or": [
+                    {"interview_date": {"$gte": start_date, "$lte": end_date}},
+                    {"interview_date": None},
+                    {"interview_date": {"$exists": False}}
+                ]
             }
             
             if user_id:
                 query["user_id"] = user_id
             
+            # Sort: Put scheduling needed (null date) first, then nearest dates
+            # MongoDB sorts nulls first in ascending order
             interviews = await self.applications.find(query).sort("interview_date", 1).to_list(length=100)
             return interviews
             

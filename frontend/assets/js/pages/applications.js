@@ -254,6 +254,7 @@ function switchTab(tab) {
     }
 
     if (tab === 'applications') loadApplications();
+    else if (tab === 'responses') loadReceivedResponses();
     else if (tab === 'interviews') loadUpcomingInterviews();
     else if (tab === 'followups') loadFollowUps();
     else if (tab === 'saved') loadSavedJobs();
@@ -308,6 +309,7 @@ async function loadApplications() {
         });
         if (!response.ok) throw new Error('Failed');
         const data = await response.json();
+        console.log('DEBUG loadApplications: API returned', data.applications?.length || 0, 'apps, total:', data.total);
         window.allApplications = data.applications || [];
         if (window.JobActions) {
             window.JobActions.setAppliedJobs(data.applications || []);
@@ -322,11 +324,60 @@ async function loadApplications() {
     }
 }
 
-function displayApplications(applications) {
-    const container = document.getElementById('applicationsList');
-    if (!container) return;
+async function loadReceivedResponses() {
+    const url = `${API_BASE_URL}/api/v1/applications/?page=1&size=50&has_response=true`;
+    try {
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+        if (!response.ok) throw new Error('Failed');
+        const data = await response.json();
+        console.log('DEBUG: Received Responses Data:', data);
+        const apps = data.applications || [];
+        console.log('DEBUG: Filtered Apps Count:', apps.length);
+
+        if (apps.length === 0) {
+            console.log('DEBUG loadReceivedResponses: apps.length is 0, showing empty state');
+            const container = document.getElementById('responsesList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-lg border p-12 text-center">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        <h3 class="text-lg font-medium mb-2">No Responses Yet</h3>
+                        <p class="text-gray-600 mb-6">Emails from recruiters and status updates will appear here automatically.</p>
+                         <p class="text-sm text-gray-500">Ensure your applications have a contact email saved.</p>
+                    </div>
+                `;
+            }
+        } else {
+            console.log('DEBUG loadReceivedResponses: Calling displayApplications with', apps.length, 'apps for responsesList');
+            displayApplications(apps, 'responsesList');
+            console.log('DEBUG loadReceivedResponses: displayApplications returned, checking container...');
+            const containerAfter = document.getElementById('responsesList');
+            console.log('DEBUG loadReceivedResponses: responsesList innerHTML length:', containerAfter?.innerHTML?.length || 0);
+        }
+
+        // Handle empty state specifically for this tab if needed, or rely on displayApplications default
+    } catch (error) {
+        console.error('Load responses error:', error);
+        const container = document.getElementById('responsesList');
+        if (container) {
+            container.innerHTML = '<div class="bg-white rounded-lg border p-6 text-center"><p class="text-red-600">Failed to load received responses</p></div>';
+        }
+    }
+}
+
+function displayApplications(applications, containerId = 'applicationsList') {
+    const container = document.getElementById(containerId);
+    console.log(`DEBUG displayApplications: containerId=${containerId}, container exists=${!!container}, apps count=${applications?.length || 0}`);
+
+    if (!container) {
+        console.error(`DEBUG displayApplications: Container '${containerId}' not found!`);
+        return;
+    }
 
     if (!applications || applications.length === 0) {
+        console.log(`DEBUG displayApplications: No applications, showing empty state for ${containerId}`);
         container.innerHTML = `
             <div class="bg-white rounded-lg border p-12 text-center">
                 <h3 class="text-lg font-medium mb-2">No Applications Yet</h3>
@@ -337,25 +388,59 @@ function displayApplications(applications) {
         return;
     }
 
-    container.innerHTML = applications.map(app => `
-        <div class="bg-white rounded-lg border p-6 hover:shadow-md transition cursor-pointer" onclick="viewApplicationDetails('${app._id || app.id}')">
-            <div class="flex justify-between items-start mb-4">
-                <div class="flex-1">
-                    <h3 class="text-lg font-semibold">${app.job_title}</h3>
-                    <p class="text-gray-600 mt-1">${app.company_name}</p>
-                    <p class="text-gray-500 text-sm mt-1">${app.location || 'Remote'}</p>
+    console.log(`DEBUG displayApplications: Rendering ${applications.length} applications to ${containerId}`);
+
+    try {
+        const htmlParts = applications.map((app, index) => {
+            try {
+                const isResponseTab = containerId === 'responsesList';
+                console.log(`DEBUG displayApplications: Processing app ${index}/${applications.length}, id=${app._id || app.id}, status=${app.status}`);
+
+                const html = `
+                <div class="bg-white rounded-lg border p-6 hover:shadow-md transition cursor-pointer" onclick="viewApplicationDetails('${app._id || app.id}')">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold">${app.job_title}</h3>
+                            <p class="text-gray-600 mt-1">${app.company_name}</p>
+                            <p class="text-gray-500 text-sm mt-1">${app.location || 'Remote'}</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-2">
+                            ${getStatusBadge(app.status)}
+                            ${app.priority ? getPriorityBadge(app.priority) : ''}
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-sm text-gray-500">
+                        <span>Applied: ${formatDate(app.created_at)}</span>
+                         ${isResponseTab ?
+                        `<span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-medium">Response Received</span>` :
+                        (app.source ? `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${formatEnumValue(app.source)}</span>` : '')
+                    }
+                    </div>
+                    ${isResponseTab ? `
+                    <div class="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                        <button onclick="viewResponseDetails(event, '${app._id || app.id}')" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
+                            View Response
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+                    ` : ''}
                 </div>
-                <div class="flex flex-col items-end gap-2">
-                    ${getStatusBadge(app.status)}
-                    ${app.priority ? getPriorityBadge(app.priority) : ''}
-                </div>
-            </div>
-            <div class="flex justify-between items-center text-sm text-gray-500">
-                <span>Applied: ${formatDate(app.created_at)}</span>
-                ${app.source ? `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${formatEnumValue(app.source)}</span>` : ''}
-            </div>
-        </div>
-    `).join('');
+                `;
+                if (!html) console.error(`DEBUG displayApplications: Generated HTML is empty for app ${index}`);
+                return html;
+            } catch (e) {
+                console.error(`DEBUG displayApplications: Error rendering app ${index}:`, e);
+                return `<div class="p-4 bg-red-50 text-red-600">Error rendering application ${app.id || 'unknown'}</div>`;
+            }
+        });
+
+        const finalHtml = htmlParts.join('');
+        console.log(`DEBUG displayApplications: Final HTML length: ${finalHtml.length}`);
+        container.innerHTML = finalHtml;
+
+    } catch (e) {
+        console.error('DEBUG displayApplications: Fatal error in map operation:', e);
+    }
 }
 
 function getStatusBadge(status) {
@@ -670,6 +755,52 @@ async function loadUpcomingInterviews() {
             return;
         }
         container.innerHTML = data.interviews.map(i => {
+            // Handle cases where interview date is not set (Invited but not scheduled)
+            if (!i.interview_date) {
+                return `
+                <div class="bg-white rounded-lg border-l-4 border-l-red-500 border border-t-gray-200 border-r-gray-200 border-b-gray-200 p-6 hover:shadow-lg transition-all duration-200">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <h3 class="text-xl font-bold text-gray-900">${i.job_title}</h3>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 animate-pulse">Action Required</span>
+                            </div>
+                            <p class="text-gray-700 font-medium text-lg">${i.company_name}</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-red-50 text-red-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                Scheduling Needed
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4 p-3 bg-red-50 rounded-lg border border-red-100">
+                        <div class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <div>
+                                <p class="text-sm font-semibold text-red-800">Interview Invitation Received</p>
+                                <p class="text-sm text-red-700">You have been invited to an interview. Please review the email and schedule a time.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+                        <button onclick="viewInterviewDetails('${i.application_id || i._id}')" 
+                                class="flex-1 min-w-[140px] px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium text-sm shadow-sm flex items-center justify-center gap-2">
+                            View Details
+                        </button>
+                        <button onclick="updateStatus('${i.application_id || i._id}')" 
+                                class="flex-1 min-w-[140px] px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium text-sm flex items-center justify-center gap-2">
+                            Update Status / Schedule
+                        </button>
+                    </div>
+                </div>
+                `;
+            }
+
             const interviewDate = new Date(i.interview_date);
             const now = new Date();
             const hoursUntil = Math.floor((interviewDate - now) / (1000 * 60 * 60));
@@ -789,12 +920,8 @@ async function loadUpcomingInterviews() {
                     ` : ''}
                     
                     <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-                        <button onclick="viewApplicationDetails('${i.application_id || i._id}')" 
-                                class="flex-1 min-w-[140px] px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md flex items-center justify-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                            </svg>
+                        <button onclick="viewInterviewDetails('${i.application_id || i._id}')" 
+                                class="flex-1 min-w-[140px] px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium text-sm shadow-sm flex items-center justify-center gap-2">
                             View Details
                         </button>
                         <button onclick="addToCalendar('${i.job_title}', '${i.company_name}', '${i.interview_date}', '${i.location || ''}')" 
@@ -1089,48 +1216,14 @@ function getMonitoringBadge(app) {
     return `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Manual</span>`;
 }
 // ==================== MODIFIED FUNCTIONS ====================
-// REPLACE the existing displayApplications function (around line 321) with this enhanced version:
-function displayApplications(applications) {
-    const container = document.getElementById('applicationsList');
-    if (!container) return;
-    if (!applications || applications.length === 0) {
-        container.innerHTML = `
-            <div class="bg-white rounded-lg border p-12 text-center">
-                <h3 class="text-lg font-medium mb-2">No Applications Yet</h3>
-                <p class="text-gray-600 mb-6">Start applying to jobs to track them here</p>
-                <a href="jobs.html" class="btn-gradient text-white px-6 py-2 rounded-lg inline-block">Search Jobs</a>
-            </div>
-        `;
-        return;
-    }
-    container.innerHTML = applications.map(app => `
-        <div class="bg-white rounded-lg border p-6 hover:shadow-md transition cursor-pointer" onclick="viewApplicationDetails('${app._id || app.id}')">
-            <div class="flex justify-between items-start mb-4">
-                <div class="flex-1">
-                    <h3 class="text-lg font-semibold">${app.job_title}</h3>
-                    <p class="text-gray-600 mt-1">${app.company_name}</p>
-                    <p class="text-gray-500 text-sm mt-1">${app.location || 'Remote'}</p>
-                </div>
-                <div class="flex flex-col items-end gap-2">
-                    ${getStatusBadge(app.status)}
-                    ${app.priority ? getPriorityBadge(app.priority) : ''}
-                </div>
-            </div>
-            <div class="flex justify-between items-center text-sm text-gray-500">
-                <span>Applied: ${formatDate(app.created_at)}</span>
-                <div class="flex gap-2">
-                    ${getSourceBadge(app.source)}
-                    ${getMonitoringBadge(app)}
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
+
 // REPLACE the existing displayApplicationModal function (around line 392) with this enhanced version:
 function displayApplicationModal(app, timeline) {
     const modalContent = document.getElementById('applicationModalContent');
     if (!modalContent) return;
     const isEmailApp = app.source === 'auto_apply';
+    // Show email features if it's an auto-apply app OR if manual app has monitoring/responses
+    const showEmailFeatures = isEmailApp || app.email_monitoring_enabled || (app.email_analysis_history && app.email_analysis_history.length > 0);
     const monitoringEnabled = app.email_monitoring_enabled || false;
     modalContent.innerHTML = `
         <div class="flex justify-between mb-6">
@@ -1183,7 +1276,7 @@ function displayApplicationModal(app, timeline) {
         <div class="mb-6">
             <h3 class="text-lg font-semibold mb-3">Quick Actions</h3>
             <div class="mb-4">
-                ${window.JobActions ? window.JobActions.getButtonsHTML(app.job || app) : ''}
+                ${window.JobActions ? window.JobActions.getButtonsHTML(app.job || app, false) : ''}
             </div>
             <div class="grid grid-cols-3 gap-3">
                 <button onclick="updateStatus('${app._id || app.id}')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">Update Status</button>
@@ -1208,10 +1301,117 @@ function displayApplicationModal(app, timeline) {
     if (modal) {
         modal.classList.remove('hidden');
     }
-    
+
     // Render email analysis section using component
     if (window.EmailAnalysisComponent) {
         window.EmailAnalysisComponent.renderAnalysisSection(app, 'emailAnalysisSection');
+    }
+}
+
+async function viewResponseDetails(event, appId) {
+    // Prevent the card click event from triggering
+    if (event) {
+        event.stopPropagation();
+    }
+
+    try {
+        const [appRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/v1/applications/${appId}`, { headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` } })
+        ]);
+
+        if (!appRes.ok) throw new Error('Failed to fetch application details');
+        const app = await appRes.json();
+
+        console.log('DEBUG viewResponseDetails: Full App Object', app);
+        console.log('DEBUG viewResponseDetails: Communications', app.communications);
+        console.log('DEBUG viewResponseDetails: Analysis History', app.email_analysis_history);
+
+        // Find the latest inbound communication (response)
+        const communications = app.communications || [];
+        // Sort by timestamp descending
+        communications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        const latestResponse = communications.find(c =>
+            c.direction === 'inbound' ||
+            c.type === 'response' ||
+            (c.type === 'email' && c.direction !== 'outbound')
+        );
+
+        displayResponseModal(app, latestResponse);
+
+    } catch (error) {
+        console.error('Response details error:', error);
+        CVision.Utils.showAlert('Failed to load response details', 'error');
+    }
+}
+
+function displayResponseModal(app, response) {
+    const modalContent = document.getElementById('applicationModalContent');
+    if (!modalContent) return;
+
+    if (!response) {
+        // Fallback if no specific message found but status indicates response
+        modalContent.innerHTML = `
+            <div class="mb-6 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                    <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900">Response Status Update</h3>
+                <p class="mt-2 text-sm text-gray-500">
+                    The status for <strong>${app.job_title}</strong> at <strong>${app.company_name}</strong> was updated to 
+                    <span class="font-medium text-gray-900">${formatEnumValue(app.status)}</span>.
+                </p>
+                <p class="mt-1 text-sm text-gray-500">No specific message content was recorded.</p>
+            </div>
+            <div class="flex justify-center">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Close</button>
+            </div>
+        `;
+    } else {
+        const date = new Date(response.timestamp).toLocaleString();
+        modalContent.innerHTML = `
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold">Response from ${app.company_name}</h2>
+                    <p class="text-gray-600 mt-1">${app.job_title}</p>
+                </div>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden mb-6">
+                <div class="bg-white px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-blue-100 p-1.5 rounded-full">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <span class="font-medium text-gray-900">${response.subject || 'No Subject'}</span>
+                    </div>
+                    <span class="text-sm text-gray-500">${date}</span>
+                </div>
+                <div class="p-6 bg-white min-h-[200px] prose prose-sm max-w-none text-gray-800">
+                    ${response.content ? response.content.replace(/\n/g, '<br>') : '<span class="text-gray-400 font-style-italic">No content available</span>'}
+                </div>
+                <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
+                    <span>From: ${response.contact_email || response.contact_person || 'Unknown Sender'}</span>
+                    <span>Type: ${formatEnumValue(response.type)}</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Close</button>
+                <button onclick="updateStatus('${app._id || app.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Update Status</button>
+                ${response.contact_email ? `<a href="mailto:${response.contact_email}?subject=Re: ${response.subject || 'Application for ' + app.job_title}" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg> Reply</a>` : ''}
+            </div>
+        `;
+    }
+
+    const modal = document.getElementById('applicationModal');
+    if (modal) {
+        modal.classList.remove('hidden');
     }
 }
 
@@ -1401,3 +1601,329 @@ async function saveJob(jobId, silent = false, extraData = null) {
 
 // Make saveJob available globally for generation.js
 window.saveJob = saveJob;
+
+// Make email monitoring functions available globally
+window.checkForResponses = checkForResponses;
+window.toggleEmailMonitoring = toggleEmailMonitoring;
+
+// ==================== INTERVIEW MODAL FUNCTIONS ====================
+
+async function viewInterviewDetails(applicationId) {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/applications/${applicationId}`, {
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+        if (!res.ok) throw new Error('Failed to load interview details');
+        const app = await res.json();
+
+        displayInterviewModal(app);
+    } catch (error) {
+        console.error('Error loading interview:', error);
+        CVision.Utils.showAlert('Failed to load interview details', 'error');
+    }
+}
+
+function closeInterviewModal() {
+    const modal = document.getElementById('interviewModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function displayInterviewModal(app) {
+    const modalContent = document.getElementById('interviewModalContent');
+    const modal = document.getElementById('interviewModal');
+    if (!modalContent || !modal) return;
+
+    const interviewDate = app.interview_date ? new Date(app.interview_date) : null;
+    const isScheduled = !!interviewDate;
+
+    // Type Icons (reused logic)
+    const typeIcons = {
+        'phone_screening': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>',
+        'video_call': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>',
+        'in_person': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>',
+        'technical': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>',
+        'behavioral': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>',
+        'panel': '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>'
+    };
+
+    // Helper for meeting link
+    const meetingLink = app.meeting_link || (app.location && app.location.match(/https?:\/\/[^\s]+/) ? app.location.match(/https?:\/\/[^\s]+/)[0] : null);
+
+    modalContent.innerHTML = `
+        <!-- Gradient Header -->
+        <div class="relative bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-t-xl text-white overflow-hidden">
+            <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
+            
+            <div class="flex justify-between items-start relative z-10">
+                <div>
+                     <div class="flex items-center gap-2 mb-2 text-blue-100">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2-2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        <span class="font-medium text-lg">${app.company_name}</span>
+                    </div>
+                    <h2 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100 font-display mb-1">${app.job_title}</h2>
+                    <div class="flex items-center gap-3 mt-4">
+                        <span class="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium border border-white/20">
+                            ${formatEnumValue(app.interview_type)}
+                        </span>
+                        ${isScheduled ? `
+                        <span class="px-3 py-1 bg-green-500/20 backdrop-blur-sm rounded-full text-sm font-medium border border-green-400/30 text-green-50 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                            Scheduled
+                        </span>` : `
+                        <span class="px-3 py-1 bg-red-500/20 backdrop-blur-sm rounded-full text-sm font-medium border border-red-400/30 text-red-50">
+                            Scheduling Required
+                        </span>`}
+                    </div>
+                </div>
+                <button onclick="closeInterviewModal()" class="text-white/70 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-8">
+            ${isScheduled ? `
+                <!-- Main Date Display -->
+                <div class="flex flex-col md:flex-row gap-6 mb-8 items-center bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+                    <div class="text-center md:text-left flex-1">
+                        <p class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-1">Date & Time</p>
+                        <h3 class="text-3xl font-bold text-gray-900 mb-1">${formatDateTime(interviewDate)}</h3>
+                        <p class="text-lg text-gray-600 font-medium">${getTimeUntil(app.interview_date)}</p>
+                    </div>
+                    
+                    <div class="h-12 w-px bg-blue-200 hidden md:block"></div>
+                    
+                    <div class="flex flex-col gap-2 w-full md:w-auto">
+                        ${meetingLink ? `
+                            <a href="${meetingLink}" target="_blank" class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                Join Meeting
+                            </a>
+                        ` : ''}
+                        <button onclick="addToCalendar('${app.job_title}', '${app.company_name}', '${app.interview_date}', '${app.location || ''}')" class="w-full px-6 py-3 bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700 rounded-xl font-medium shadow-sm transition-all flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            Add to Calendar
+                        </button>
+                    </div>
+                </div>
+            ` : `
+                <div class="bg-red-50 border border-red-200 rounded-xl p-8 mb-8 text-center">
+                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Action Required</h3>
+                    <p class="text-gray-600 mb-6 max-w-md mx-auto">You have been invited to an interview for this position but haven't scheduled a date yet.</p>
+                    <button onclick="closeInterviewModal(); scheduleInterview('${app._id || app.id}')" class="px-8 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all transform hover:-translate-y-0.5">
+                        Schedule Interview Now
+                    </button>
+                </div>
+            `}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Details Column -->
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Interview Details</h4>
+                        
+                        <div class="space-y-4">
+                             <!-- Attendees/Interviewer -->
+                             <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Interviewer</p>
+                                    <p class="text-gray-600">${app.interviewer_name || 'Not specified'}</p>
+                                    ${app.interviewer_title ? `<p class="text-xs text-gray-500">${app.interviewer_title}</p>` : ''}
+                                </div>
+                            </div>
+
+                            <!-- Location -->
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Location</p>
+                                    <p class="text-gray-600 break-all">${app.location || 'Remote / Online'}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Duration -->
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Duration</p>
+                                    <p class="text-gray-600">${app.interview_duration || 'Not specified'} minutes</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Column -->
+                <div>
+                     <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Preparation & Notes</h4>
+                        <button onclick="CVision.Utils.showAlert('AI Preparation Assistant coming soon!', 'info')" class="text-sm text-purple-600 font-medium hover:text-purple-700 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            AI Prep
+                        </button>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-xl border border-gray-200 p-5 min-h-[160px]">
+                        <p class="text-gray-700 whitespace-pre-line leading-relaxed text-sm">
+                            ${app.notes || '<span class="text-gray-400 italic">No notes added. Use "Update Status" to add notes.</span>'}
+                        </p>
+                    </div>
+                    
+                    ${isScheduled ? `
+                    <button onclick="showConfirmationCompose('${app._id || app.id}', '${app.job_title}', '${app.company_name}', '${app.interviewer_name || ''}', '${app.interview_date}')" class="w-full mt-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        Confirm Availability
+                    </button>
+                    ` : ''}
+                    
+                    <button onclick="closeInterviewModal(); updateStatus('${app._id || app.id}')" class="w-full mt-2 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-800 text-sm font-medium transition-colors">
+                        Edit Notes / Update Status
+                    </button>
+                    
+                     <button onclick="closeInterviewModal(); scheduleInterview('${app._id || app.id}')" class="w-full mt-2 py-2 text-blue-600 hover:text-blue-700 hover:underline text-sm font-medium transition-colors">
+                        ${isScheduled ? 'Reschedule Interview' : 'Schedule Interview'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+}
+
+// Helper for relative time
+function getTimeUntil(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const hours = Math.floor((date - now) / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+
+    if (hours < 0) return 'Past';
+    if (hours < 24) return `In ${hours} hour${hours !== 1 ? 's' : ''}`;
+    if (days === 1) return 'Tomorrow';
+    return `In ${days} days`;
+}
+
+// Export functions to global scope
+window.viewInterviewDetails = viewInterviewDetails;
+window.closeInterviewModal = closeInterviewModal;
+
+// ==========================================
+// Interview Confirmation Logic
+// ==========================================
+
+async function sendEmailReply(appId) {
+    const subject = document.getElementById('replySubject').value;
+    const content = document.getElementById('replyContent').value;
+    const toEmail = document.getElementById('replyTo').value || null;
+
+    if (!subject || !content) {
+        CVision.Utils.showToast('Please fill in subject and content', 'error');
+        return;
+    }
+
+    // Show Loading
+    const btn = document.getElementById('sendReplyBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Sending...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/applications/${appId}/email-reply`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`
+            },
+            body: JSON.stringify({ subject, content, to_email: toEmail })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Failed to send email');
+        }
+
+        CVision.Utils.showToast('Confirmation email sent successfully', 'success');
+        // Return to details view
+        viewInterviewDetails(appId);
+    } catch (error) {
+        console.error('Email send error:', error);
+        CVision.Utils.showAlert(error.message, 'error');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+function showConfirmationCompose(appId, title, company, interviewer, date) {
+    const modalContent = document.getElementById('interviewModalContent');
+    const formattedDate = new Date(date).toLocaleString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+
+    // Sanitize values for template safely
+    const safeInterviewer = interviewer && interviewer !== 'null' ? interviewer : 'Hiring Manager';
+
+    const templateContent = `Hi ${safeInterviewer},
+
+I am writing to officially confirm my availability for the interview for the ${title} position at ${company}.
+I look forward to speaking with you on ${formattedDate}.
+
+Best regards,`;
+
+    modalContent.innerHTML = `
+        <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+            <h2 class="text-xl font-bold text-gray-900">Confirm Availability</h2>
+            <button onclick="viewInterviewDetails('${appId}')" class="text-gray-500 hover:text-gray-700 text-sm p-2 rounded hover:bg-gray-100">
+                Cancel
+            </button>
+        </div>
+        
+        <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+            <p class="text-sm text-blue-800 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                This will send an email from your connected Gmail via the AI Agent.
+            </p>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">To</label>
+                <input type="text" id="replyTo" class="w-full rounded-lg border-gray-300 bg-gray-50 text-gray-500" value="" placeholder="Automatic (Recruiter / Last Contact)" readonly>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                <input type="text" id="replySubject" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" value="Re: Interview Confirmation: ${title} - ${company}">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea id="replyContent" rows="8" class="w-full rounded-lg border-gray-300 font-sans focus:ring-blue-500 focus:border-blue-500 p-3">${templateContent}</textarea>
+            </div>
+        </div>
+        
+        <div class="flex gap-3 justify-end pt-6 mt-4 border-t border-gray-100">
+             <button onclick="viewInterviewDetails('${appId}')" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+             <button id="sendReplyBtn" onclick="sendEmailReply('${appId}')" class="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                Send Email
+            </button>
+        </div>
+    `;
+}

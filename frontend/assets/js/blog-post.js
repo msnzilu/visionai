@@ -76,15 +76,18 @@
         // Title
         document.getElementById('article-title').textContent = post.title;
 
-        // Author
+        // Author (Handle missing author data safely)
+        const authorName = post.author && post.author.name ? post.author.name : 'VisionAI Team';
+        const authorAvatarUrl = post.author ? post.author.avatar_url : null;
+
         const authorAvatar = document.getElementById('author-avatar');
-        if (post.author.avatar_url) {
-            authorAvatar.innerHTML = `<img src="${post.author.avatar_url}" alt="${post.author.name}" class="w-full h-full rounded-full object-cover">`;
+        if (authorAvatarUrl) {
+            authorAvatar.innerHTML = `<img src="${authorAvatarUrl}" alt="${authorName}" class="w-full h-full rounded-full object-cover">`;
         } else {
-            authorAvatar.textContent = post.author.name.charAt(0).toUpperCase();
+            authorAvatar.textContent = authorName.charAt(0).toUpperCase();
         }
 
-        document.getElementById('author-name').textContent = post.author.name;
+        document.getElementById('author-name').textContent = authorName;
 
         // Date
         const publishDate = new Date(post.published_at).toLocaleDateString('en-US', {
@@ -217,7 +220,7 @@
             "image": post.featured_image || '',
             "author": {
                 "@type": "Person",
-                "name": post.author.name
+                "name": post.author && post.author.name ? post.author.name : 'VisionAI Team'
             },
             "publisher": {
                 "@type": "Organization",

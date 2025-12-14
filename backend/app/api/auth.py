@@ -230,14 +230,18 @@ async def login(login_data: UserLogin):
         )
 
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
 @router.post("/refresh", response_model=APIResponse)
-async def refresh_token_endpoint(refresh_token: str):
+async def refresh_token_endpoint(request: RefreshTokenRequest):
     """Refresh access token using refresh token"""
     try:
         from app.core.security import verify_refresh_token
         
         # Verify refresh token
-        payload = verify_refresh_token(refresh_token)
+        payload = verify_refresh_token(request.refresh_token)
         if not payload:
             return APIResponse(
                 success=False,

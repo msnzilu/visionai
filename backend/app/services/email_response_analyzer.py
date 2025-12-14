@@ -8,6 +8,7 @@ import logging
 import re
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
+from dateutil import parser as date_parser
 from bson import ObjectId
 
 from app.models.email_analysis import (
@@ -419,7 +420,8 @@ class EmailResponseAnalyzer:
                 "email_analysis_history": analysis_history_entry
             }
             update_data["$set"] = {
-                "last_email_analysis": analysis_history_entry
+                "last_email_analysis": analysis_history_entry,
+                "has_response": True
             }
             
             # Process based on action type
@@ -449,7 +451,31 @@ class EmailResponseAnalyzer:
                     update_data["$push"] = {}
                 update_data["$push"]["timeline"] = timeline_event
                 actions_taken.append("Created timeline event")
-                
+
+                # Check for extracted interview date
+                if analysis_result.extracted_info and "proposed_interview_date" in analysis_result.extracted_info:
+                    date_str = analysis_result.extracted_info["proposed_interview_date"]
+                    if date_str:
+                        try:
+                            interview_date = date_parser.parse(date_str)
+                            # Ensure it's in the future effectively (or just take it as is for record)
+                            update_data["$set"]["interview_date"] = interview_date
+                            # Default type if not known
+                            if "interview_type" not in app:
+                                update_data["$set"]["interview_type"] = "video_call" # Safe default
+                            
+                            actions_taken.append(f"Auto-scheduled interview for {interview_date}")
+                            
+                            # Add note about auto-scheduling
+                            note = f"\n[System] Interview date automatically extracted from email."
+                            if "notes" in app:
+                                update_data["$set"]["notes"] = app["notes"] + note
+                            else:
+                                update_data["$set"]["notes"] = note.strip()
+                                
+                        except Exception as parse_err:
+                             logger.warning(f"Failed to parse extracted date '{date_str}': {parse_err}")
+
                 # Send notification if required
                 if analysis_result.action_details.get("notification"):
                     # Trigger notification (will be handled by email campaigns worker)

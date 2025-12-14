@@ -364,6 +364,8 @@ Return a JSON object with:
     "key_information": {
         "dates": [],
         "times": [],
+        "proposed_interview_date": "YYYY-MM-DD HH:MM (if a specific time is proposed/confirmed, else null)",
+        "is_confirmed_date": boolean,
         "requirements": [],
         "deadline": null,
         "interviewer_name": null,

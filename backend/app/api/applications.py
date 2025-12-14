@@ -16,8 +16,11 @@ from app.api.deps import (
 )
 from app.models.application import (
     Application, ApplicationCreate, ApplicationUpdate, ApplicationResponse,
-    ApplicationListResponse, ApplicationStats, ApplicationStatus
+    ApplicationListResponse, ApplicationStats, ApplicationStatus, EmailReplyRequest,
+    ApplicationCommunication, CommunicationType
 )
+from app.services.gmail_service import gmail_service
+from app.models.user import GmailAuth
 from app.models.common import SuccessResponse
 from app.services.application_tracking_service import ApplicationTrackingService
 
@@ -152,6 +155,7 @@ async def list_applications(
     applied_after: Optional[str] = None,
     applied_before: Optional[str] = None,
     has_interviews: Optional[bool] = None,
+    has_response: Optional[bool] = None,
     needs_follow_up: Optional[bool] = None,
     sort_by: Optional[str] = "created_at",
     sort_order: Optional[str] = "desc",
@@ -161,6 +165,9 @@ async def list_applications(
 ):
     """List user's applications with filtering and pagination"""
     try:
+        # DEBUG: Log incoming parameters
+        logger.info(f"list_applications called: has_response={has_response} (type={type(has_response).__name__})")
+        
         filters = {}
         if status:
             filters["status"] = status
@@ -201,6 +208,36 @@ async def list_applications(
             else:
                 filters["follow_up_date"] = {"$gt": datetime.utcnow()}
         
+        if has_response is not None:
+            if has_response:
+                # Response statuses are statuses that indicate the company has responded
+                response_statuses = [
+                    "interview_scheduled", "interview_completed", "second_round", "final_round",
+                    "offer_received", "offer_accepted", "offer_declined", 
+                    "rejected"
+                ]
+                # Only include apps that have:
+                # 1. Status indicating a response (most reliable), OR
+                # 2. At least one received/inbound communication
+                # Note: Removed broad conditions like `email_analysis_history.0` which may include auto-confirmations
+                filters["$or"] = [
+                    {"status": {"$in": response_statuses}},
+                    {"communications": {"$elemMatch": {"direction": "received"}}},
+                    {"communications": {"$elemMatch": {"direction": "inbound"}}},
+                    {"communications": {"$elemMatch": {"type": "response"}}}
+                ]
+            else:
+                filters["has_response"] = {"$ne": True}
+                filters["email_analysis_history"] = {"$size": 0}
+                # For "no response", we generally expect "applied", "submitted", "under_review", "pending"
+                # But strictly speaking, it's just NOT in the response list AND no history.
+                # However, simplifying to just excluding known markers is safer to match the "else" of the above.
+                filters["status"] = {"$nin": response_statuses}
+        
+        # Log the filter for debugging
+        if has_response is not None:
+            logger.info(f"has_response filter applied: has_response={has_response}, filters=$or={filters.get('$or', 'N/A')}")
+        
         # Get applications using static method
         applications = await ApplicationTrackingService.get_user_applications(
             user_id=str(current_user["_id"]),
@@ -212,6 +249,9 @@ async def list_applications(
             sort_order=sort_order,
             search=search
         )
+        
+        # Log results count
+        logger.info(f"list_applications returned {len(applications.get('applications', []))} apps for user {str(current_user['_id'])[:8]}..., filters={filters}")
         
         # Get status counts using instance method
         tracking_service = ApplicationTrackingService(db)
@@ -1012,6 +1052,114 @@ async def add_communication(
         )
 
 
+@router.post("/{id}/email-reply", response_model=SuccessResponse)
+async def send_email_reply(
+    id: str,
+    email_req: EmailReplyRequest,
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db = Depends(get_database)
+):
+    """
+    Send an email reply via Gmail agent
+    """
+    # 1. Get Application (verify user ownership)
+    app = await db.applications.find_one({
+        "_id": ObjectId(id),
+        "user_id": str(current_user["_id"])
+    })
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    # 2. Check Gmail Auth
+    # We need to fetch the full user object to get sensitive tokens if they are stripped in current_user
+    user = await db.users.find_one({"_id": ObjectId(current_user["_id"])})
+    
+    if not user or "gmail_auth" not in user or not user["gmail_auth"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gmail account not connected. Please connect Gmail in settings."
+        )
+    
+    try:
+        auth = GmailAuth(**user["gmail_auth"])
+        
+        # 3. Determine Recipient
+        recipient = email_req.to_email
+        if not recipient:
+            # Fallback to existing contacts
+            recipient = app.get("contact_email")
+            if not recipient and app.get("communications"):
+                # Try to find last inbound email
+                for comm in reversed(app["communications"]):
+                    if comm.get("direction") == "inbound" and comm.get("contact_email"):
+                        recipient = comm["contact_email"]
+                        break
+        
+        if not recipient:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No recipient email found. Please specify 'to_email'."
+            )
+            
+        # 4. Send Email
+        result = gmail_service.send_email(
+            auth=auth,
+            to=recipient,
+            subject=email_req.subject,
+            body=email_req.content
+        )
+        
+        # 5. Record Communication
+        comm_entry = {
+            "type": "email",
+            "direction": "outbound",
+            "subject": email_req.subject,
+            "content": email_req.content,
+            "contact_email": recipient,
+            "timestamp": datetime.utcnow(),
+            "message_id": result.get("id"),
+            "thread_id": result.get("threadId")
+        }
+        
+        update_data = {
+            "$push": {"communications": comm_entry},
+            "$set": {
+                "last_activity": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+        }
+        
+        await db.applications.update_one(
+            {"_id": ObjectId(id)},
+            update_data
+        )
+
+        # Log timeline event
+        tracking_service = ApplicationTrackingService(db)
+        await tracking_service.add_timeline_event(
+            application_id=id,
+            event_type="communication",
+            description=f"Sent email reply: {email_req.subject}",
+            metadata={"direction": "outbound", "recipient": recipient}
+        )
+        
+        return SuccessResponse(
+            success=True,
+            message="Email sent successfully",
+            data={"message_id": result.get("id")}
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to send email reply: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send email: {str(e)}"
+        )
+
+
 # ==================== TASK MANAGEMENT ENDPOINTS ====================
 
 @router.post("/{application_id}/tasks/add", response_model=SuccessResponse)
@@ -1468,10 +1616,12 @@ async def check_application_responses(
         if application["user_id"] != str(current_user["_id"]):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
         
-        if application.get("source") != "auto_apply":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not sent via email agent")
-        
-        responses = await email_agent_service.monitor_application_responses(str(current_user["_id"]), days_back=30)
+        # Check for responses (monitoring ALL types now)
+        responses = await email_agent_service.monitor_application_responses(
+            str(current_user["_id"]), 
+            days_back=30,
+            application_id=str(application_id)
+        )
         
         await db.applications.update_one(
             {"_id": ObjectId(application_id)},
@@ -1489,6 +1639,10 @@ async def check_application_responses(
         )
     except HTTPException:
         raise
+    except ValueError as e:
+        if "Gmail authentication expired" in str(e):
+             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Gmail authentication expired. Please reconnect.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error checking responses: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

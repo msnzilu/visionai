@@ -125,24 +125,27 @@
 
         <!-- Tabs -->
         <div class="mb-6 border-b border-gray-200">
-            <nav class="-mb-px flex space-x-8">
+            <nav class="-mb-px flex space-x-8 overflow-x-auto">
                 <button onclick="switchTab('applications')" id="tab-applications"
-                    class="tab-button border-b-2 border-primary-600 text-primary-600 py-4 px-1 text-sm font-medium">Applications</button>
-                <button onclick="switchTab('interviews')" id="tab-interviews"
-                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Upcoming
-                    Interviews</button>
+                    class="tab-button border-b-2 border-primary-600 text-primary-600 py-4 px-1 text-sm font-medium whitespace-nowrap">Applications</button>
+                <button onclick="switchTab('responses')" id="tab-responses"
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">Received
+                    Responses</button>
                 <button onclick="switchTab('followups')" id="tab-followups"
-                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Follow-ups
-                    Needed</button>
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">Need
+                    Follow Up</button>
+                <button onclick="switchTab('interviews')" id="tab-interviews"
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">Upcoming
+                    Interviews</button>
                 <button onclick="switchTab('saved')" id="tab-saved"
-                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">Saved
+                    class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium whitespace-nowrap">Saved
                     Jobs</button>
             </nav>
         </div>
 
-        <!-- Applications Tab -->
         <div id="content-applications" class="tab-content">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                <!-- Filters (same as before) -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -185,6 +188,11 @@
             <div id="applicationsList" class="space-y-4"></div>
         </div>
 
+        <!-- Responses Tab (New) -->
+        <div id="content-responses" class="tab-content hidden">
+            <div id="responsesList" class="space-y-4"></div>
+        </div>
+
         <!-- Interviews Tab -->
         <div id="content-interviews" class="tab-content hidden">
             <div id="interviewsList" class="space-y-4"></div>
@@ -210,6 +218,15 @@
         </div>
     </div>
 
+    <!-- Interview Modal (Dedicated) -->
+    <div id="interviewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full">
+                <div class="p-6" id="interviewModalContent"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Quick Apply Form Component Container -->
     <div id="quickApplyFormContainer"></div>
 
@@ -222,7 +239,7 @@
     <script src="../assets/js/components/JobActions.js" defer></script>
     <script src="../assets/js/components/JobApply.js" defer></script>
     <script src="../assets/js/components/EmailAnalysis.js" defer></script>
-    <script src="../assets/js/pages/applications.js" defer></script>
+    <script src="../assets/js/pages/applications.js?v=7" defer></script>
     <script src="../assets/js/components/navbar.js" defer></script>
 
     <!-- Job Details Modal (Added for viewing saved jobs without redirect) -->

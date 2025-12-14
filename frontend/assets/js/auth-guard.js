@@ -70,7 +70,12 @@
             }
         } catch (e) {
             console.error('Token verification error:', e);
-            // Don't redirect on parse error, let the API handle it
+            // Critical auth error - redirect to login
+            console.log('Critical auth error. Redirecting to login...');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('cvision_user');
+            window.location.href = '/login.html';
         }
     }
 
