@@ -411,14 +411,68 @@ function setupForms() {
     });
 }
 
-function showChangePassword() {
-    CVision.Utils.showAlert('Password change feature coming soon', 'info');
-}
+// Change Password Modal Logic
+// Change Password Modal Logic
+console.log('[Profile] Script loaded');
+
+// Load Change Password Component
+document.addEventListener('DOMContentLoaded', async function () {
+    console.log('[Profile] DOM Content Loaded');
+
+    // Event Delegation for "Update Password" button
+    document.body.addEventListener('click', function (e) {
+        if (e.target && (e.target.id === 'openChangePasswordBtn' || e.target.closest('#openChangePasswordBtn'))) {
+            console.log('[Profile] Update Password button clicked');
+
+            if (window.ChangePasswordModal) {
+                console.log('[Profile] Opening Modal');
+                ChangePasswordModal.open();
+            } else {
+                console.error('[Profile] ChangePasswordModal not defined');
+                CVision.Utils.showAlert('Component not loaded yet, please wait...', 'info');
+                // Try force reload of component if missing?
+            }
+        }
+    });
+
+    try {
+        // Load Change Password Modal
+        const pwResponse = await fetch('../components/change-password-modal.html');
+        if (pwResponse.ok) {
+            const html = await pwResponse.text();
+            let container = document.getElementById('change-password-modal-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'change-password-modal-container';
+                document.body.appendChild(container);
+            }
+            container.innerHTML = html;
+            if (window.ChangePasswordModal) ChangePasswordModal.init();
+        }
+
+        // Load Delete Account Modal
+        const delResponse = await fetch('../components/delete-account-modal.html');
+        if (delResponse.ok) {
+            const html = await delResponse.text();
+            let container = document.getElementById('delete-account-modal-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'delete-account-modal-container';
+                document.body.appendChild(container);
+            }
+            container.innerHTML = html;
+            if (window.DeleteAccountModal) DeleteAccountModal.init();
+        }
+    } catch (e) {
+        console.error('Failed to load modals:', e);
+    }
+});
 
 function deleteAccount() {
-    const confirmed = confirm('Are you sure you want to delete your account? This action cannot be undone.');
-    if (confirmed) {
-        CVision.Utils.showAlert('Account deletion feature coming soon', 'info');
+    if (window.DeleteAccountModal) {
+        DeleteAccountModal.open();
+    } else {
+        CVision.Utils.showAlert('Component loading...', 'info');
     }
 }
 

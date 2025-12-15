@@ -259,7 +259,7 @@
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-gray-900">Recent Generations</h3>
-                        <a href="./generation.html" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                        <a href="./documents.html" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
                             View All →
                         </a>
                     </div>
@@ -283,7 +283,7 @@
                     <div class="space-y-4">
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 mb-2">Change Password</h4>
-                            <button onclick="showChangePassword()"
+                            <button id="openChangePasswordBtn"
                                 class="text-sm text-primary-600 hover:text-primary-700 font-medium">
                                 Update Password →
                             </button>
@@ -323,14 +323,22 @@
         </div>
     </main>
 
+    <!-- Change Password Modal -->
+    <!-- Change Password Modal Container -->
+    <div id="change-password-modal-container"></div>
+    <!-- Delete Account Modal Container -->
+    <div id="delete-account-modal-container"></div>
+
     <script src="../assets/js/utils/currency.js" defer></script>
     <script src="../assets/js/utils/geolocation.js" defer></script>
+    <script src="../assets/js/components/change-password-modal.js" defer></script>
+    <script src="../assets/js/components/delete-account-modal.js" defer></script>
     <script src="../assets/js/main.js" defer></script>
     <script src="../assets/js/generation.js" defer></script>
-    <script src="../assets/js/pages/profile.js" defer></script>
+    <script src="../assets/js/pages/profile.js?v=2" defer></script>
     <script src="../assets/js/components/navbar.js" defer></script>
 
-    <script defer>
+    <script>
         // Load navbar component with proper initialization
         fetch('../components/navbar.html')
             .then(response => response.text())
@@ -352,16 +360,6 @@
                 });
             })
             .catch(error => console.error('Profile: Failed to load navbar:', error));
-
-        // Your page-specific JavaScript
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!CVision.Utils.isAuthenticated()) {
-                window.location.href = '../login.html';
-                return;
-            }
-
-            initializeProfile();
-        });
     </script>
 
     <!-- Chatbot -->

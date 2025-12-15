@@ -372,6 +372,49 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
             message=f"Failed to retrieve profile: {str(e)}"
         )
 
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password", response_model=APIResponse)
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Change user password"""
+    try:
+        users_collection = await get_users_collection()
+        
+        # Verify current password
+        user = await users_collection.find_one({"_id": current_user["_id"]})
+        if not user or not verify_password(request.current_password, user["password"]):
+            return APIResponse(
+                success=False,
+                message="Incorrect current password"
+            )
+            
+        # Update with new password
+        new_password_hash = hash_password(request.new_password)
+        
+        await users_collection.update_one(
+            {"_id": current_user["_id"]},
+            {"$set": {"password": new_password_hash}}
+        )
+        
+        return APIResponse(
+            success=True,
+            message="Password updated successfully"
+        )
+        
+    except Exception as e:
+        logger.error(f"Password change error: {str(e)}")
+        return APIResponse(
+            success=False,
+            message="Failed to update password"
+        )
+
 # ============ GOOGLE OAUTH ROUTES ============
 
 import json
