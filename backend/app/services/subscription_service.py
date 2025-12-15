@@ -216,7 +216,7 @@ class SubscriptionService:
         
         # Convert user_id to ObjectId for database queries
         # Convert user_id to ObjectId for database queries
-        user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+        user_oid = ObjectId(user_id) if isinstance(user_id, str) and ObjectId.is_valid(user_id) else user_id
         
         # Check existing subscription (search both string and ObjectId formats)
         # IMPORTANT: Do not filter by status - if a cancelled/expired subscription exists,
@@ -283,16 +283,7 @@ class SubscriptionService:
                 
                 # Update user with Paystack customer code
                 # Ensure valid ObjectId
-                try:
-                    user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
-                except:
-                    # In case of OAuth ID or invalid format, find by string ID if needed, or log warning
-                    # If user_id is the _id, convert only if valid ObjectId
-                    import bson
-                    if bson.objectid.ObjectId.is_valid(user_id):
-                        user_oid = ObjectId(user_id)
-                    else:
-                        user_oid = user_id # Fallback to string ID if that's what is used
+                user_oid = ObjectId(user_id) if isinstance(user_id, str) and ObjectId.is_valid(user_id) else user_id
                         
                 await self.db.users.update_one(
                     {"_id": user_oid},
@@ -331,7 +322,7 @@ class SubscriptionService:
             logger.info(f"Created subscription {subscription_data['_id']} for user {user_id}")
         
         # Update user tier
-        user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+        user_oid = ObjectId(user_id) if isinstance(user_id, str) and ObjectId.is_valid(user_id) else user_id
         await self.db.users.update_one(
             {"_id": user_oid},
             {"$set": {"subscription_tier": plan.tier.value}}
@@ -350,8 +341,12 @@ class SubscriptionService:
         """Get subscription by ID"""
         try:
              # Handle string vs ObjectId for query
-            sub_oid = ObjectId(subscription_id) if isinstance(subscription_id, str) else subscription_id
-            sub_data = await self.db.subscriptions.find_one({"_id": sub_oid})
+            if isinstance(subscription_id, str) and ObjectId.is_valid(subscription_id):
+                 sub_query = ObjectId(subscription_id)
+            else:
+                 sub_query = subscription_id
+                 
+            sub_data = await self.db.subscriptions.find_one({"_id": sub_query})
             
             if sub_data:
                 # Convert ObjectId fields for Pydantic
@@ -373,7 +368,7 @@ class SubscriptionService:
             # Sync with User Profile (Source of Truth)
             try:
                 # Convert string user_id to ObjectId if needed
-                user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+                user_oid = ObjectId(user_id) if isinstance(user_id, str) and ObjectId.is_valid(user_id) else user_id
                 user = await self.db.users.find_one({"_id": user_oid})
                 
                 if user:
@@ -416,8 +411,9 @@ class SubscriptionService:
             except Exception as e:
                 logger.error(f"Error in subscription sync logic: {e}")
 
+            user_query = ObjectId(user_id) if isinstance(user_id, str) and ObjectId.is_valid(user_id) else user_id
             sub_data = await self.db.subscriptions.find_one({
-                "user_id": ObjectId(user_id),
+                "user_id": user_query,
                 "status": {"$nin": [SubscriptionStatus.CANCELLED.value, SubscriptionStatus.EXPIRED.value]}
             })
             
@@ -522,8 +518,9 @@ class SubscriptionService:
             update_data["status"] = SubscriptionStatus.CANCELLED.value
             
             # Update user to free tier
+            user_oid = ObjectId(user_id) if isinstance(user_id, str) and ObjectId.is_valid(user_id) else user_id
             await self.db.users.update_one(
-                {"_id": user_id},
+                {"_id": user_oid},
                 {"$set": {"subscription_tier": SubscriptionTier.FREE.value}}
             )
         else:

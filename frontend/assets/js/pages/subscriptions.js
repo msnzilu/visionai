@@ -281,12 +281,21 @@ function setBillingInterval(interval) {
     const monthlyBtn = document.getElementById('monthlyToggle');
     const yearlyBtn = document.getElementById('yearlyToggle');
 
+    // Define consistent classes
+    const activeClass = 'bg-white text-gray-900 shadow';
+    const inactiveClass = 'text-gray-600 hover:text-gray-900';
+
+    // Base classes common to both
+    const baseClass = 'px-6 py-2 rounded-full text-sm font-semibold transition-all';
+
     if (interval === 'monthly') {
-        monthlyBtn.className = 'px-6 py-2 rounded-full text-sm font-semibold transition-all bg-white text-gray-900 shadow';
-        yearlyBtn.className = 'px-6 py-2 rounded-full text-sm font-semibold transition-all text-gray-600 hover:text-gray-900';
+        // Monthly Active
+        monthlyBtn.className = `${baseClass} ${activeClass}`;
+        yearlyBtn.className = `${baseClass} ${inactiveClass}`;
     } else {
-        yearlyBtn.className = 'px-6 py-2 rounded-full text-sm font-semibold transition-all bg-white text-gray-900 shadow';
-        monthlyBtn.className = 'px-6 py-2 rounded-full text-sm font-semibold transition-all text-gray-600 hover:text-gray-900';
+        // Yearly Active
+        yearlyBtn.className = `${baseClass} ${activeClass}`;
+        monthlyBtn.className = `${baseClass} ${inactiveClass}`;
     }
 
     // Re-display plans with new filter
@@ -310,8 +319,15 @@ function displayPlans(plans) {
     container.innerHTML = '';
 
     // Define tier hierarchy for comparison
+    // Define tier hierarchy for comparison
     const tierOrder = { 'free': 0, 'basic': 1, 'premium': 2 };
-    const currentTier = currentSubscription ? currentSubscription.plan_id.replace('plan_', '') : 'free';
+
+    // Robust extraction of current tier from plan_id (handles _annual suffix)
+    const currentTierRaw = currentSubscription ? currentSubscription.plan_id.replace('plan_', '') : 'free';
+    let currentTier = 'free';
+    if (currentTierRaw.includes('premium')) currentTier = 'premium';
+    else if (currentTierRaw.includes('basic')) currentTier = 'basic';
+
     const currentTierOrder = tierOrder[currentTier] || 0;
 
     plans.forEach(plan => {
@@ -346,8 +362,19 @@ function displayPlans(plans) {
                 </button>
             `;
         } else if (isDowngrade) {
-            // Lower tier - show nothing or subtle text
-            buttonHtml = `<p class="text-center text-gray-400 text-sm py-3">—</p>`;
+            // Lower tier
+            if (plan.tier === 'free') {
+                // No button for Free plan as per request
+                buttonHtml = '';
+            } else {
+                // Show Downgrade button for paid lower tiers
+                buttonHtml = `
+                    <button onclick="selectPlan('${plan.id}', '${plan.name}', ${plan.price.amount}, '${planCode}')" 
+                        class="w-full bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-lg px-6 py-3 font-semibold hover:shadow transition-all">
+                        Downgrade
+                    </button>
+                `;
+            }
         } else if (isUpgrade) {
             // Higher tier - show Upgrade button
             buttonHtml = `
@@ -358,8 +385,17 @@ function displayPlans(plans) {
                 </button>
             `;
         } else {
-            // Same tier but not current (shouldn't happen, but fallback)
-            buttonHtml = `<p class="text-center text-gray-500 text-sm py-3">Your starting plan</p>`;
+            // Same tier but not current (e.g. Monthly -> Annual switch)
+            if (plan.tier === 'free') {
+                buttonHtml = '';
+            } else {
+                buttonHtml = `
+                <button onclick="selectPlan('${plan.id}', '${plan.name}', ${plan.price.amount}, '${planCode}')" 
+                    class="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-lg px-6 py-3 font-semibold hover:shadow-lg transition-all">
+                    Switch Plan
+                </button>
+            `;
+            }
         }
 
         card.innerHTML += `
