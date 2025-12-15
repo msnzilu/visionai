@@ -7,7 +7,7 @@ Save this file in: backend/app/services/oauth_service.py
 import secrets
 import httpx
 from typing import Dict, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from app.core.config import settings
@@ -25,27 +25,35 @@ class OAuthService:
     _state_tokens = {}
     
     @staticmethod
-    def generate_state_token() -> str:
-        """Generate OAuth state token"""
+    def generate_state_token(metadata: Optional[Dict] = None) -> str:
+        """Generate OAuth state token with optional metadata"""
         state = secrets.token_urlsafe(32)
-        OAuthService._state_tokens[state] = datetime.utcnow()
+        OAuthService._state_tokens[state] = {
+            "created_at": datetime.utcnow(),
+            "metadata": metadata or {}
+        }
         return state
     
     @staticmethod
-    def verify_state_token(state: str) -> bool:
-        """Verify OAuth state token"""
+    def verify_state_token(state: str) -> Tuple[bool, Optional[Dict]]:
+        """Verify OAuth state token and return metadata"""
         if state in OAuthService._state_tokens:
-            # Remove token after use (one-time use)
-            del OAuthService._state_tokens[state]
-            return True
-        return False
+            token_data = OAuthService._state_tokens.pop(state) # Remove after use
+            # Check expiration (e.g. 10 mins)
+            if datetime.utcnow() - token_data["created_at"] > timedelta(minutes=10):
+                return False, None
+            return True, token_data.get("metadata")
+        return False, None
+        
+    # Re-implementing correct return type hint helper if needed or just use logic in caller
+    # ideally verify_state_token returns (is_valid, metadata)
     
     # ============ GOOGLE OAUTH ============
     
     @staticmethod
-    def get_google_auth_url() -> Tuple[str, str]:
+    def get_google_auth_url(location_data: Optional[Dict] = None) -> Tuple[str, str]:
         """Generate Google OAuth authorization URL"""
-        state = OAuthService.generate_state_token()
+        state = OAuthService.generate_state_token(metadata={"location": location_data})
         
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
@@ -181,7 +189,8 @@ class OAuthService:
         first_name: str,
         last_name: str,
         oauth_provider: str,
-        oauth_id: str
+        oauth_id: str,
+        location_data: Optional[Dict] = None
     ) -> Tuple[Dict, str, bool]:
         """
         Handle OAuth user - create or login
@@ -193,20 +202,30 @@ class OAuthService:
         user = await users_collection.find_one({"email": email})
         is_new_user = False
         
+        # Helper to construct location update
+        location_update = {}
+        if location_data:
+            location_update = {"profile.location_preferences.country": location_data}
+
         if user:
+            update_data = {
+                f"oauth.{oauth_provider}": {
+                    "id": oauth_id,
+                    "connected_at": datetime.utcnow()
+                },
+                "last_login": datetime.utcnow(),
+                "is_verified": True
+            }
+            
+            # Update location if missing in current profile
+            current_country = user.get("profile", {}).get("location_preferences", {}).get("country")
+            if location_data and (not current_country or current_country.get("code") != location_data.get("code")):
+                 update_data["profile.location_preferences.country"] = location_data
+
             # Update OAuth info and last login
             await users_collection.update_one(
                 {"_id": user["_id"]},
-                {
-                    "$set": {
-                        f"oauth.{oauth_provider}": {
-                            "id": oauth_id,
-                            "connected_at": datetime.utcnow()
-                        },
-                        "last_login": datetime.utcnow(),
-                        "is_verified": True
-                    }
-                }
+                {"$set": update_data}
             )
             user = await users_collection.find_one({"_id": user["_id"]})
         else:
@@ -238,6 +257,12 @@ class OAuthService:
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow(),
                 "last_login": datetime.utcnow(),
+                # Initialize profile with location if provided
+                "profile": {
+                     "location_preferences": {
+                          "country": location_data
+                     }
+                } if location_data else {},
                 "usage_stats": {
                     "total_searches": 0,
                     "total_applications": 0,

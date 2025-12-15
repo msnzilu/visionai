@@ -22,10 +22,16 @@ class UserRole(str, Enum):
     MODERATOR = "moderator"
 
 
+class Country(BaseModel):
+    code: str
+    name: str
+    currency: str
+
+
 class LocationPreference(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
-    country: str
+    country: Country
     remote_ok: bool = False
     radius_miles: int = Field(default=50, ge=1, le=500)
     coordinates: Optional[Dict[str, float]] = None  # lat, lng

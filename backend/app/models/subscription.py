@@ -186,6 +186,10 @@ class SubscriptionPlan(BaseModel):
     # Paystack integration
     paystack_plan_code: Optional[str] = None
     paystack_product_id: Optional[str] = None
+    
+    # User selected: Option 1 - Multi-currency support
+    paystack_plan_codes: Optional[Dict[str, str]] = None # Map currency code -> plan code
+    price_overrides: Optional[Dict[str, Money]] = None # Map currency code -> Money object
 
 
 # Payment Method Models

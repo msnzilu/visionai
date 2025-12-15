@@ -132,11 +132,30 @@ async function handleLogin() {
             setButtonLoading(loginButton, true);
         }
 
+        // Detect location
+        let location = null;
+        try {
+            // Check if CVision.Geolocation exists
+            if (CVision.Geolocation) {
+                const geoData = await CVision.Geolocation.detect();
+                if (geoData && geoData.detected) {
+                    location = {
+                        code: geoData.countryCode,
+                        name: geoData.countryName,
+                        currency: geoData.currency
+                    };
+                }
+            }
+        } catch (err) {
+            console.warn('Geolocation detection failed:', err);
+        }
+
         // Make login request
         const response = await CVision.API.login({
             email: email,
             password: password,
-            remember_me: rememberMe
+            remember_me: rememberMe,
+            location: location
         });
 
         if (response.success) {
@@ -320,8 +339,26 @@ async function handleGoogleLogin() {
             googleButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Connecting...';
         }
 
+        // Detect location before redirecting
+        let locationParam = '';
+        try {
+            if (CVision.Geolocation) {
+                const geoData = await CVision.Geolocation.detect();
+                if (geoData && geoData.detected) {
+                    const locationData = {
+                        code: geoData.countryCode,
+                        name: geoData.countryName,
+                        currency: geoData.currency
+                    };
+                    locationParam = `?location=${encodeURIComponent(JSON.stringify(locationData))}`;
+                }
+            }
+        } catch (err) {
+            console.warn('Geolocation detection failed for Google login:', err);
+        }
+
         // Use YOUR actual API structure
-        const url = `${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/auth/google/login`;
+        const url = `${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/auth/google/login${locationParam}`;
         const response = await fetch(url);
         const data = await response.json();
 

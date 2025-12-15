@@ -88,7 +88,15 @@ class UserSchema:
                                 "properties": {
                                     "city": {"bsonType": ["string", "null"]},
                                     "state": {"bsonType": ["string", "null"]},
-                                    "country": {"bsonType": "string"},
+                                    "country": {
+                                        "bsonType": "object",
+                                        "required": ["code", "name", "currency"],
+                                        "properties": {
+                                            "code": {"bsonType": "string"},
+                                            "name": {"bsonType": "string"},
+                                            "currency": {"bsonType": "string"}
+                                        }
+                                    },
                                     "remote_ok": {"bsonType": "bool"},
                                     "radius_miles": {
                                         "bsonType": "int",
@@ -314,7 +322,7 @@ class UserSchema:
             IndexModel([("last_login", DESCENDING)], name="last_login_desc_idx"),
             
             # Location-based queries
-            IndexModel([("profile.location_preferences.country", ASCENDING)], name="country_idx"),
+            IndexModel([("profile.location_preferences.country.code", ASCENDING)], name="country_code_idx"),
             IndexModel([("profile.location_preferences.city", ASCENDING)], name="city_idx"),
             IndexModel([("profile.location_preferences.coordinates", "2dsphere")], name="location_geo_idx"),
             
@@ -339,7 +347,7 @@ class UserSchema:
             ], name="subscription_active_created_idx"),
             
             IndexModel([
-                ("profile.location_preferences.country", ASCENDING),
+                ("profile.location_preferences.country.code", ASCENDING),
                 ("profile.job_preferences.industries", ASCENDING)
             ], name="location_industry_idx")
         ]

@@ -35,10 +35,16 @@ class UserRegister(BaseModel):
     last_name: Optional[str] = None
 
 
+class LocationData(BaseModel):
+    code: str
+    name: str
+    currency: str
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
     remember_me: Optional[bool] = False
+    location: Optional[LocationData] = None
 
 
 class UserResponse(BaseModel):
@@ -188,6 +194,29 @@ async def login(login_data: UserLogin):
             access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
             refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
         
+        # Update location if provided and different/missing
+        if login_data.location:
+            current_location = user.get("profile", {}).get("location_preferences", {}).get("country")
+            should_update_location = False
+            
+            if not current_location:
+                 should_update_location = True
+            elif isinstance(current_location, dict) and current_location.get("code") != login_data.location.code:
+                 should_update_location = True
+            
+            if should_update_location:
+                try:
+                    await users_collection.update_one(
+                        {"_id": user["_id"]},
+                        {
+                            "$set": {
+                                "profile.location_preferences.country": login_data.location.dict()
+                            }
+                        }
+                    )
+                except Exception as ex:
+                     logger.warning(f"Failed to update location for user {user['_id']}: {ex}")
+
         # Create tokens using centralized function with custom expiration
         from app.core.security import create_refresh_token
         access_token = create_access_token(str(user["_id"]), expires_delta=access_token_expires)
@@ -345,11 +374,20 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
 
 # ============ GOOGLE OAUTH ROUTES ============
 
+import json
+
 @router.get("/google/login")
-async def google_login():
+async def google_login(location: Optional[str] = None):
     """Initiate Google OAuth flow"""
     try:
-        auth_url, state = OAuthService.get_google_auth_url()
+        location_data = None
+        if location:
+            try:
+                location_data = json.loads(location)
+            except Exception:
+                pass
+                
+        auth_url, state = OAuthService.get_google_auth_url(location_data=location_data)
         return {
             "success": True,
             "auth_url": auth_url,
@@ -364,7 +402,8 @@ async def google_login():
 async def google_callback(code: str, state: str):
     """Handle Google OAuth callback"""
     try:
-        if not OAuthService.verify_state_token(state):
+        is_valid, metadata = OAuthService.verify_state_token(state)
+        if not is_valid:
             return RedirectResponse(url=f"{settings.FRONTEND_URL}/login.html?error=invalid_state")
         
         tokens = await OAuthService.exchange_google_code(code)
@@ -380,7 +419,8 @@ async def google_callback(code: str, state: str):
             first_name=user_info.get("given_name", ""),
             last_name=user_info.get("family_name", ""),
             oauth_provider="google",
-            oauth_id=user_info["id"]
+            oauth_id=user_info["id"],
+            location_data=metadata.get("location") if metadata else None
         )
         
         redirect_url = f"{settings.FRONTEND_URL}/auth-callback.html?token={token}&provider=google"

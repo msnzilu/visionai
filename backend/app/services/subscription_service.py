@@ -129,7 +129,7 @@ class SubscriptionService:
                 name="Free Plan",
                 tier=SubscriptionTier.FREE,
                 description="Get started with manual applications",
-                price=Money(amount=0, currency=Currency.KES),
+                price=Money(amount=0, currency=Currency.USD),
                 billing_interval="monthly",
                 trial_period_days=0,
                 limits=free_limits,
@@ -148,7 +148,7 @@ class SubscriptionService:
                 name="Basic Plan",
                 tier=SubscriptionTier.BASIC,
                 description="Perfect for active job seekers",
-                price=Money(amount=260000, currency=Currency.KES),  # KES 2,600/month
+                price=Money(amount=2000, currency=Currency.USD),  # $20.00/month
                 billing_interval="monthly",
                 trial_period_days=7,
                 limits=basic_limits,
@@ -164,7 +164,7 @@ class SubscriptionService:
                 name="Basic Plan",
                 tier=SubscriptionTier.BASIC,
                 description="Perfect for active job seekers",
-                price=Money(amount=2600000, currency=Currency.KES),  # KES 26,000/year (save KES 5,200)
+                price=Money(amount=20000, currency=Currency.USD),  # $200.00/year
                 billing_interval="yearly",
                 trial_period_days=7,
                 limits=basic_limits,
@@ -180,7 +180,7 @@ class SubscriptionService:
                 name="Premium Plan",
                 tier=SubscriptionTier.PREMIUM,
                 description="Full automation for serious professionals",
-                price=Money(amount=640000, currency=Currency.KES),  # KES 6,400/month
+                price=Money(amount=5000, currency=Currency.USD),  # $50.00/month
                 billing_interval="monthly",
                 trial_period_days=14,
                 limits=premium_limits,
@@ -195,7 +195,7 @@ class SubscriptionService:
                 name="Premium Plan",
                 tier=SubscriptionTier.PREMIUM,
                 description="Full automation for serious professionals",
-                price=Money(amount=6400000, currency=Currency.KES),  # KES 64,000/year (save KES 12,800)
+                price=Money(amount=50000, currency=Currency.USD),  # $500.00/year
                 billing_interval="yearly",
                 trial_period_days=14,
                 limits=premium_limits,
@@ -266,14 +266,18 @@ class SubscriptionService:
                     raise ValueError(f"Transaction failed: {verification.get('gateway_response', 'Unknown error')}")
 
                 # Ensure the amount matches
-                cost_in_kobo = int(plan.price.amount * 100) # Assuming price amount is USD/NGN standard, converted to kobo?
-                # Actually usage in logic: Money(amount=2000) -> $20.00. 
-                # If paystack expects kobo/cents. If Currency is USD, Paystack supports USD.
-                # Just converting logic: 2000 -> 2000 cents.
+                verification_currency = verification.get("currency", "KES")
+                expected_price = plan.price
                 
-                # Check amount
-                if verification["amount"] < plan.price.amount: # be careful with units here
-                    logger.warning(f"Transaction amount mismatch. Expected >= {plan.price.amount}, got {verification['amount']}")
+                # Check for currency specific override
+                if plan.price_overrides and verification_currency in plan.price_overrides:
+                    expected_price = plan.price_overrides[verification_currency]
+                
+                # Check amount (Paystack returns amount in kobo/cents)
+                # expected_price.amount is also in kobo/cents
+                # Note: This logic assumes expected_price.amount is in the same unit as Paystack verification.
+                if verification["amount"] < expected_price.amount: 
+                    logger.warning(f"Transaction amount mismatch. Expected >= {expected_price.amount} {verification_currency}, got {verification['amount']}")
                     # raise ValueError("Transaction amount too low")
                 
                 customer_data = verification.get("customer", {})
@@ -651,12 +655,37 @@ class SubscriptionService:
         
         return None
     
-    async def list_plans(self) -> List[SubscriptionPlan]:
-        """List all available plans"""
-        return sorted(
+    async def list_plans(self, currency: Optional[str] = None) -> List[SubscriptionPlan]:
+        """List all available plans, optionally customized for a currency"""
+        plans = sorted(
             self.PLANS.values(),
             key=lambda x: x.sort_order
         )
+        
+        if not currency:
+            return plans
+            
+        # Customize plans for the requested currency
+        customized_plans = []
+        import copy
+        
+        for plan in plans:
+            # Shallow copy appropriate for distinct Pydantic models in list, 
+            # but deep copy needed if we modify nested mutable fields. 
+            # Pydantic .copy() is shallow.
+            new_plan = plan.copy()
+            
+            # 1. Override Paystack Plan Code
+            if plan.paystack_plan_codes and currency in plan.paystack_plan_codes:
+                new_plan.paystack_plan_code = plan.paystack_plan_codes[currency]
+                
+            # 2. Override Price
+            if plan.price_overrides and currency in plan.price_overrides:
+                new_plan.price = plan.price_overrides[currency]
+            
+            customized_plans.append(new_plan)
+            
+        return customized_plans
     
     async def reset_monthly_usage(self):
         """Reset monthly usage for all subscriptions (run via cron)"""

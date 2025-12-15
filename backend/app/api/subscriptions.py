@@ -88,10 +88,10 @@ async def get_stripe_config_deprecated():
 # ==================== SUBSCRIPTION PLANS ====================
 
 @router.get("/plans", response_model=List[SubscriptionPlan])
-async def get_subscription_plans(db = Depends(get_database)):
-    """Get all available subscription plans"""
+async def get_subscription_plans(currency: Optional[str] = None, db = Depends(get_database)):
+    """Get all available subscription plans, optionally filtered by currency"""
     service = SubscriptionService(db)
-    plans = await service.list_plans()
+    plans = await service.list_plans(currency=currency)
     return plans
 
 @router.get("/plans/{plan_id}", response_model=SubscriptionPlan)

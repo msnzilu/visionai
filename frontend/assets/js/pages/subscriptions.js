@@ -13,8 +13,8 @@ function formatPrice(amountInCents) {
     if (window.CVision && window.CVision.Currency) {
         return CVision.Currency.format(amountInCents);
     }
-    // Fallback to basic KES formatting
-    return `KES ${(amountInCents / 100).toLocaleString()}`;
+    // Fallback to basic USD formatting
+    return `$${(amountInCents / 100).toLocaleString()}`;
 }
 
 // Get user's detected currency
@@ -22,7 +22,7 @@ function getUserCurrency() {
     if (window.CVision && window.CVision.Currency) {
         return CVision.Currency.getUserCurrency();
     }
-    return 'KES';
+    return 'USD';
 }
 
 // Format price in base currency (KES)
@@ -30,7 +30,7 @@ function formatBasePrice(amountInCents) {
     if (window.CVision && window.CVision.Currency) {
         return CVision.Currency.formatBase(amountInCents);
     }
-    return `KES ${(amountInCents / 100).toLocaleString()}`;
+    return `$${(amountInCents / 100).toLocaleString()}`;
 }
 
 // Load payment gateway configuration from backend
@@ -251,7 +251,8 @@ async function loadUsageStats() {
 
 async function loadPlans() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/plans`);
+        const currency = getUserCurrency();
+        const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/plans?currency=${currency}`);
 
         if (!response.ok) throw new Error('Failed to load plans');
 
@@ -505,16 +506,48 @@ async function handlePaymentSubmit(e) {
 
         const cleanEmail = USER_EMAIL.trim();
 
+        // Determine currency and amount based on provider
+        const provider = CVision.Payment.getProviderName();
+        let targetCurrency = 'KES';
+        let finalAmount = selectedPlan.price; // Start with KES cents
+
+        if (provider === 'paystack') {
+            // Paystack: Use User's Local Currency
+            targetCurrency = CVision.Currency.getUserCurrency();
+        } else if (provider === 'paypal') {
+            // PayPal: Use USD
+            targetCurrency = 'USD';
+        }
+
+        // Perform Conversion if needed (Base is USD)
+        if (targetCurrency !== 'USD' && window.CVision && window.CVision.Currency) {
+            const rate = CVision.Currency.getRate(targetCurrency);
+            // Conversion: (USD Cents / 100) * Rate = Target Major Units
+            let majorAmount = (selectedPlan.price / 100) * rate;
+
+            // Smart Rounding for KES: Round to nearest 10 (e.g. 2577 -> 2580)
+            if (targetCurrency === 'KES') {
+                majorAmount = Math.round(majorAmount / 10) * 10;
+            }
+
+            // Convert to Target Cents/Smallest Unit
+            // Assuming 2 decimals for standard currencies (factor 100)
+            finalAmount = Math.round(majorAmount * 100);
+
+            console.log(`[Subscriptions] Converted Payment: ${selectedPlan.price} USD -> ${finalAmount} ${targetCurrency} (Rate: ${rate})`);
+        }
+
         console.log('Starting payment checkout for:', {
             email: cleanEmail,
-            amount: selectedPlan.price,
+            amount: finalAmount,
+            currency: targetCurrency,
             plan: selectedPlan.planCode
         });
 
         await CVision.Payment.checkout({
             email: cleanEmail,
-            amount: selectedPlan.price,
-            currency: 'KES',
+            amount: finalAmount,
+            currency: targetCurrency,
             planCode: selectedPlan.planCode,
             metadata: {
                 custom_fields: [{

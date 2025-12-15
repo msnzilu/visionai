@@ -13,6 +13,74 @@ async function initializeProfile() {
     await loadUserProfile();
     await loadRecentGenerations();
     setupForms();
+    await checkAndPopulateLocation();
+}
+
+async function checkAndPopulateLocation() {
+    try {
+        // Get current profile
+        const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/profile`, {
+            headers: {
+                'Authorization': `Bearer ${CVision.Utils.getToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) return;
+        const profile = await response.json();
+
+        // Check if country is set
+        if (!profile.location_preferences?.country?.code) {
+            console.log('[PROFILE] Location preferences missing, detecting...');
+
+            // Detect location
+            const geoData = await CVision.Geolocation.detect();
+
+            if (geoData.detected) {
+                const countryObj = {
+                    code: geoData.countryCode,
+                    name: geoData.countryName,
+                    currency: geoData.currency
+                };
+
+                // Construct city string
+                let cityStr = geoData.city || '';
+                if (geoData.region && geoData.city !== geoData.region) {
+                    cityStr += cityStr ? `, ${geoData.region}` : geoData.region;
+                }
+
+                // Update UI immediately
+                document.getElementById('country').value = `${countryObj.name} (${countryObj.code})`;
+                document.getElementById('currencyDisplay').textContent = countryObj.currency;
+                if (cityStr) document.getElementById('cityState').value = cityStr;
+
+                // Prepare update with ALL existing profile data to avoid overwriting
+                const updateData = {
+                    ...profile,
+                    location_preferences: {
+                        ...(profile.location_preferences || {}),
+                        country: countryObj,
+                        city: cityStr // Save auto-detected city
+                    }
+                };
+
+                console.log('[PROFILE] Saving detected location:', countryObj);
+
+                await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${CVision.Utils.getToken()}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                console.log('[PROFILE] Location saved');
+            }
+        }
+    } catch (error) {
+        console.warn('[PROFILE] Failed to populate location:', error);
+    }
 }
 
 async function loadUserProfile() {
@@ -58,8 +126,21 @@ async function loadUserProfile() {
 
                 // Update profile fields
                 const personalInfo = profile.personal_info || {};
+                const locPrefs = profile.location_preferences || {};
+
                 document.getElementById('phone').value = personalInfo.phone || '';
-                document.getElementById('location').value = personalInfo.location || '';
+
+                // Handle split location fields
+                document.getElementById('cityState').value = locPrefs.city || personalInfo.location || '';
+
+                // Handle Country Object
+                if (locPrefs.country && locPrefs.country.name) {
+                    document.getElementById('country').value = `${locPrefs.country.name} (${locPrefs.country.code})`;
+                    document.getElementById('currencyDisplay').textContent = locPrefs.country.currency || '';
+                } else {
+                    document.getElementById('country').value = 'Detecting...';
+                }
+
                 document.getElementById('linkedin').value = personalInfo.linkedin || '';
             } else {
                 console.warn('Detailed profile not available (this is OK)');
@@ -151,10 +232,10 @@ function setupForms() {
 
         const fullName = document.getElementById('fullName').value;
         const phone = document.getElementById('phone').value;
-        const location = document.getElementById('location').value;
+        const cityState = document.getElementById('cityState').value;
         const linkedin = document.getElementById('linkedin').value;
 
-        console.log('[PERSONAL INFO] Saving:', { fullName, phone, location, linkedin });
+        console.log('[PERSONAL INFO] Saving:', { fullName, phone, cityState, linkedin });
 
         try {
             // Step 1: Update full_name using existing PUT /me endpoint
@@ -180,7 +261,7 @@ function setupForms() {
             }
 
             // Step 2: Update contact info - get current user data first
-            if (phone || location || linkedin) {
+            if (phone || cityState || linkedin) {
                 console.log('[PERSONAL INFO] Step 2: Getting current profile data');
 
                 // Get current profile to preserve existing data
@@ -213,13 +294,25 @@ function setupForms() {
                 console.log('[PERSONAL INFO] Step 3: Updating contact info via PUT /me/profile');
 
                 // Merge with existing profile data and include required fields
+                // IMPORTANT: We must preserve other profile fields like location_preferences
                 const profileData = {
+                    ...existingProfile, // Preserve all existing fields
+
+                    // Update Personal Info
                     personal_info: {
+                        ...existingProfile.personal_info,
                         first_name: userData.first_name || '',
                         last_name: userData.last_name || '',
                         phone: phone || existingProfile.personal_info?.phone || '',
-                        location: location || existingProfile.personal_info?.location || '',
+                        location: cityState || existingProfile.personal_info?.location || '', // Legacy support
                         linkedin: linkedin || existingProfile.personal_info?.linkedin || ''
+                    },
+
+                    // Update Location Preferences (preserve country)
+                    location_preferences: {
+                        ...(existingProfile.location_preferences || {}),
+                        city: cityState, // Extract city/state
+                        country: existingProfile.location_preferences?.country // KEEP EXISTING COUNTRY
                     }
                 };
 

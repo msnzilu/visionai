@@ -13,64 +13,27 @@
     'use strict';
 
     // Base currency (what prices are stored in)
-    let baseCurrency = 'KES';
+    let baseCurrency = 'USD';
 
     // User's display currency
-    let userCurrency = 'KES';
+    let userCurrency = 'USD';
 
-    // Exchange rates FROM base currency (KES)
+    // Exchange rates FROM base currency (USD)
     // In production, these should be fetched from an API
     const EXCHANGE_RATES = {
         // Base
-        'KES': 1,
+        'USD': 1,
 
-        // Major currencies (rates from KES)
-        'USD': 0.0077,     // 1 KES ≈ $0.0077 (1 USD ≈ 130 KES)
-        'EUR': 0.0071,     // 1 KES ≈ €0.0071
-        'GBP': 0.0061,     // 1 KES ≈ £0.0061
-        'CAD': 0.0105,     // 1 KES ≈ C$0.0105
-        'AUD': 0.012,      // 1 KES ≈ A$0.012
-        'CHF': 0.0068,     // 1 KES ≈ CHF0.0068
-
-        // African currencies
-        'NGN': 12.0,       // 1 KES ≈ ₦12
-        'ZAR': 0.14,       // 1 KES ≈ R0.14
-        'GHS': 0.095,      // 1 KES ≈ GH₵0.095
-        'UGX': 28.5,       // 1 KES ≈ UGX28.5
-        'TZS': 19.5,       // 1 KES ≈ TZS19.5
-        'RWF': 9.8,        // 1 KES ≈ RWF9.8
-        'ETB': 0.44,       // 1 KES ≈ ETB0.44
-        'EGP': 0.38,       // 1 KES ≈ EGP0.38
-        'MAD': 0.077,      // 1 KES ≈ MAD0.077
-
-        // Asian currencies
-        'INR': 0.64,       // 1 KES ≈ ₹0.64
-        'CNY': 0.055,      // 1 KES ≈ ¥0.055
-        'JPY': 1.15,       // 1 KES ≈ ¥1.15
-        'KRW': 10.2,       // 1 KES ≈ ₩10.2
-        'SGD': 0.0103,     // 1 KES ≈ S$0.0103
-        'AED': 0.028,      // 1 KES ≈ AED0.028
-        'SAR': 0.029,      // 1 KES ≈ SAR0.029
-        'PKR': 2.15,       // 1 KES ≈ PKR2.15
-        'BDT': 0.85,       // 1 KES ≈ BDT0.85
-        'PHP': 0.43,       // 1 KES ≈ PHP0.43
-        'IDR': 120,        // 1 KES ≈ IDR120
-        'MYR': 0.036,      // 1 KES ≈ MYR0.036
-        'THB': 0.27,       // 1 KES ≈ THB0.27
-        'VND': 190,        // 1 KES ≈ VND190
-
-        // European currencies
-        'SEK': 0.08,       // 1 KES ≈ SEK0.08
-        'NOK': 0.082,      // 1 KES ≈ NOK0.082
-        'DKK': 0.053,      // 1 KES ≈ DKK0.053
-        'PLN': 0.031,      // 1 KES ≈ PLN0.031
-
-        // Americas
-        'MXN': 0.13,       // 1 KES ≈ MXN0.13
-        'BRL': 0.038,      // 1 KES ≈ BRL0.038
-
-        // Oceania
-        'NZD': 0.013       // 1 KES ≈ NZD0.013
+        // Major currencies (approx rates from USD)
+        'KES': 129.0,
+        'EUR': 0.92,
+        'GBP': 0.79,
+        'NGN': 1500.0,
+        'ZAR': 18.5,
+        'GHS': 12.0,
+        'CAD': 1.35,
+        'AUD': 1.5,
+        'INR': 83.0
     };
 
     // Currency symbols and formatting
@@ -257,16 +220,47 @@
         },
 
         /**
+         * Fetch live exchange rates
+         * @param {string} base Base currency code
+         */
+        async fetchRates(base = 'USD') {
+            try {
+                const response = await fetch(`https://open.er-api.com/v6/latest/${base}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.result === 'success') {
+                        this.updateRates(data.rates);
+                        console.log(`[Currency] Fetched live rates for base ${base}`);
+                    }
+                }
+            } catch (error) {
+                console.warn('[Currency] Failed to fetch live rates:', error);
+            }
+        },
+
+        /**
          * Initialize currency from geolocation
          * Uses CVision.Geolocation if available
          */
         async initFromGeolocation() {
             if (global.CVision && global.CVision.Geolocation) {
                 await global.CVision.Geolocation.detect();
-                const detectedCurrency = global.CVision.Geolocation.getCurrency();
-                if (this.isSupported(detectedCurrency)) {
-                    this.setUserCurrency(detectedCurrency);
+                const countryCode = global.CVision.Geolocation.getCountryCode(); // e.g. 'KE'
+
+                // Default to USD base rates
+                await this.fetchRates('USD');
+
+                if (countryCode === 'KE') {
+                    // Kenya -> KES
+                    this.setUserCurrency('KES');
+                } else {
+                    // Everyone else -> USD
+                    this.setUserCurrency('USD');
                 }
+            } else {
+                // Fallback
+                this.setUserCurrency('USD');
+                await this.fetchRates('USD');
             }
         }
     };
