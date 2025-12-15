@@ -12,6 +12,7 @@ from app.models.user import User
 from app.services.gmail_service import gmail_service
 from app.api.auth import get_current_user
 from app.models.email_log import EmailLog, EmailDirection, EmailStatus
+from app.services.subscription_service import SubscriptionService
 
 import logging
 logger = logging.getLogger(__name__)
@@ -59,7 +60,19 @@ async def apply_via_email(
                 detail="Gmail account not connected. Please connect your Gmail account first."
             )
         
+        # 1.5. Check Usage Limits (Auto Application)
+        subscription_service = SubscriptionService(await get_database())
+        can_apply, _, _ = await subscription_service.check_usage_limit(
+            str(current_user["_id"]),
+            "auto_application"
+        )
         
+        if not can_apply:
+             raise HTTPException(
+                status_code=403,
+                detail="Monthly auto-application limit reached. Please upgrade your plan."
+            )
+
         # 2. Get Job Details
         jobs_collection = await get_jobs_collection()
         logger.info(f"Looking up job: {request.job_id}")
@@ -155,6 +168,14 @@ async def apply_via_email(
                     detail=f"Failed to send application: {error_msg}"
                 )
             
+
+        
+            # Track usage
+            await subscription_service.track_usage(
+                 str(current_user["_id"]),
+                 "auto_application"
+            )
+
             # Success! Application status already updated by email agent
             return EmailApplicationResponse(
                 success=True,
@@ -205,6 +226,21 @@ async def track_external_application(
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
 
+
+
+        # 1.5 Check Usage Limits (Manual Application)
+        subscription_service = SubscriptionService(await get_database())
+        can_apply, _, _ = await subscription_service.check_usage_limit(
+            str(current_user["_id"]),
+            "manual_application"
+        )
+        
+        if not can_apply:
+             raise HTTPException(
+                status_code=403,
+                detail="Monthly manual application limit reached. Please upgrade your plan."
+            )
+
         # 2. Create Application Record
         applications_collection = await get_applications_collection()
         
@@ -232,6 +268,14 @@ async def track_external_application(
         )
         
         result = await applications_collection.insert_one(application_doc.dict(by_alias=True, exclude={"id"}))
+        
+
+        
+        # Track usage
+        await subscription_service.track_usage(
+             str(current_user["_id"]),
+             "manual_application"
+        )
         
         return EmailApplicationResponse(
             success=True,

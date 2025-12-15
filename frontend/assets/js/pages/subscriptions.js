@@ -238,11 +238,11 @@ async function loadUsageStats() {
         const data = await response.json();
         const usage = data.current_usage || {};
 
-        const searches = usage.searches || 0;
-        const applications = usage.applications || 0;
+        const manualApps = usage.manual_applications || 0;
+        const autoApps = usage.auto_applications || 0;
 
-        document.getElementById('currentUsage').textContent =
-            `${searches} searches, ${applications} applications`;
+        document.getElementById('currentUsage').innerHTML =
+            `<div class="text-lg">${manualApps} Manual</div><div class="text-sm text-gray-500">${autoApps} Auto</div>`;
 
     } catch (error) {
         console.error('Failed to load usage:', error);
@@ -492,6 +492,7 @@ async function handlePaymentSubmit(e) {
                     console.log('Payment checkout successful, verifying:', result);
                     // Transaction successful, verify on backend
                     await subscribeToPlan(selectedPlan.id, result.reference, referralCode);
+
 
                     closeSubscriptionModal();
                     CVision.Utils.showAlert('Subscription successful!', 'success');

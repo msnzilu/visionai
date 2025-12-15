@@ -42,8 +42,8 @@ class SubscriptionService:
         
         # Shared limits configurations
         free_limits = SubscriptionLimits(
-            monthly_job_searches=create_limit("monthly_job_searches", 9999),
-            monthly_applications=create_limit("monthly_applications", 5),
+            monthly_manual_applications=create_limit("monthly_manual_applications", 5),
+            monthly_auto_applications=create_limit("monthly_auto_applications", 0),
             monthly_cv_generations=create_limit("monthly_cv_generations", 0),
             monthly_cover_letters=create_limit("monthly_cover_letters", 0),
             concurrent_applications=create_limit("concurrent_applications", 1, "instant", False),
@@ -62,8 +62,8 @@ class SubscriptionService:
         )
         
         basic_limits = SubscriptionLimits(
-            monthly_job_searches=create_limit("monthly_job_searches", 9999),
-            monthly_applications=create_limit("monthly_applications", 9999),
+            monthly_manual_applications=create_limit("monthly_manual_applications", 9999),
+            monthly_auto_applications=create_limit("monthly_auto_applications", 600), # 20 per day * 30
             monthly_cv_generations=create_limit("monthly_cv_generations", 9999),
             monthly_cover_letters=create_limit("monthly_cover_letters", 9999),
             concurrent_applications=create_limit("concurrent_applications", 20, "daily", True),
@@ -82,8 +82,8 @@ class SubscriptionService:
         )
         
         premium_limits = SubscriptionLimits(
-            monthly_job_searches=create_limit("monthly_job_searches", 9999),
-            monthly_applications=create_limit("monthly_applications", 9999),
+            monthly_manual_applications=create_limit("monthly_manual_applications", 9999),
+            monthly_auto_applications=create_limit("monthly_auto_applications", 9999),
             monthly_cv_generations=create_limit("monthly_cv_generations", 9999),
             monthly_cover_letters=create_limit("monthly_cover_letters", 9999),
             concurrent_applications=create_limit("concurrent_applications", 9999, "instant", False),
@@ -215,16 +215,17 @@ class SubscriptionService:
         """Create a new subscription"""
         
         # Convert user_id to ObjectId for database queries
-        from bson import ObjectId as BsonObjectId
-        user_oid = BsonObjectId(user_id) if isinstance(user_id, str) else user_id
+        # Convert user_id to ObjectId for database queries
+        user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
         
         # Check existing subscription (search both string and ObjectId formats)
+        # IMPORTANT: Do not filter by status - if a cancelled/expired subscription exists,
+        # we must UPDATE it, not create a new one (prevent duplicate key error)
         existing = await self.db.subscriptions.find_one({
             "$or": [
                 {"user_id": user_oid},
                 {"user_id": user_id}
-            ],
-            "status": {"$nin": [SubscriptionStatus.CANCELLED.value, SubscriptionStatus.EXPIRED.value]}
+            ]
         })
         
         # Get plan
@@ -242,8 +243,10 @@ class SubscriptionService:
             "current_period_start": now,
             "current_period_end": now + timedelta(days=30),
             "current_usage": {
-                "searches": 0,
-                "applications": 0,
+                "manual_applications": 0,
+                "auto_applications": 0,
+                "searches": 0, # Kept for legacy
+                "applications": 0, # Kept for legacy
                 "cv_generations": 0,
                 "cover_letters": 0,
                 "api_calls": 0
@@ -279,8 +282,18 @@ class SubscriptionService:
                 auth_code = authorization.get("authorization_code")
                 
                 # Update user with Paystack customer code
-                from bson import ObjectId
-                user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+                # Ensure valid ObjectId
+                try:
+                    user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+                except:
+                    # In case of OAuth ID or invalid format, find by string ID if needed, or log warning
+                    # If user_id is the _id, convert only if valid ObjectId
+                    import bson
+                    if bson.objectid.ObjectId.is_valid(user_id):
+                        user_oid = ObjectId(user_id)
+                    else:
+                        user_oid = user_id # Fallback to string ID if that's what is used
+                        
                 await self.db.users.update_one(
                     {"_id": user_oid},
                     {"$set": {"paystack_customer_code": customer_code}}
@@ -318,8 +331,7 @@ class SubscriptionService:
             logger.info(f"Created subscription {subscription_data['_id']} for user {user_id}")
         
         # Update user tier
-        from bson import ObjectId as BsonObjectId
-        user_oid = BsonObjectId(user_id) if isinstance(user_id, str) else user_id
+        user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
         await self.db.users.update_one(
             {"_id": user_oid},
             {"$set": {"subscription_tier": plan.tier.value}}
@@ -445,10 +457,14 @@ class SubscriptionService:
             # Auto-create free subscription if none exists
             logger.info(f"No subscription found for user {user_id}, attempting to create free subscription")
             try:
+                # IMPORTANT: Recursion protection - if we are already trying to create plan_free, don't recurse
+                # But here we pass "plan_free" which is different.
+                # However, create_subscription calls get_plan.
                 return await self.create_subscription(user_id, "plan_free")
             except Exception as e:
                 logger.error(f"Failed to auto-create subscription: {e}")
-                return None
+                raise e # Propagate error to be seen
+
                 
                 
         except Exception as e:
@@ -552,8 +568,10 @@ class SubscriptionService:
         
         # Map event types to usage fields
         usage_field_map = {
-            "job_search": "searches",
-            "application": "applications",
+            "manual_application": "manual_applications",
+            "auto_application": "auto_applications",
+            "job_search": "searches", # Legacy
+            "application": "manual_applications", # Default application to manual
             "cv_generation": "cv_generations",
             "cover_letter": "cover_letters",
             "api_call": "api_calls"
@@ -588,16 +606,19 @@ class SubscriptionService:
             return True, 0, 9999  # No limits defined
         
         # Map event types to limit fields and usage fields
+        # Map event types to limit fields and usage fields
         limit_map = {
-            "job_search": ("monthly_job_searches", "searches"),
-            "application": ("monthly_applications", "applications"),
+            "manual_application": ("monthly_manual_applications", "manual_applications"),
+            "auto_application": ("monthly_auto_applications", "auto_applications"),
+            "application": ("monthly_manual_applications", "manual_applications"), # Default
             "cv_generation": ("monthly_cv_generations", "cv_generations"),
-            "cover_letter": ("monthly_cover_letters", "cover_letters")
+            "cover_letter": ("monthly_cover_letters", "cover_letters"),
+             "job_search": ("monthly_job_searches", "searches") # Legacy
         }
         
         if event_type not in limit_map:
             return True, 0, 9999  # No limit for this event type
-        
+            
         limit_field, usage_field = limit_map[event_type]
         
         # Get limit
@@ -653,6 +674,8 @@ class SubscriptionService:
             {
                 "$set": {
                     "current_usage": {
+                        "manual_applications": 0,
+                        "auto_applications": 0,
                         "searches": 0,
                         "applications": 0,
                         "cv_generations": 0,

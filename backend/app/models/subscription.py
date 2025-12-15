@@ -124,13 +124,15 @@ class FeatureAccess(BaseModel):
 class SubscriptionLimits(BaseModel):
     """Subscription limits and features"""
     # Core limits - now using the updated UsageLimit structure
-    monthly_job_searches: UsageLimit
-    monthly_applications: Optional[UsageLimit] = None
+    monthly_manual_applications: UsageLimit
+    monthly_auto_applications: UsageLimit
     monthly_cv_generations: Optional[UsageLimit] = None
     monthly_cover_letters: Optional[UsageLimit] = None
     concurrent_applications: Optional[UsageLimit] = None
     
     # Legacy fields for backward compatibility
+    monthly_job_searches: Optional[UsageLimit] = None
+    monthly_applications: Optional[UsageLimit] = None
     daily_job_searches: Optional[UsageLimit] = None
     jobs_per_search: Optional[UsageLimit] = None
     cv_customizations: Optional[UsageLimit] = None

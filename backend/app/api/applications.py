@@ -23,6 +23,7 @@ from app.services.gmail_service import gmail_service
 from app.models.user import GmailAuth
 from app.models.common import SuccessResponse
 from app.services.application_tracking_service import ApplicationTrackingService
+from app.services.subscription_service import SubscriptionService
 
 # Import Phase 5 services if available
 try:
@@ -72,6 +73,22 @@ async def create_application(
         app_data = application_create.dict()
         app_data["user_id"] = str(current_user["_id"])
         
+        # Check usage limits
+        subscription_service = SubscriptionService(db)
+        # Determine event type (manual vs auto)
+        event_type = "manual_application" if app_data.get("source", "manual") == "manual" else "auto_application"
+        
+        can_apply = await subscription_service.check_usage_limit(
+            str(current_user["_id"]), 
+            event_type
+        )
+        
+        if not can_apply:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Usage limit reached for {event_type.replace('_', ' ')}s. Please upgrade your plan."
+            )
+        
         # Create application using static method
         application_id = await ApplicationTrackingService.create_application(app_data, db)
         
@@ -97,6 +114,12 @@ async def create_application(
             event_type="created",
             description="Application created",
             metadata={"source": application.get("source", "manual")}
+        )
+        
+        # Track usage after successful creation
+        await subscription_service.track_usage(
+            str(current_user["_id"]), 
+            event_type
         )
         
         # Send notification if service available
