@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,12 +12,14 @@
             margin: 50px auto;
             padding: 20px;
         }
+
         .debug-section {
             background: #f5f5f5;
             padding: 15px;
             margin: 15px 0;
             border-radius: 5px;
         }
+
         button {
             background: #4CAF50;
             color: white;
@@ -26,9 +29,11 @@
             cursor: pointer;
             margin: 5px;
         }
+
         button:hover {
             background: #45a049;
         }
+
         #console-output {
             background: #1e1e1e;
             color: #d4d4d4;
@@ -40,14 +45,24 @@
             overflow-y: auto;
             white-space: pre-wrap;
         }
-        .log-info { color: #4ec9b0; }
-        .log-error { color: #f48771; }
-        .log-warn { color: #dcdcaa; }
+
+        .log-info {
+            color: #4ec9b0;
+        }
+
+        .log-error {
+            color: #f48771;
+        }
+
+        .log-warn {
+            color: #dcdcaa;
+        }
     </style>
 </head>
+
 <body>
     <h1>Quick Apply Form Debug Test</h1>
-    
+
     <div class="debug-section">
         <h2>Test Controls</h2>
         <button onclick="testPrefillAPI()">Test Prefill API Directly</button>
@@ -62,13 +77,13 @@
 
     <script>
         const API_BASE_URL = window.location.origin;
-        
+
         // Intercept console logs
         const consoleOutput = document.getElementById('console-output');
         const originalLog = console.log;
         const originalError = console.error;
         const originalWarn = console.warn;
-        
+
         function addToConsole(message, type = 'info') {
             const line = document.createElement('div');
             line.className = `log-${type}`;
@@ -76,44 +91,44 @@
             consoleOutput.appendChild(line);
             consoleOutput.scrollTop = consoleOutput.scrollHeight;
         }
-        
-        console.log = function(...args) {
+
+        console.log = function (...args) {
             originalLog.apply(console, args);
             addToConsole(args.join(' '), 'info');
         };
-        
-        console.error = function(...args) {
+
+        console.error = function (...args) {
             originalError.apply(console, args);
             addToConsole(args.join(' '), 'error');
         };
-        
-        console.warn = function(...args) {
+
+        console.warn = function (...args) {
             originalWarn.apply(console, args);
             addToConsole(args.join(' '), 'warn');
         };
-        
+
         function clearConsole() {
             consoleOutput.innerHTML = '';
         }
-        
+
         async function testPrefillAPI() {
             console.log('=== Testing Prefill API ===');
-            
+
             try {
                 const token = localStorage.getItem('token');
                 console.log('Token exists:', !!token);
-                
+
                 if (!token) {
                     console.error('No token found. Please log in first.');
                     return;
                 }
-                
+
                 // Use a dummy job ID for testing
                 const jobId = '507f1f77bcf86cd799439011'; // Replace with actual job ID
                 const url = `${API_BASE_URL}/api/v1/browser-automation/quick-apply/prefill?job_id=${jobId}`;
-                
+
                 console.log('Fetching from:', url);
-                
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -121,15 +136,15 @@
                         'Content-Type': 'application/json'
                     }
                 });
-                
+
                 console.log('Response status:', response.status);
-                
+
                 if (!response.ok) {
                     const error = await response.json();
                     console.error('Error response:', JSON.stringify(error, null, 2));
                     return;
                 }
-                
+
                 const data = await response.json();
                 console.log('Success! Received data:');
                 console.log('- Job Title:', data.job_title);
@@ -137,48 +152,48 @@
                 console.log('- Recipient Email:', data.recipient_email);
                 console.log('- Form Data Keys:', Object.keys(data.form_data || {}).join(', '));
                 console.log('- Form Data:', JSON.stringify(data.form_data, null, 2));
-                
+
                 // Count populated fields
                 const formData = data.form_data || {};
                 const populatedFields = Object.entries(formData).filter(([k, v]) => v).length;
                 console.log(`- Populated Fields: ${populatedFields}/${Object.keys(formData).length}`);
-                
+
             } catch (error) {
                 console.error('Exception:', error.message);
                 console.error('Stack:', error.stack);
             }
         }
-        
+
         async function checkCVData() {
             console.log('=== Checking CV Data ===');
-            
+
             try {
                 const token = localStorage.getItem('token');
                 if (!token) {
                     console.error('No token found. Please log in first.');
                     return;
                 }
-                
+
                 const url = `${API_BASE_URL}/api/v1/documents/`;
                 console.log('Fetching documents from:', url);
-                
+
                 const response = await fetch(url, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                
+
                 if (!response.ok) {
                     console.error('Failed to fetch documents:', response.status);
                     return;
                 }
-                
+
                 const data = await response.json();
                 const documents = data.documents || data || [];
                 const cvDocs = documents.filter(doc => doc.document_type === 'cv');
-                
+
                 console.log(`Found ${cvDocs.length} CV document(s)`);
-                
+
                 cvDocs.forEach((doc, index) => {
                     console.log(`\nCV #${index + 1}:`);
                     console.log('- Filename:', doc.filename || doc.original_filename);
@@ -191,18 +206,19 @@
                         }
                     }
                 });
-                
+
                 if (cvDocs.length === 0) {
                     console.warn('No CV documents found! Please upload a CV first.');
                 }
-                
+
             } catch (error) {
                 console.error('Exception:', error.message);
             }
         }
-        
+
         console.log('Debug page loaded. Click buttons above to test.');
         console.log('Make sure you are logged in before testing.');
     </script>
 </body>
+
 </html>

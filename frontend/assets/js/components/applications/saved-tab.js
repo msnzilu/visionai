@@ -132,7 +132,10 @@ window.SavedJobsTab = {
             ${job.generated_cv_path || job.generated_cover_letter_path ? `
                 <div class="mb-6 pt-6 border-t border-gray-100">
                     <h4 class="font-semibold text-lg mb-3">Generated Documents</h4>
-                     ${window.JobActions ? window.JobActions.getButtonsHTML(job, false) : ''}
+                     ${window.DocumentViewer ? window.DocumentViewer.renderButtons({
+            cvPath: job.generated_cv_path,
+            clPath: job.generated_cover_letter_path
+        }) : ''}
                 </div>
             ` : ''}
         `;

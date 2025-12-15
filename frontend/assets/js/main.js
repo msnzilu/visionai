@@ -1,7 +1,20 @@
 // Global configuration
+// Helper to determine API URL
+const getApiBaseUrl = () => {
+    // If we are strictly in a development environment (localhost)
+    // and not on the backend port (assuming 8000), point to backend directly
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        if (window.location.port !== '8000') {
+            return 'http://localhost:8000';
+        }
+    }
+    return window.location.origin;
+};
+
+// Global configuration
 const CONFIG = {
     BASE_URL: window.location.origin,
-    API_BASE_URL: window.location.origin,
+    API_BASE_URL: getApiBaseUrl(),
     API_PREFIX: '/api/v1',
     TOKEN_KEY: 'access_token',
     REFRESH_TOKEN_KEY: 'refresh_token',

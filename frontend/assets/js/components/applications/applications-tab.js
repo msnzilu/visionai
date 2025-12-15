@@ -116,35 +116,62 @@ async function viewApplicationDetails(appId) {
         if (!appRes.ok) throw new Error('Failed');
         const app = await appRes.json();
         const timeline = timelineRes.ok ? await timelineRes.json() : { timeline: [] };
-        displayApplicationModal(app, timeline.timeline);
+
+        // Try to fetch full job details if job_id is available
+        let job = null;
+        if (app.job_id) {
+            try {
+                const jobRes = await fetch(`${API_BASE_URL}/api/v1/jobs/${app.job_id}`, {
+                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+                });
+                if (jobRes.ok) {
+                    job = await jobRes.json();
+                }
+            } catch (err) {
+                console.warn('Failed to load job details', err);
+            }
+        }
+
+        displayApplicationModal(app, timeline.timeline, job);
     } catch (error) {
         console.error('Details error:', error);
         CVision.Utils.showAlert('Failed to load details', 'error');
     }
 }
 
-function displayApplicationModal(app, timeline) {
+function displayApplicationModal(app, timeline, job = null) {
     const modalContent = document.getElementById('applicationModalContent');
     if (!modalContent) return;
     const isEmailApp = app.source === 'auto_apply';
     const monitoringEnabled = app.email_monitoring_enabled || false;
 
-    modalContent.innerHTML = `
-        <div class="flex justify-between mb-6">
-            <div>
-                <h2 class="text-2xl font-bold">${app.job_title}</h2>
-                <p class="text-gray-600 mt-1">${app.company_name}</p>
-            </div>
-            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
-        
+    // Helper to format large text blocks (preserves newlines if plain text, or trusts HTML)
+    const formatRichText = (text) => {
+        if (!text) return '<p class="text-gray-500 italic">No information provided.</p>';
+        // Simple heuristic: if it contains HTML tags, treat as HTML
+        if (/<[a-z][\s\S]*>/i.test(text)) {
+            return `<div class="prose max-w-none text-gray-700 space-y-2">${text}</div>`;
+        }
+        // Otherwise treat as plain text and maintain paragraphs
+        return text.split('\n').map(para =>
+            para.trim() ? `<p class="mb-4 text-gray-700 leading-relaxed">${para}</p>` : ''
+        ).join('');
+    };
+
+    const overviewContent = `
         <div class="grid grid-cols-2 gap-4 mb-6">
             <div><span class="text-sm text-gray-600">Status:</span> ${getStatusBadge(app.status)}</div>
             <div><span class="text-sm text-gray-600">Priority:</span> ${getPriorityBadge(app.priority)}</div>
             <div><span class="text-sm text-gray-600">Source:</span> ${getSourceBadge(app.source)}</div>
             ${isEmailApp ? `<div><span class="text-sm text-gray-600">Monitoring:</span> ${getMonitoringBadge(app)}</div>` : ''}
+        </div>
+        
+        <div id="modalDocumentViewer" class="mb-6">
+            ${(window.DocumentViewer && (app.generated_cv_path || app.generated_cover_letter_path)) ?
+            window.DocumentViewer.renderButtons({
+                cvPath: app.generated_cv_path,
+                clPath: app.generated_cover_letter_path
+            }) : ''}
         </div>
         
         ${isEmailApp ? `
@@ -189,16 +216,124 @@ function displayApplicationModal(app, timeline) {
             </div>
         </div>
     `;
+
+    const jobDescriptionContent = job ? formatRichText(job.description) : formatRichText(null);
+
+    // Build Company Tab Content
+    const companyInfo = job?.company_info || {};
+    const companyContent = `
+        <div class="flex flex-col md:flex-row gap-6">
+            <div class="flex-1">
+                <h4 class="text-md font-bold text-gray-900 mb-2">About Us</h4>
+                <div class="text-gray-700 leading-relaxed mb-6">
+                    ${formatRichText(companyInfo.description || 'No company description available.')}
+                </div>
+            </div>
+            
+            <div class="w-full md:w-1/3 space-y-4">
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <h5 class="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">Company Details</h5>
+                    
+                    ${companyInfo.industry ? `
+                    <div class="mb-3">
+                        <span class="text-xs text-gray-500 block mb-1">Industry</span>
+                        <span class="text-sm font-medium text-gray-800">${companyInfo.industry}</span>
+                    </div>` : ''}
+                    
+                    ${companyInfo.size ? `
+                    <div class="mb-3">
+                        <span class="text-xs text-gray-500 block mb-1">Size</span>
+                        <span class="text-sm font-medium text-gray-800">${formatEnumValue(companyInfo.size)} Employees</span>
+                    </div>` : ''}
+                    
+                    ${companyInfo.location ? `
+                    <div class="mb-3">
+                        <span class="text-xs text-gray-500 block mb-1">Headquarters</span>
+                        <span class="text-sm font-medium text-gray-800">${companyInfo.location}</span>
+                    </div>` : ''}
+                    
+                    ${companyInfo.website ? `
+                    <div class="mt-4 pt-3 border-t border-gray-200">
+                        <a href="${companyInfo.website}" target="_blank" class="text-blue-600 hover:underline text-sm flex items-center gap-1">
+                            Visit Website
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        </a>
+                    </div>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+
+    modalContent.innerHTML = `
+        <div class="flex justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold">${app.job_title}</h2>
+                <p class="text-gray-600 mt-1">${app.company_name} ${app.location ? `<span class="mx-2">•</span> ${app.location}` : ''}</p>
+            </div>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <a href="#" onclick="switchModalTab('overview', event)" id="tab-btn-overview" class="tab-btn border-primary-500 text-primary-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Overview</a>
+                <a href="#" onclick="switchModalTab('job-desc', event)" id="tab-btn-job-desc" class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Job Description</a>
+                <a href="#" onclick="switchModalTab('company', event)" id="tab-btn-company" class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Company</a>
+            </nav>
+        </div>
+        
+        <!-- Tabs Content -->
+        <div id="tab-content-overview" class="modal-tab-content block">
+            ${overviewContent}
+        </div>
+        <div id="tab-content-job-desc" class="modal-tab-content hidden h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+            ${jobDescriptionContent}
+        </div>
+         <div id="tab-content-company" class="modal-tab-content hidden h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+            ${companyContent}
+        </div>
+    `;
+
     const modal = document.getElementById('applicationModal');
     if (modal) {
         modal.classList.remove('hidden');
     }
 
-    // Render email analysis section using component
+    // Render email analysis section using component if on overview tab
     if (window.EmailAnalysisComponent) {
         window.EmailAnalysisComponent.renderAnalysisSection(app, 'emailAnalysisSection');
     }
 }
+
+// Helper to switch tabs
+window.switchModalTab = function (tabName, event) {
+    if (event) event.preventDefault();
+
+    // Update headers
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-primary-500', 'text-primary-600');
+        btn.classList.add('border-transparent', 'text-gray-500');
+    });
+    const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+    if (activeBtn) {
+        activeBtn.classList.remove('border-transparent', 'text-gray-500');
+        activeBtn.classList.add('border-primary-500', 'text-primary-600');
+    }
+
+    // Update content
+    document.querySelectorAll('.modal-tab-content').forEach(content => {
+        content.classList.remove('block');
+        content.classList.add('hidden');
+    });
+
+    const activeContent = document.getElementById(`tab-content-${tabName}`);
+    if (activeContent) {
+        activeContent.classList.remove('hidden');
+        activeContent.classList.add('block');
+    }
+};
 
 function closeModal() {
     const modal = document.getElementById('applicationModal');

@@ -82,7 +82,21 @@
     // Attempt to refresh the access token
     async function attemptTokenRefresh(refreshToken) {
         try {
-            const response = await fetch(window.location.origin + '/api/v1/auth/refresh', {
+            // Get base URL - try window.CONFIG first, then CVision.config, then fallback to origin
+            let baseUrl = window.location.origin;
+
+            if (window.CONFIG && window.CONFIG.API_BASE_URL) {
+                baseUrl = window.CONFIG.API_BASE_URL;
+            } else if (window.CVision && window.CVision.config && window.CVision.config.API_BASE_URL) {
+                baseUrl = window.CVision.config.API_BASE_URL;
+            }
+
+            // Remove trailing slash if present
+            if (baseUrl.endsWith('/')) {
+                baseUrl = baseUrl.slice(0, -1);
+            }
+
+            const response = await fetch(`${baseUrl}/api/v1/auth/refresh`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

@@ -99,9 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // Open live chat (placeholder)
-function openLiveChat() {
-    alert('Live chat feature coming soon! For now, please email us at support@cvision.com');
-}
+
 
 // Contact form submission
 document.addEventListener('DOMContentLoaded', function () {

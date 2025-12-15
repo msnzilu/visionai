@@ -88,9 +88,14 @@ app.add_middleware(
 )
 
 # Mount uploads directory (create if it doesn't exist)
+# Mount uploads directory (create if it doesn't exist)
 uploads_path = Path(settings.UPLOAD_DIR)
-if uploads_path.exists():
+try:
+    uploads_path.mkdir(parents=True, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
+    logger.info(f"Mounted uploads directory: {uploads_path}")
+except Exception as e:
+    logger.error(f"Failed to mount uploads directory: {e}")
 
 # Exception handlers
 @app.exception_handler(ValueError)

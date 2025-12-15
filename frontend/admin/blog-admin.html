@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blog Management - VisionAI Admin</title>
 
-    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="/assets/css/global.css">
     <link rel="stylesheet" href="assets/css/admin.css">
 
     <!-- Quill Rich Text Editor (No API key needed) -->
@@ -269,15 +269,16 @@
         </main>
     </div>
 
-    <script src="assets/js/admin-sidebar.js"></script>
-    <script src="../assets/js/main.js"></script>
+    <script src="/assets/js/admin-sidebar.js"></script>
+    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/blog.js"></script>
     <script>
         // Check authentication
         if (!CVision.Utils.isAuthenticated()) {
             window.location.href = 'login.html';
         }
     </script>
-    <script src="assets/js/blog-admin.js"></script>
+    <script src="/assets/js/blog-admin.js"></script>
 </body>
 
 </html>

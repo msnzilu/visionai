@@ -127,26 +127,7 @@ class JobActionComponent {
             this._setupTemplateSelectors();
         }
 
-        if (!document.getElementById('docPreviewModal')) {
-            const previewModalHTML = `
-                <div id="docPreviewModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[60] flex items-center justify-center p-4">
-                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col">
-                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h3 class="text-xl font-bold text-gray-900" id="docPreviewTitle">Document Preview</h3>
-                            <button onclick="JobActions.closePreview()" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                        <div class="flex-1 bg-gray-100 relative">
-                            <iframe id="docPreviewFrame" class="w-full h-full border-none" src=""></iframe>
-                            <div id="docPreviewLoader" class="absolute inset-0 flex items-center justify-center bg-white z-10 hidden">
-                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            document.body.insertAdjacentHTML('beforeend', previewModalHTML);
-        }
+
     }
 
     _getStepHTML(num) {
@@ -228,7 +209,7 @@ class JobActionComponent {
             if (response.ok) {
                 const user = await response.json();
                 const tier = user.subscription_tier || 'free';
-                
+
                 // Get usage stats
                 const statsResponse = await fetch(`${CONFIG.API_BASE_URL}/api/v1/applications/stats/overview`, {
                     headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
@@ -237,7 +218,7 @@ class JobActionComponent {
                 if (statsResponse.ok) {
                     const stats = await statsResponse.json();
                     const generationsUsed = stats.cv_generations_this_month || 0;
-                    
+
                     // Check limits based on tier
                     const limits = {
                         'free': 0,  // Free tier has no CV customization
@@ -312,16 +293,16 @@ class JobActionComponent {
                 </div>
             `;
             document.body.insertAdjacentHTML('beforeend', modalHTML);
-            
+
             // Attach event listeners
             setTimeout(() => {
                 const modal = document.getElementById('upgradePromptModal');
                 const cancelBtn = document.getElementById('upgradePromptCancel');
-                
+
                 if (cancelBtn) {
                     cancelBtn.addEventListener('click', closeModal);
                 }
-                
+
                 if (modal) {
                     modal.addEventListener('click', (e) => {
                         if (e.target === modal) closeModal();
@@ -464,35 +445,8 @@ class JobActionComponent {
         }
     }
 
-    openPreview(url, title) {
-        const modal = document.getElementById('docPreviewModal');
-        const frame = document.getElementById('docPreviewFrame');
-        const titleEl = document.getElementById('docPreviewTitle');
-        const loader = document.getElementById('docPreviewLoader');
+    // Preview methods removed - delegated to DocumentViewer
 
-        if (!modal || !frame) return;
-
-        if (titleEl) titleEl.textContent = title || 'Document Preview';
-        if (loader) loader.classList.remove('hidden');
-
-        frame.src = url;
-        frame.onload = () => {
-            if (loader) loader.classList.add('hidden');
-        };
-
-        modal.classList.remove('hidden');
-        modal.classList.add('flex'); // Ensure flex is added for centering
-    }
-
-    closePreview() {
-        const modal = document.getElementById('docPreviewModal');
-        const frame = document.getElementById('docPreviewFrame');
-        if (modal) {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-        if (frame) frame.src = '';
-    }
 
     /**
      * Returns HTML for Action Buttons based on job state
@@ -516,32 +470,26 @@ class JobActionComponent {
         this.appliedJobIds.add(String(jobId));
     }
 
+
+
     getButtonsHTML(job, includeActions = true) {
         const jobId = String(job._id || job.id);
         const isApplied = this.appliedJobIds.has(jobId);
         const hasCV = !!job.generated_cv_path;
         const hasCL = !!job.generated_cover_letter_path;
 
+
+
         let html = '';
 
-        // Row 1: Document View Buttons (if exist)
+        // Row 1: Document View Buttons (delegated to DocumentViewer)
         if (hasCV || hasCL) {
-            html += `<div class="flex gap-2 mb-2">
-                    ${hasCV ? `
-                        <button onclick="JobActions.openPreview('${job.generated_cv_path}', 'CV Preview')" 
-                            class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                            View CV
-                        </button>
-                    ` : ''}
-                    ${hasCL ? `
-                        <button onclick="JobActions.openPreview('${job.generated_cover_letter_path}', 'Cover Letter Preview')" 
-                            class="flex-1 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                            View CL
-                        </button>
-                    ` : ''}
-                </div>`;
+            if (window.DocumentViewer) {
+                html += window.DocumentViewer.renderButtons({
+                    cvPath: job.generated_cv_path,
+                    clPath: job.generated_cover_letter_path
+                });
+            }
         }
 
         // Row 2: Action Buttons
