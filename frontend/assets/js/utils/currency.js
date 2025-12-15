@@ -125,7 +125,14 @@
             const targetCurrency = toCurrency || userCurrency;
             const baseAmount = amountInCents / 100;  // Convert from cents
             const rate = EXCHANGE_RATES[targetCurrency] || 1;
-            return baseAmount * rate;
+            const converted = baseAmount * rate;
+
+            // Round UP for KES (e.g. 2577.2 -> 2578)
+            if (targetCurrency === 'KES') {
+                return Math.ceil(converted);
+            }
+
+            return converted;
         },
 
         /**

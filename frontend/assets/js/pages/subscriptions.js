@@ -525,9 +525,9 @@ async function handlePaymentSubmit(e) {
             // Conversion: (USD Cents / 100) * Rate = Target Major Units
             let majorAmount = (selectedPlan.price / 100) * rate;
 
-            // Smart Rounding for KES: Round to nearest 10 (e.g. 2577 -> 2580)
+            // Smart Rounding for KES: Always round UP to next shilling (e.g. 2577.27 -> 2578)
             if (targetCurrency === 'KES') {
-                majorAmount = Math.round(majorAmount / 10) * 10;
+                majorAmount = Math.ceil(majorAmount);
             }
 
             // Convert to Target Cents/Smallest Unit
