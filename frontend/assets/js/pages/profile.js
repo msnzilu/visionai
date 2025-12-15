@@ -76,6 +76,10 @@ async function checkAndPopulateLocation() {
                 });
 
                 console.log('[PROFILE] Location saved');
+            } else {
+                console.warn('[PROFILE] Geolocation detection failed');
+                document.getElementById('country').value = 'Unknown Location';
+                // Make editable if detection fails? Maybe just leave as Unknown for now.
             }
         }
     } catch (error) {
@@ -133,10 +137,19 @@ async function loadUserProfile() {
                 // Handle split location fields
                 document.getElementById('cityState').value = locPrefs.city || personalInfo.location || '';
 
-                // Handle Country Object
-                if (locPrefs.country && locPrefs.country.name) {
-                    document.getElementById('country').value = `${locPrefs.country.name} (${locPrefs.country.code})`;
-                    document.getElementById('currencyDisplay').textContent = locPrefs.country.currency || '';
+                // Handle Country Object (Supports both new Object and legacy String)
+                if (locPrefs.country) {
+                    if (typeof locPrefs.country === 'string') {
+                        // Legacy string format
+                        document.getElementById('country').value = locPrefs.country;
+                        document.getElementById('currencyDisplay').textContent = '';
+                    } else if (locPrefs.country.name) {
+                        // New Object format
+                        document.getElementById('country').value = `${locPrefs.country.name} (${locPrefs.country.code})`;
+                        document.getElementById('currencyDisplay').textContent = locPrefs.country.currency || '';
+                    } else {
+                        document.getElementById('country').value = 'Not Set';
+                    }
                 } else {
                     document.getElementById('country').value = 'Detecting...';
                 }
