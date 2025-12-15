@@ -52,7 +52,19 @@
         <!-- Pricing Plans -->
         <div class="text-center mb-12">
             <h2 class="text-3xl font-bold text-gray-900 mb-4">Choose Your Plan</h2>
-            <p class="text-gray-600">Select the perfect plan for your job search journey</p>
+            <p class="text-gray-600 mb-8">Select the perfect plan for your job search journey</p>
+
+            <!-- Billing Toggle -->
+            <div class="inline-flex items-center bg-gray-100 rounded-full p-1">
+                <button id="monthlyToggle" onclick="setBillingInterval('monthly')"
+                    class="px-6 py-2 rounded-full text-sm font-semibold transition-all bg-white text-gray-900 shadow">
+                    Monthly
+                </button>
+                <button id="yearlyToggle" onclick="setBillingInterval('yearly')"
+                    class="px-6 py-2 rounded-full text-sm font-semibold transition-all text-gray-600 hover:text-gray-900">
+                    Annual <span class="text-green-600 text-xs ml-1">Save 17%</span>
+                </button>
+            </div>
         </div>
 
         <div id="pricingPlans" class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -185,6 +197,15 @@
     </div>
 
     <script src="../assets/js/inline-messages.js"></script>
+    <!-- Currency and Geolocation utilities (load before main.js) -->
+    <script src="/assets/js/utils/geolocation.js"></script>
+    <script src="/assets/js/utils/currency.js"></script>
+    <!-- Payment Gateway Abstraction -->
+    <script src="/assets/js/utils/payment-gateway.js"></script>
+    <script src="/assets/js/adapters/paystack-adapter.js"></script>
+    <script src="/assets/js/adapters/stripe-adapter.js"></script>
+    <script src="/assets/js/adapters/paypal-adapter.js"></script>
+    <script src="/assets/js/adapters/intasend-adapter.js"></script>
     <script src="/assets/js/main.js"></script>
     <script src="../assets/js/pages/subscriptions.js"></script>
     <script src="/assets/js/components/navbar.js"></script>

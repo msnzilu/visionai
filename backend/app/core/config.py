@@ -116,6 +116,21 @@ class Settings(BaseSettings):
     PAYSTACK_PUBLIC_KEY: str = Field(default="", env="PAYSTACK_PUBLIC_KEY")
     PAYSTACK_BASIC_PLAN_CODE: str = Field(default="", env="PAYSTACK_BASIC_PLAN_CODE")
     PAYSTACK_PREMIUM_PLAN_CODE: str = Field(default="", env="PAYSTACK_PREMIUM_PLAN_CODE")
+
+    # Stripe - Optional
+    STRIPE_PUBLIC_KEY: str = Field(default="", env="STRIPE_PUBLIC_KEY")
+    STRIPE_SECRET_KEY: str = Field(default_factory=lambda: get_secret("STRIPE_SECRET_KEY", ""))
+    STRIPE_WEBHOOK_SECRET: str = Field(default_factory=lambda: get_secret("STRIPE_WEBHOOK_SECRET", ""))
+
+    # PayPal - Optional
+    PAYPAL_CLIENT_ID: str = Field(default="", env="PAYPAL_CLIENT_ID")
+    PAYPAL_CLIENT_SECRET: str = Field(default_factory=lambda: get_secret("PAYPAL_CLIENT_SECRET", ""))
+    PAYPAL_MODE: str = Field(default="sandbox", env="PAYPAL_MODE") # sandbox or live
+
+    # IntaSend - Optional
+    INTASEND_PUBLIC_KEY: str = Field(default="", env="INTASEND_PUBLIC_KEY")
+    INTASEND_SECRET_KEY: str = Field(default_factory=lambda: get_secret("INTASEND_SECRET_KEY", ""))
+    INTASEND_IS_LIVE: bool = Field(default=False, env="INTASEND_IS_LIVE")
     
     # Email service - Optional (for notifications)
     SMTP_HOST: Optional[str] = Field(default=None, env="SMTP_HOST")

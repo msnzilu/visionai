@@ -586,7 +586,8 @@ if (document.readyState === 'loading') {
 }
 
 // Expose globals
-window.CVision = {
+window.CVision = window.CVision || {};
+Object.assign(window.CVision, {
     Utils,
     API,
     FileUpload,
@@ -602,4 +603,4 @@ window.CVision = {
     showMessage: (message, type) => Utils.showAlert(message, type), // Alias for showAlert
     formatDate: (date) => Utils.formatDate(date),
     formatFileSize: (size) => Utils.formatFileSize(size)
-};
+});

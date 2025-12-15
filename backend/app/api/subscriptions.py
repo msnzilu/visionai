@@ -47,6 +47,29 @@ def get_user_id(current_user: dict) -> str:
     """Extract user_id from current_user dict"""
     return current_user.get("id") or current_user.get("_id") or current_user.get("sub")
 
+@router.get("/config")
+async def get_payment_config():
+    """Get public configuration for all payment gateways"""
+    from app.core.config import settings
+    
+    return {
+        "paystack": {
+            "public_key": getattr(settings, 'PAYSTACK_PUBLIC_KEY', '')
+        },
+        "stripe": {
+            "public_key": getattr(settings, 'STRIPE_PUBLIC_KEY', '')
+        },
+        "paypal": {
+            "client_id": getattr(settings, 'PAYPAL_CLIENT_ID', ''),
+            "mode": getattr(settings, 'PAYPAL_MODE', 'sandbox')
+        },
+        "intasend": {
+            "public_key": getattr(settings, 'INTASEND_PUBLIC_KEY', ''),
+            "live": getattr(settings, 'INTASEND_IS_LIVE', False)
+        },
+        "user_email": None # Frontend will fill this from user profile
+    }
+
 @router.get("/config/paystack")
 async def get_paystack_config():
     """Get public Paystack configuration - no authentication required"""
@@ -54,7 +77,7 @@ async def get_paystack_config():
     
     return {
         "public_key": getattr(settings, 'PAYSTACK_PUBLIC_KEY', 'pk_test_placeholder'),
-        "user_email": None # Frontend will fill this from user profile
+        "user_email": None
     }
 
 @router.get("/config/stripe")

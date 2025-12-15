@@ -216,6 +216,10 @@ class Currency(str, Enum):
     CAD = "CAD"
     AUD = "AUD"
     JPY = "JPY"
+    KES = "KES"  # Kenya Shilling
+    NGN = "NGN"  # Nigerian Naira
+    GHS = "GHS"  # Ghanaian Cedi
+    ZAR = "ZAR"  # South African Rand
 
 
 class Money(BaseModel):

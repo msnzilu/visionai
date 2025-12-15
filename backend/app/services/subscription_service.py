@@ -38,34 +38,101 @@ class SubscriptionService:
             )
         
         # Subscription plans configuration with proper limits
+        # Using plan_id as key to support both monthly and annual variants
+        
+        # Shared limits configurations
+        free_limits = SubscriptionLimits(
+            monthly_job_searches=create_limit("monthly_job_searches", 9999),
+            monthly_applications=create_limit("monthly_applications", 5),
+            monthly_cv_generations=create_limit("monthly_cv_generations", 0),
+            monthly_cover_letters=create_limit("monthly_cover_letters", 0),
+            concurrent_applications=create_limit("concurrent_applications", 1, "instant", False),
+            max_jobs_per_search=50,
+            api_rate_limit_per_minute=10,
+            storage_mb=50,
+            team_members=1,
+            advanced_analytics=False,
+            priority_support=False,
+            white_label=False,
+            custom_integrations=False,
+            bulk_operations=False,
+            export_formats=[],
+            ai_model_version="basic",
+            data_retention_days=30
+        )
+        
+        basic_limits = SubscriptionLimits(
+            monthly_job_searches=create_limit("monthly_job_searches", 9999),
+            monthly_applications=create_limit("monthly_applications", 9999),
+            monthly_cv_generations=create_limit("monthly_cv_generations", 9999),
+            monthly_cover_letters=create_limit("monthly_cover_letters", 9999),
+            concurrent_applications=create_limit("concurrent_applications", 20, "daily", True),
+            max_jobs_per_search=50,
+            api_rate_limit_per_minute=50,
+            storage_mb=500,
+            team_members=1,
+            advanced_analytics=True,
+            priority_support=True,
+            white_label=False,
+            custom_integrations=False,
+            bulk_operations=True,
+            export_formats=["pdf", "docx"],
+            ai_model_version="standard",
+            data_retention_days=60
+        )
+        
+        premium_limits = SubscriptionLimits(
+            monthly_job_searches=create_limit("monthly_job_searches", 9999),
+            monthly_applications=create_limit("monthly_applications", 9999),
+            monthly_cv_generations=create_limit("monthly_cv_generations", 9999),
+            monthly_cover_letters=create_limit("monthly_cover_letters", 9999),
+            concurrent_applications=create_limit("concurrent_applications", 9999, "instant", False),
+            max_jobs_per_search=100,
+            api_rate_limit_per_minute=200,
+            storage_mb=2000,
+            team_members=5,
+            advanced_analytics=True,
+            priority_support=True,
+            white_label=True,
+            custom_integrations=True,
+            bulk_operations=True,
+            export_formats=["pdf", "docx", "html", "json"],
+            ai_model_version="advanced",
+            data_retention_days=180
+        )
+        
+        basic_features = [
+            "Unlimited manual applications",
+            "20 auto-applications per day",
+            "Premium CV templates",
+            "AI-powered cover letters",
+            "Priority support",
+            "Advanced analytics"
+        ]
+        
+        premium_features = [
+            "Unlimited manual applications",
+            "Unlimited auto-applications",
+            "Full automation enabled",
+            "Advanced ML autofill",
+            "24/7 priority support",
+            "Advanced analytics dashboard",
+            "Team collaboration (5 seats)",
+            "API access",
+            "White-label options"
+        ]
+        
         self.PLANS = {
-            SubscriptionTier.FREE: SubscriptionPlan(
+            # Free Plan
+            "plan_free": SubscriptionPlan(
                 id="plan_free",
                 name="Free Plan",
                 tier=SubscriptionTier.FREE,
                 description="Get started with manual applications",
-                price=Money(amount=0, currency=Currency.USD),
+                price=Money(amount=0, currency=Currency.KES),
                 billing_interval="monthly",
                 trial_period_days=0,
-                limits=SubscriptionLimits(
-                    monthly_job_searches=create_limit("monthly_job_searches", 9999),  # Unlimited searches
-                    monthly_applications=create_limit("monthly_applications", 5),  # 5 manual apps/month
-                    monthly_cv_generations=create_limit("monthly_cv_generations", 0),  # No CV customization
-                    monthly_cover_letters=create_limit("monthly_cover_letters", 0),  # No cover letters
-                    concurrent_applications=create_limit("concurrent_applications", 1, "instant", False),
-                    max_jobs_per_search=50,  # Unlimited search results
-                    api_rate_limit_per_minute=10,
-                    storage_mb=50,
-                    team_members=1,
-                    advanced_analytics=False,
-                    priority_support=False,
-                    white_label=False,
-                    custom_integrations=False,
-                    bulk_operations=False,
-                    export_formats=[],  # No exports
-                    ai_model_version="basic",
-                    data_retention_days=30
-                ),
+                limits=free_limits,
                 features=[
                     "5 manual applications per month",
                     "No auto-apply",
@@ -75,87 +142,67 @@ class SubscriptionService:
                 is_active=True,
                 sort_order=0
             ),
-            SubscriptionTier.BASIC: SubscriptionPlan(
+            # Basic Monthly
+            "plan_basic": SubscriptionPlan(
                 id="plan_basic",
                 name="Basic Plan",
                 tier=SubscriptionTier.BASIC,
                 description="Perfect for active job seekers",
-                price=Money(amount=2000, currency=Currency.USD),  # $20/month
+                price=Money(amount=260000, currency=Currency.KES),  # KES 2,600/month
                 billing_interval="monthly",
                 trial_period_days=7,
-                limits=SubscriptionLimits(
-                    monthly_job_searches=create_limit("monthly_job_searches", 9999),  # Unlimited searches
-                    monthly_applications=create_limit("monthly_applications", 9999),  # Unlimited manual apps
-                    monthly_cv_generations=create_limit("monthly_cv_generations", 9999),
-                    monthly_cover_letters=create_limit("monthly_cover_letters", 9999),
-                    concurrent_applications=create_limit("concurrent_applications", 20, "daily", True),  # 20 auto-apps/day
-                    max_jobs_per_search=50,
-                    api_rate_limit_per_minute=50,
-                    storage_mb=500,
-                    team_members=1,
-                    advanced_analytics=True,
-                    priority_support=True,
-                    white_label=False,
-                    custom_integrations=False,
-                    bulk_operations=True,
-                    export_formats=["pdf", "docx"],
-                    ai_model_version="standard",
-                    data_retention_days=60
-                ),
-                features=[
-                    "Unlimited manual applications",
-                    "20 auto-applications per day",
-                    "Premium CV templates",
-                    "AI-powered cover letters",
-                    "Priority support",
-                    "Advanced analytics"
-                ],
+                limits=basic_limits,
+                features=basic_features,
                 is_popular=True,
                 is_active=True,
                 sort_order=1,
                 paystack_plan_code=getattr(settings, 'PAYSTACK_BASIC_PLAN_CODE', None)
             ),
-            SubscriptionTier.PREMIUM: SubscriptionPlan(
+            # Basic Annual (2 months free = 10 months price)
+            "plan_basic_annual": SubscriptionPlan(
+                id="plan_basic_annual",
+                name="Basic Plan",
+                tier=SubscriptionTier.BASIC,
+                description="Perfect for active job seekers",
+                price=Money(amount=2600000, currency=Currency.KES),  # KES 26,000/year (save KES 5,200)
+                billing_interval="yearly",
+                trial_period_days=7,
+                limits=basic_limits,
+                features=basic_features + ["2 months FREE"],
+                is_popular=True,
+                is_active=True,
+                sort_order=1,
+                paystack_plan_code=getattr(settings, 'PAYSTACK_BASIC_ANNUAL_PLAN_CODE', None)
+            ),
+            # Premium Monthly
+            "plan_premium": SubscriptionPlan(
                 id="plan_premium",
                 name="Premium Plan",
                 tier=SubscriptionTier.PREMIUM,
                 description="Full automation for serious professionals",
-                price=Money(amount=4900, currency=Currency.USD),  # $49/month
+                price=Money(amount=640000, currency=Currency.KES),  # KES 6,400/month
                 billing_interval="monthly",
                 trial_period_days=14,
-                limits=SubscriptionLimits(
-                    monthly_job_searches=create_limit("monthly_job_searches", 9999),  # Unlimited searches
-                    monthly_applications=create_limit("monthly_applications", 9999),  # Unlimited manual apps
-                    monthly_cv_generations=create_limit("monthly_cv_generations", 9999),
-                    monthly_cover_letters=create_limit("monthly_cover_letters", 9999),
-                    concurrent_applications=create_limit("concurrent_applications", 9999, "instant", False),  # Unlimited auto-apps
-                    max_jobs_per_search=100,
-                    api_rate_limit_per_minute=200,
-                    storage_mb=2000,
-                    team_members=5,
-                    advanced_analytics=True,
-                    priority_support=True,
-                    white_label=True,
-                    custom_integrations=True,
-                    bulk_operations=True,
-                    export_formats=["pdf", "docx", "html", "json"],
-                    ai_model_version="advanced",
-                    data_retention_days=180
-                ),
-                features=[
-                    "Unlimited manual applications",
-                    "Unlimited auto-applications",
-                    "Full automation enabled",
-                    "Advanced ML autofill",
-                    "24/7 priority support",
-                    "Advanced analytics dashboard",
-                    "Team collaboration (5 seats)",
-                    "API access",
-                    "White-label options"
-                ],
+                limits=premium_limits,
+                features=premium_features,
                 is_active=True,
                 sort_order=2,
                 paystack_plan_code=getattr(settings, 'PAYSTACK_PREMIUM_PLAN_CODE', None)
+            ),
+            # Premium Annual (2 months free = 10 months price)
+            "plan_premium_annual": SubscriptionPlan(
+                id="plan_premium_annual",
+                name="Premium Plan",
+                tier=SubscriptionTier.PREMIUM,
+                description="Full automation for serious professionals",
+                price=Money(amount=6400000, currency=Currency.KES),  # KES 64,000/year (save KES 12,800)
+                billing_interval="yearly",
+                trial_period_days=14,
+                limits=premium_limits,
+                features=premium_features + ["2 months FREE"],
+                is_active=True,
+                sort_order=2,
+                paystack_plan_code=getattr(settings, 'PAYSTACK_PREMIUM_ANNUAL_PLAN_CODE', None)
             )
         }
     
@@ -167,16 +214,18 @@ class SubscriptionService:
     ) -> Subscription:
         """Create a new subscription"""
         
-        # Check existing subscription
+        # Convert user_id to ObjectId for database queries
+        from bson import ObjectId as BsonObjectId
+        user_oid = BsonObjectId(user_id) if isinstance(user_id, str) else user_id
+        
+        # Check existing subscription (search both string and ObjectId formats)
         existing = await self.db.subscriptions.find_one({
-            "user_id": user_id,
+            "$or": [
+                {"user_id": user_oid},
+                {"user_id": user_id}
+            ],
             "status": {"$nin": [SubscriptionStatus.CANCELLED.value, SubscriptionStatus.EXPIRED.value]}
         })
-        if existing:
-            # Check if this is a verification of an ongoing attempt (handled slightly differently)
-            # For now, simplistic check
-            # raise ValueError("User already has an active subscription")
-            pass 
         
         # Get plan
         plan = await self.get_plan(plan_id)
@@ -230,8 +279,10 @@ class SubscriptionService:
                 auth_code = authorization.get("authorization_code")
                 
                 # Update user with Paystack customer code
+                from bson import ObjectId
+                user_oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
                 await self.db.users.update_one(
-                    {"_id": user_id},
+                    {"_id": user_oid},
                     {"$set": {"paystack_customer_code": customer_code}}
                 )
                 
@@ -252,24 +303,27 @@ class SubscriptionService:
                 logger.error(f"Paystack verification failed: {e}")
                 raise ValueError(f"Payment verification failed: {str(e)}")
         
-        # Insert subscription
-        # If existing, we might update it or archive it. 
-        # For simple migration, let's delete old one or archive.
+        # Handle existing subscription - UPDATE instead of insert to avoid duplicate key error
         if existing:
+            # Update the existing subscription with new plan data
+            subscription_data["_id"] = existing["_id"]  # Keep the same ID
             await self.db.subscriptions.update_one(
                 {"_id": existing["_id"]},
-                {"$set": {"status": SubscriptionStatus.CANCELLED.value, "cancelled_at": now}}
+                {"$set": subscription_data}
             )
-
-        await self.db.subscriptions.insert_one(subscription_data)
+            logger.info(f"Updated subscription {existing['_id']} for user {user_id}")
+        else:
+            # No existing subscription, create new one
+            await self.db.subscriptions.insert_one(subscription_data)
+            logger.info(f"Created subscription {subscription_data['_id']} for user {user_id}")
         
         # Update user tier
+        from bson import ObjectId as BsonObjectId
+        user_oid = BsonObjectId(user_id) if isinstance(user_id, str) else user_id
         await self.db.users.update_one(
-            {"_id": user_id},
+            {"_id": user_oid},
             {"$set": {"subscription_tier": plan.tier.value}}
         )
-        
-        logger.info(f"Created subscription {subscription_data['_id']} for user {user_id}")
         
         # Convert _id to id for response
         subscription_data["id"] = str(subscription_data["_id"])

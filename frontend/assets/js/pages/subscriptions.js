@@ -5,24 +5,81 @@ let USER_EMAIL = null;
 
 let selectedPlan = null;
 let currentSubscription = null;
+let allPlans = [];  // Store all plans for filtering
+let currentBillingInterval = 'monthly';  // 'monthly' or 'yearly'
 
-// Load Paystack configuration from backend
-async function loadPaystackConfig() {
+// Currency formatting helper - uses CVision.Currency if available
+function formatPrice(amountInCents) {
+    if (window.CVision && window.CVision.Currency) {
+        return CVision.Currency.format(amountInCents);
+    }
+    // Fallback to basic KES formatting
+    return `KES ${(amountInCents / 100).toLocaleString()}`;
+}
+
+// Get user's detected currency
+function getUserCurrency() {
+    if (window.CVision && window.CVision.Currency) {
+        return CVision.Currency.getUserCurrency();
+    }
+    return 'KES';
+}
+
+// Format price in base currency (KES)
+function formatBasePrice(amountInCents) {
+    if (window.CVision && window.CVision.Currency) {
+        return CVision.Currency.formatBase(amountInCents);
+    }
+    return `KES ${(amountInCents / 100).toLocaleString()}`;
+}
+
+// Load payment gateway configuration from backend
+async function loadPaymentConfig() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/config/paystack`);
+        const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/config`);
         if (response.ok) {
             const config = await response.json();
-            PAYSTACK_PUBLIC_KEY = config.public_key;
-            USER_EMAIL = config.user_email; // Might be null here, better to get from profile
 
-            if (!PAYSTACK_PUBLIC_KEY) {
-                console.error('Paystack public key missing');
+            // Set globals
+            PAYSTACK_PUBLIC_KEY = config.paystack?.public_key;
+            USER_EMAIL = config.user_email;
+
+            if (window.CVision && window.CVision.Payment) {
+                // Initialize Paystack
+                if (PAYSTACK_PUBLIC_KEY) {
+                    await CVision.Payment.init('paystack', { publicKey: PAYSTACK_PUBLIC_KEY });
+                }
+
+                // Initialize Stripe
+                if (config.stripe?.public_key) {
+                    await CVision.Payment.init('stripe', { publicKey: config.stripe.public_key });
+                }
+
+                // Initialize PayPal (Disabled for now)
+                /*
+                if (config.paypal?.client_id) {
+                    await CVision.Payment.init('paypal', {
+                        clientId: config.paypal.client_id,
+                        currency: 'USD' // Default currency
+                    });
+                }
+                */
+
+                // Initialize IntaSend
+                if (config.intasend?.public_key) {
+                    await CVision.Payment.init('intasend', {
+                        publicKey: config.intasend.public_key,
+                        live: config.intasend.live
+                    });
+                }
+
+                console.log('[Subscriptions] Payment gateways initialized');
             }
         } else {
-            console.error('Failed to load Paystack config');
+            console.error('Failed to load payment config');
         }
     } catch (error) {
-        console.error('Failed to load Paystack config:', error);
+        console.error('Failed to load payment config:', error);
     }
 }
 
@@ -68,8 +125,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Load config
-    await loadPaystackConfig();
+    // Initialize currency from user's geolocation (uses CVision.Geolocation + CVision.Currency)
+    if (window.CVision && window.CVision.Currency) {
+        await CVision.Currency.initFromGeolocation();
+    }
+
+    // Load payment gateway config
+    await loadPaymentConfig();
 
     // Get user email from profile if not in config
     if (!USER_EMAIL) {
@@ -193,13 +255,42 @@ async function loadPlans() {
 
         if (!response.ok) throw new Error('Failed to load plans');
 
-        const plans = await response.json();
-        displayPlans(plans);
+        allPlans = await response.json();
+        displayFilteredPlans();
     } catch (error) {
         console.error('Failed to load plans:', error);
         CVision.Utils.showAlert('Failed to load subscription plans', 'error');
         displayFallbackPlans();
     }
+}
+
+function displayFilteredPlans() {
+    // Filter plans by current billing interval
+    // Free plan is always shown, others filtered by interval
+    const filteredPlans = allPlans.filter(plan => {
+        if (plan.tier === 'free') return true;
+        return plan.billing_interval === currentBillingInterval;
+    });
+    displayPlans(filteredPlans);
+}
+
+function setBillingInterval(interval) {
+    currentBillingInterval = interval;
+
+    // Update toggle UI
+    const monthlyBtn = document.getElementById('monthlyToggle');
+    const yearlyBtn = document.getElementById('yearlyToggle');
+
+    if (interval === 'monthly') {
+        monthlyBtn.className = 'px-6 py-2 rounded-full text-sm font-semibold transition-all bg-white text-gray-900 shadow';
+        yearlyBtn.className = 'px-6 py-2 rounded-full text-sm font-semibold transition-all text-gray-600 hover:text-gray-900';
+    } else {
+        yearlyBtn.className = 'px-6 py-2 rounded-full text-sm font-semibold transition-all bg-white text-gray-900 shadow';
+        monthlyBtn.className = 'px-6 py-2 rounded-full text-sm font-semibold transition-all text-gray-600 hover:text-gray-900';
+    }
+
+    // Re-display plans with new filter
+    displayFilteredPlans();
 }
 
 function displayFallbackPlans() {
@@ -218,9 +309,18 @@ function displayPlans(plans) {
     const container = document.getElementById('pricingPlans');
     container.innerHTML = '';
 
+    // Define tier hierarchy for comparison
+    const tierOrder = { 'free': 0, 'basic': 1, 'premium': 2 };
+    const currentTier = currentSubscription ? currentSubscription.plan_id.replace('plan_', '') : 'free';
+    const currentTierOrder = tierOrder[currentTier] || 0;
+
     plans.forEach(plan => {
         const isCurrentPlan = currentSubscription &&
             currentSubscription.plan_id === plan.id;
+
+        const planTierOrder = tierOrder[plan.tier] || 0;
+        const isUpgrade = planTierOrder > currentTierOrder;
+        const isDowngrade = planTierOrder < currentTierOrder;
 
         const card = document.createElement('div');
         card.className = `bg-white rounded-xl shadow-lg border-2 p-8 relative ${plan.is_popular ? 'border-blue-500' : 'border-gray-200'
@@ -237,14 +337,41 @@ function displayPlans(plans) {
         // Pass plan code (paystack_plan_code) if available
         const planCode = plan.paystack_plan_code || '';
 
+        // Determine what button/text to show
+        let buttonHtml = '';
+        if (isCurrentPlan) {
+            buttonHtml = `
+                <button class="w-full bg-green-100 text-green-700 rounded-lg px-6 py-3 font-semibold cursor-not-allowed border-2 border-green-300">
+                    ✓ Current Plan
+                </button>
+            `;
+        } else if (isDowngrade) {
+            // Lower tier - show nothing or subtle text
+            buttonHtml = `<p class="text-center text-gray-400 text-sm py-3">—</p>`;
+        } else if (isUpgrade) {
+            // Higher tier - show Upgrade button
+            buttonHtml = `
+                <button onclick="selectPlan('${plan.id}', '${plan.name}', ${plan.price.amount}, '${planCode}')" 
+                    class="w-full ${plan.is_popular ? 'btn-gradient text-white' : 'bg-blue-600 text-white hover:bg-blue-700'} 
+                    rounded-lg px-6 py-3 font-semibold hover:shadow-lg transition-all">
+                    Upgrade
+                </button>
+            `;
+        } else {
+            // Same tier but not current (shouldn't happen, but fallback)
+            buttonHtml = `<p class="text-center text-gray-500 text-sm py-3">Your starting plan</p>`;
+        }
+
         card.innerHTML += `
             <div class="text-center">
                 <h3 class="text-2xl font-bold mb-2">${plan.name}</h3>
                 <p class="text-gray-600 mb-6">${plan.description}</p>
                 
                 <div class="mb-6">
-                    <span class="text-4xl font-bold">$${(plan.price.amount / 100).toFixed(0)}</span>
-                    <span class="text-gray-600">/month</span>
+                    <span class="text-4xl font-bold">${formatPrice(plan.price.amount)}</span>
+                    <span class="text-gray-600">/${plan.billing_interval === 'yearly' ? 'year' : 'month'}</span>
+                    ${getUserCurrency() !== 'KES' ? `<div class="text-gray-500 text-sm mt-1">≈ ${formatBasePrice(plan.price.amount)}</div>` : ''}
+                    ${plan.billing_interval === 'yearly' ? '<div class="text-green-600 text-sm font-semibold mt-1">Save 2 months!</div>' : ''}
                 </div>
                 
                 <ul class="text-left space-y-3 mb-8">
@@ -258,17 +385,7 @@ function displayPlans(plans) {
                     `).join('')}
                 </ul>
                 
-                ${isCurrentPlan ? `
-                    <button class="w-full bg-gray-200 text-gray-600 rounded-lg px-6 py-3 font-semibold cursor-not-allowed">
-                        Current Plan
-                    </button>
-                ` : `
-                    <button onclick="selectPlan('${plan.id}', '${plan.name}', ${plan.price.amount}, '${planCode}')" 
-                        class="w-full ${plan.is_popular ? 'btn-gradient' : 'border-2 border-gray-300 hover:border-blue-500'} 
-                        text-white rounded-lg px-6 py-3 font-semibold hover:shadow-lg transition-all">
-                        ${plan.tier === 'free' ? 'Get Started' : 'Subscribe Now'}
-                    </button>
-                `}
+                ${buttonHtml}
             </div>
         `;
 
@@ -331,78 +448,81 @@ async function handlePaymentSubmit(e) {
     }
 
     try {
-        if (typeof PaystackPop === 'undefined') {
-            throw new Error('Paystack library not loaded. Please disable ad blockers and refresh.');
+        // Use Payment Gateway abstraction
+        if (!window.CVision || !window.CVision.Payment) {
+            throw new Error('Payment system components missing. Please refresh.');
         }
 
-        // Sanitize inputs
-        const cleanKey = PAYSTACK_PUBLIC_KEY.trim();
+        // Lazy Initialization: Check if ready, if not, try to init again (handles race conditions)
+        if (!CVision.Payment.isReady()) {
+            console.log('[Subscriptions] Payment system not ready, attempting JIT initialization...');
+            if (PAYSTACK_PUBLIC_KEY) {
+                await CVision.Payment.init('paystack', { publicKey: PAYSTACK_PUBLIC_KEY });
+            }
+
+            // Re-check
+            if (!CVision.Payment.isReady()) {
+                const provider = CVision.Payment.getProviderName();
+                throw new Error(`Payment system not ready${provider ? ` (${provider} failed)` : ''}. Try refreshing.`);
+            }
+        }
+
         const cleanEmail = USER_EMAIL.trim();
 
-        console.log('Initializing Paystack with:', {
+        console.log('Starting payment checkout for:', {
             email: cleanEmail,
             amount: selectedPlan.price,
             plan: selectedPlan.planCode
         });
 
-        // Initialize Paystack Popup
-        const paystackConfig = {
-            key: cleanKey,
+        await CVision.Payment.checkout({
             email: cleanEmail,
-            // USD for global customers (Kenya and international)
-            // Paystack supports: NGN, GHS, ZAR, USD
-            currency: 'USD',
+            amount: selectedPlan.price,
+            currency: 'KES',
+            planCode: selectedPlan.planCode,
             metadata: {
-                custom_fields: [
-                    {
-                        display_name: "Plan",
-                        variable_name: "plan_name",
-                        value: selectedPlan.name
-                    }
-                ]
+                custom_fields: [{
+                    display_name: "Plan",
+                    variable_name: "plan_name",
+                    value: selectedPlan.name
+                }]
             },
-            callback: function (transaction) {
-                (async () => {
-                    try {
-                        console.log('Payment complete, verifying:', transaction);
-                        // Transaction successful, verify on backend
-                        await subscribeToPlan(selectedPlan.id, transaction.reference, referralCode);
+            onSuccess: async (result) => {
+                try {
+                    console.log('Payment checkout successful, verifying:', result);
+                    // Transaction successful, verify on backend
+                    await subscribeToPlan(selectedPlan.id, result.reference, referralCode);
 
-                        closeSubscriptionModal();
-                        CVision.Utils.showAlert('Subscription successful!', 'success');
-                        setTimeout(() => window.location.reload(), 2000);
+                    closeSubscriptionModal();
+                    CVision.Utils.showAlert('Subscription successful!', 'success');
+                    setTimeout(() => window.location.reload(), 2000);
 
-                    } catch (error) {
-                        console.error('Backend verification failed:', error);
-                        CVision.Utils.showAlert(error.message || 'Verification failed', 'error');
-                        submitButton.disabled = false;
-                        submitButton.textContent = 'Subscribe Now';
-                    }
-                })();
+                } catch (error) {
+                    console.error('Backend verification failed:', error);
+                    CVision.Utils.showAlert(error.message || 'Verification failed', 'error');
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Subscribe Now';
+                }
             },
-            onClose: () => {
+            onCancel: () => {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Subscribe Now';
+            },
+            onError: (error) => {
+                console.error('Payment checkout error:', error);
+                CVision.Utils.showAlert('Payment failed. Please try again.', 'error');
                 submitButton.disabled = false;
                 submitButton.textContent = 'Subscribe Now';
             }
-        };
+        });
 
-        // If plan exists, use it and DO NOT send amount (let Paystack handle it)
-        if (selectedPlan.planCode && selectedPlan.planCode.trim() !== '') {
-            paystackConfig.plan = selectedPlan.planCode.trim();
-        } else {
-            // Only send amount if no plan code (one-time payment)
-            paystackConfig.amount = Math.ceil(selectedPlan.price);
-        }
-
-        const handler = PaystackPop.setup(paystackConfig);
-
-        handler.openIframe();
     } catch (error) {
         console.error('Payment initialization failed:', error);
-        CVision.Utils.showAlert(error.message, 'error');
+        CVision.Utils.showAlert(error.message || 'Payment initialization failed', 'error');
         submitButton.disabled = false;
         submitButton.textContent = 'Subscribe Now';
     }
+
 }
 
 async function subscribeToPlan(planId, reference, referralCode) {
@@ -589,3 +709,4 @@ window.showSubscriptionModal = showSubscriptionModal;
 window.closeSubscriptionModal = closeSubscriptionModal;
 window.showUpgradeOptions = showUpgradeOptions;
 window.handlePaymentSubmit = handlePaymentSubmit;
+window.setBillingInterval = setBillingInterval;
