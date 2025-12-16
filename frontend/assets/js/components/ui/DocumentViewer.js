@@ -46,6 +46,22 @@ class DocumentViewerComponent {
 
     _resolveUrl(path) {
         if (!path) return '';
+
+        // Handle case where backend saved localhost URL but we are in production
+        if (path.includes('localhost') &&
+            window.location.hostname !== 'localhost' &&
+            window.location.hostname !== '127.0.0.1') {
+
+            // Strip the localhost origin part and resolve relative cleanliness
+            // Assuming path is like http://localhost:8000/media/...
+            try {
+                const urlObj = new URL(path);
+                path = urlObj.pathname + urlObj.search;
+            } catch (e) {
+                console.warn('Failed to parse localhost URL, using as is', e);
+            }
+        }
+
         if (path.startsWith('http')) return path;
 
         let baseUrl = window.location.origin;
@@ -58,8 +74,6 @@ class DocumentViewerComponent {
         }
 
         const cleanPath = path.startsWith('/') ? path : `/${path}`;
-        // Remove double slashes if base url has one and path has one, or ensure one exists
-        // Simple robust concatenation:
         return `${baseUrl.replace(/\/+$/, '')}/${cleanPath.replace(/^\/+/, '')}`;
     }
 
@@ -70,15 +84,62 @@ class DocumentViewerComponent {
         const titleEl = document.getElementById('docPreviewTitle');
         const loader = document.getElementById('docPreviewLoader');
 
+        // Find or create external link button container
+        let actionContainer = document.getElementById('docPreviewActions');
+        if (!actionContainer) {
+            const header = modal.querySelector('.flex.justify-between.items-center');
+            if (header) {
+                // Insert before the close button
+                const closeBtn = header.querySelector('button');
+                actionContainer = document.createElement('div');
+                actionContainer.id = 'docPreviewActions';
+                actionContainer.className = 'flex items-center gap-2 mr-2';
+                header.insertBefore(actionContainer, closeBtn);
+            }
+        }
+
         if (!modal || !frame) return;
 
         if (titleEl) titleEl.textContent = title;
         if (loader) loader.classList.remove('hidden');
 
-        frame.src = fullUrl;
+        // Determine viewer type based on extension
+        const extension = fullUrl.split('.').pop().toLowerCase().split('?')[0]; // Handle query params
+        const isOfficeDoc = ['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(extension);
+
+        let displayUrl = fullUrl;
+
+        // Update external link button
+        if (actionContainer) {
+            actionContainer.innerHTML = `
+                <a href="${fullUrl}" target="_blank" rel="noopener noreferrer" 
+                   class="text-primary-600 hover:text-primary-800 text-sm font-medium flex items-center gap-1 hover:underline">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    Open in New Tab
+                </a>
+            `;
+        }
+
+        if (isOfficeDoc) {
+            // Use Google Docs Viewer for Office files
+            // NOTE: Google Docs Viewer only works if the URL is publicly accessible. 
+            // If strictly local/private, this will fail, but "Open in New Tab" provides download fallback.
+            displayUrl = `https://docs.google.com/gview?url=${encodeURIComponent(fullUrl)}&embedded=true`;
+        }
+
+        frame.src = displayUrl;
+
         frame.onload = () => {
             if (loader) loader.classList.add('hidden');
         };
+
+        // Handle error/timeout for iframe (approximate)
+        setTimeout(() => {
+            if (loader && !loader.classList.contains('hidden')) {
+                // If still loading after 5s, assume mostly done or allow user to see it
+                loader.classList.add('hidden');
+            }
+        }, 5000);
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -91,7 +152,9 @@ class DocumentViewerComponent {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         }
-        if (frame) frame.src = '';
+        if (frame) {
+            frame.src = '';
+        }
     }
 
     /**
@@ -100,6 +163,12 @@ class DocumentViewerComponent {
      * @param {Object} styles - Optional style overrides
      */
     renderButtons({ cvPath, clPath }) {
+        if (!cvPath && !clPath) return '';
+
+        // Fix for undefined/null paths that might be passed as strings "null" or "undefined"
+        if (cvPath === 'null' || cvPath === 'undefined') cvPath = null;
+        if (clPath === 'null' || clPath === 'undefined') clPath = null;
+
         if (!cvPath && !clPath) return '';
 
         let html = '<div class="flex gap-2 mb-2">';
