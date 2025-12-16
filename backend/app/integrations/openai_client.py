@@ -111,6 +111,11 @@ class OpenAIClient:
                     "duration": "Duration or null",
                     "description": "Description"
                 }
+            ],
+            "recommended_roles": [
+                "Role 1 (e.g. Senior Backend Engineer)",
+                "Role 2 (e.g. Python Developer)",
+                "Role 3 (e.g. System Architect)"
             ]
         }
 

@@ -234,6 +234,10 @@ class SubscriptionService:
             raise ValueError("Invalid plan ID")
         
         now = datetime.utcnow()
+        
+        # Calculate billing period duration
+        period_days = 365 if plan.billing_interval == "yearly" else 30
+        
         subscription_data = {
             "_id": f"sub_{user_id}_{uuid.uuid4().hex[:8]}",
             "user_id": user_id,
@@ -241,7 +245,7 @@ class SubscriptionService:
             "status": SubscriptionStatus.ACTIVE.value,
             "billing_interval": plan.billing_interval,
             "current_period_start": now,
-            "current_period_end": now + timedelta(days=30),
+            "current_period_end": now + timedelta(days=period_days),
             "current_usage": {
                 "manual_applications": 0,
                 "auto_applications": 0,
@@ -251,6 +255,7 @@ class SubscriptionService:
                 "cover_letters": 0,
                 "api_calls": 0
             },
+            # Usage resets monthly regardless of billing interval
             "usage_reset_date": now + timedelta(days=30),
             "created_at": now,
             "updated_at": now
@@ -395,6 +400,17 @@ class SubscriptionService:
                         if sub_data:
                             # Update existing subscription
                             now = datetime.utcnow()
+                            
+                            # Determine plan interval from target plan ID if possible, or default to monthly
+                            period_days = 30
+                            if "annual" in target_plan_id or "yearly" in target_plan_id:
+                                period_days = 365
+                            # Ideally we fetch the plan object to be sure, but we are inside a sync block. 
+                            # Let's try to fetch the plan.
+                            target_plan = await self.get_plan(target_plan_id)
+                            if target_plan:
+                                period_days = 365 if target_plan.billing_interval == "yearly" else 30
+                            
                             await self.db.subscriptions.update_one(
                                 {"_id": sub_data["_id"]},
                                 {"$set": {
@@ -402,7 +418,7 @@ class SubscriptionService:
                                     "status": SubscriptionStatus.ACTIVE.value,
                                     "updated_at": now,
                                     "current_period_start": now,
-                                    "current_period_end": now + timedelta(days=30)
+                                    "current_period_end": now + timedelta(days=period_days)
                                 }}
                             )
                         else:

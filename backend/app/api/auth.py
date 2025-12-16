@@ -3,7 +3,7 @@
 CVision Authentication API - Frontend Compatible
 """
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta
@@ -12,12 +12,21 @@ from bson import ObjectId
 from fastapi.responses import RedirectResponse
 
 # Import centralized security functions
-from app.core.security import hash_password, verify_password, create_access_token
+from app.core.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_password_reset_token,
+    verify_password_reset_token,
+    get_client_ip
+)
 from app.dependencies import get_current_user
 from app.services.oauth_service import OAuthService
 from app.core.config import settings
 from app.database import get_users_collection
+from app.services.email_service import EmailService
 from app.services.gmail_service import gmail_service
+from app.services.password_service import PasswordService
 from app.models.user import GmailAuth
 
 import logging
@@ -64,9 +73,18 @@ class APIResponse(BaseModel):
     data: Optional[dict] = None
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 # API Routes
 @router.post("/register", response_model=APIResponse)
-async def register(user_data: UserRegister):
+async def register(user_data: UserRegister, request: Request):
     """Register new user in CVision"""
     try:
         users_collection = await get_users_collection()
@@ -77,6 +95,16 @@ async def register(user_data: UserRegister):
             return APIResponse(
                 success=False,
                 message="Email already registered"
+            )
+            
+        # Check IP Registration Limit using reusable service
+        from app.services.security_service import SecurityService
+        client_ip = get_client_ip(request)
+        
+        if not await SecurityService.check_registration_ip_limit(client_ip):
+            return APIResponse(
+                success=False,
+                message="Maximum number of accounts reached for this device/network."
             )
         
         # Generate unique referral code
@@ -110,6 +138,7 @@ async def register(user_data: UserRegister):
             "is_active": True,
             "is_verified": True,  # Simplified for testing
             "created_at": datetime.utcnow(),
+            "registration_ip": client_ip,
             "usage_stats": {
                 "monthly_searches": 0,
                 "total_applications": 0
@@ -384,36 +413,46 @@ async def change_password(
     current_user: dict = Depends(get_current_user)
 ):
     """Change user password"""
-    try:
-        users_collection = await get_users_collection()
-        
-        # Verify current password
-        user = await users_collection.find_one({"_id": current_user["_id"]})
-        if not user or not verify_password(request.current_password, user["password"]):
-            return APIResponse(
-                success=False,
-                message="Incorrect current password"
-            )
-            
-        # Update with new password
-        new_password_hash = hash_password(request.new_password)
-        
-        await users_collection.update_one(
-            {"_id": current_user["_id"]},
-            {"$set": {"password": new_password_hash}}
-        )
-        
+    result = await PasswordService.change_password(
+        user_id=str(current_user["_id"]),
+        current_password=request.current_password,
+        new_password=request.new_password
+    )
+    
+    return APIResponse(
+        success=result["success"],
+        message=result["message"]
+    )
+
+
+@router.post("/forgot-password", response_model=APIResponse)
+async def forgot_password(request: ForgotPasswordRequest):
+    """Initiate password reset flow"""
+    # Service handles the logic (including fake delays for security)
+    success = await PasswordService.request_password_reset(request.email)
+    
+    if success:
         return APIResponse(
             success=True,
-            message="Password updated successfully"
+            message="If an account exists with this email, a password reset link has been sent."
         )
-        
-    except Exception as e:
-        logger.error(f"Password change error: {str(e)}")
+    else:
         return APIResponse(
             success=False,
-            message="Failed to update password"
+            message="An error occurred while processing your request"
         )
+
+
+@router.post("/reset-password", response_model=APIResponse)
+async def reset_password(request: ResetPasswordRequest):
+    """Reset password using token"""
+    result = await PasswordService.reset_password(request.token, request.new_password)
+    
+    return APIResponse(
+        success=result["success"],
+        message=result["message"]
+    )
+
 
 # ============ GOOGLE OAUTH ROUTES ============
 
@@ -442,7 +481,7 @@ async def google_login(location: Optional[str] = None):
 
 
 @router.get("/google/callback")
-async def google_callback(code: str, state: str):
+async def google_callback(code: str, state: str, request: Request):
     """Handle Google OAuth callback"""
     try:
         is_valid, metadata = OAuthService.verify_state_token(state)
@@ -456,6 +495,9 @@ async def google_callback(code: str, state: str):
         user_info = await OAuthService.get_google_user_info(tokens["access_token"])
         if not user_info:
             return RedirectResponse(url=f"{settings.FRONTEND_URL}/login.html?error=user_info_failed")
+            
+        # Get client IP for registration limit check
+        client_ip = get_client_ip(request)
         
         user, token, is_new = await OAuthService.handle_oauth_user(
             email=user_info["email"],
@@ -463,7 +505,8 @@ async def google_callback(code: str, state: str):
             last_name=user_info.get("family_name", ""),
             oauth_provider="google",
             oauth_id=user_info["id"],
-            location_data=metadata.get("location") if metadata else None
+            location_data=metadata.get("location") if metadata else None,
+            registration_ip=client_ip
         )
         
         redirect_url = f"{settings.FRONTEND_URL}/auth-callback.html?token={token}&provider=google"

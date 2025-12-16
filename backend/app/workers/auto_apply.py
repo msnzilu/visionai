@@ -83,51 +83,52 @@ async def calculate_job_match_score(user_cv: Dict, job: Dict) -> float:
 
 async def generate_custom_cv(user_cv: Dict, job: Dict) -> str:
     """
-    Generate customized CV for specific job using AI
+    Generate customized CV for specific job using CVCustomizationService
     Returns document ID of generated CV
     """
     try:
-        openai.api_key = settings.OPENAI_API_KEY
+        from app.services.cv_customization_service import cv_customization_service
         
-        # Use OpenAI to customize CV
-        prompt = f"""
-        Customize this CV for the following job. Keep it professional and ATS-friendly.
+        # Prepare job data in expected format
+        job_data = {
+            "_id": str(job["_id"]),
+            "title": job.get("title", ""),
+            "company_name": job.get("company", ""),
+            "description": job.get("description", ""),
+            "requirements": job.get("requirements", []),
+            "skills_required": job.get("skills_required", [])
+        }
         
-        Original CV:
-        Name: {user_cv.get('full_name')}
-        Skills: {', '.join(user_cv.get('skills', []))}
-        Experience: {user_cv.get('experience_summary', '')}
-        
-        Target Job:
-        Title: {job.get('title')}
-        Company: {job.get('company')}
-        Requirements: {job.get('requirements', '')[:500]}
-        
-        Generate a customized CV summary (2-3 paragraphs):
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=settings.OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
-            temperature=0.7
+        # Generate customized CV
+        result = await cv_customization_service.customize_cv_for_job(
+            cv_data=user_cv,
+            job_data=job_data
         )
         
-        customized_content = response.choices[0].message.content.strip()
+        if not result.get("success"):
+            logger.error(f"Failed to generate custom CV: {result.get('error')}")
+            return None
+            
+        customized_cv = result.get("customized_cv")
+        match_score = result.get("job_match_score", 0.0)
         
-        # Save customized CV to database
+        # Save customized CV to database using the service's storage method
+        # Note: The service has a private _store_generated_cv, but we can replicate the storage logic here
+        # or expose a public store method. For now, we'll store it directly to ensure compatibility
+        
         db = await get_database()
         cv_doc = {
             "user_id": user_cv.get("user_id"),
             "job_id": str(job.get("_id")),
             "type": "customized_cv",
-            "content": customized_content,
+            "content": customized_cv,
             "original_cv_id": user_cv.get("_id"),
+            "match_score": match_score,
             "created_at": datetime.utcnow()
         }
         
-        result = await db.documents.insert_one(cv_doc)
-        return str(result.inserted_id)
+        insert_result = await db.documents.insert_one(cv_doc)
+        return str(insert_result.inserted_id)
         
     except Exception as e:
         logger.error(f"Error generating custom CV: {e}")
@@ -136,36 +137,37 @@ async def generate_custom_cv(user_cv: Dict, job: Dict) -> str:
 
 async def generate_cover_letter(user_cv: Dict, job: Dict) -> str:
     """
-    Generate customized cover letter for specific job using AI
+    Generate customized cover letter for specific job using CoverLetterService
     Returns document ID of generated cover letter
     """
     try:
-        openai.api_key = settings.OPENAI_API_KEY
+        from app.services.cover_letter_service import cover_letter_service
         
-        prompt = f"""
-        Write a professional cover letter for this job application.
+        # Prepare job data
+        job_data = {
+            "_id": str(job["_id"]),
+            "title": job.get("title", ""),
+            "company_name": job.get("company", ""),
+            "description": job.get("description", ""),
+            "requirements": job.get("requirements", []),
+            "skills_required": job.get("skills_required", [])
+        }
         
-        Candidate:
-        Name: {user_cv.get('full_name')}
-        Skills: {', '.join(user_cv.get('skills', [])[:5])}
-        Experience: {user_cv.get('experience_summary', '')}
-        
-        Job:
-        Title: {job.get('title')}
-        Company: {job.get('company')}
-        Description: {job.get('description', '')[:500]}
-        
-        Write a compelling cover letter (3-4 paragraphs):
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=settings.OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=600,
-            temperature=0.7
+        # Generate cover letter
+        result = await cover_letter_service.generate_cover_letter(
+            cv_data=user_cv,
+            job_data=job_data,
+            tone="professional" # Default tone for auto-apply
         )
         
-        cover_letter_content = response.choices[0].message.content.strip()
+        if not result.get("success"):
+            logger.error(f"Failed to generate cover letter: {result.get('error')}")
+            return None
+            
+        cover_letter_data = result.get("cover_letter")
+        
+        # Extract the full text content nicely
+        content_text = cover_letter_data.get("content", {}).get("full_text", "")
         
         # Save cover letter to database
         db = await get_database()
@@ -173,12 +175,13 @@ async def generate_cover_letter(user_cv: Dict, job: Dict) -> str:
             "user_id": user_cv.get("user_id"),
             "job_id": str(job.get("_id")),
             "type": "cover_letter",
-            "content": cover_letter_content,
+            "content": content_text, # Store text for email sending compatibility
+            "structured_content": cover_letter_data, # Store structured for future use
             "created_at": datetime.utcnow()
         }
         
-        result = await db.documents.insert_one(cover_doc)
-        return str(result.inserted_id)
+        insert_result = await db.documents.insert_one(cover_doc)
+        return str(insert_result.inserted_id)
         
     except Exception as e:
         logger.error(f"Error generating cover letter: {e}")
@@ -242,12 +245,66 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         
         # Get jobs from last 7 days
         seven_days_ago = datetime.utcnow() - timedelta(days=7)
-        new_jobs = await db.jobs.find({
-            "_id": {"$nin": [ObjectId(jid) for jid in applied_job_ids]},
-            "is_active": True,
-            "created_at": {"$gte": seven_days_ago},
-            "email": {"$exists": True, "$ne": None}  # Must have email to apply
-        }).limit(remaining_applications * 5).to_list(length=remaining_applications * 5) # Increased search pool
+        exclude_ids = [ObjectId(jid) for jid in applied_job_ids]
+        
+        # Get recommended roles from user profile
+        user_profile = user.get("profile", {})
+        recommended_roles = user_profile.get("recommended_roles", [])
+        
+        # If no roles found in profile, check cv_data as fallback
+        if not recommended_roles and "recommended_roles" in user_cv:
+            recommended_roles = user_cv["recommended_roles"]
+            
+        new_jobs = []
+        
+        if recommended_roles:
+            logger.info(f"Searching jobs for user {user_id} using roles: {recommended_roles}")
+            
+            # Import job service for live scraping
+            from app.services.job_service import get_job_service
+            job_service = get_job_service(db)
+            
+            # Search for each role
+            for role in recommended_roles:
+                # Trigger live scrape for this role first (Consolidated Task)
+                try:
+                    user_location = user_profile.get("personal_info", {}).get("location") or "Remote"
+                    logger.info(f"Triggering consolidated scrape for role: {role} in {user_location}")
+                    
+                    # Scrape fresh jobs -> database
+                    await job_service.aggregate_from_sources(
+                        query=role,
+                        location=user_location,
+                        limit=20
+                    )
+                except Exception as e:
+                    logger.error(f"Error during consolidated scraping for {role}: {e}")
+
+                # Now search the DB (which includes fresh jobs)
+                role_jobs = await db.jobs.find({
+                    "_id": {"$nin": exclude_ids + [j["_id"] for j in new_jobs]}, # Avoid duplicates
+                    "is_active": True,
+                    "created_at": {"$gte": seven_days_ago},
+                    "email": {"$exists": True, "$ne": None},
+                    "$or": [
+                        {"title": {"$regex": role, "$options": "i"}},
+                        {"description": {"$regex": role, "$options": "i"}}
+                    ]
+                }).limit(5).to_list(length=5)
+                
+                new_jobs.extend(role_jobs)
+                
+                if len(new_jobs) >= remaining_applications * 5:
+                    break
+        else:
+            # Fallback to generic recent jobs if no roles identified
+            logger.info(f"No specific roles found for user {user_id}, using generic search")
+            new_jobs = await db.jobs.find({
+                "_id": {"$nin": exclude_ids},
+                "is_active": True,
+                "created_at": {"$gte": seven_days_ago},
+                "email": {"$exists": True, "$ne": None}
+            }).limit(remaining_applications * 5).to_list(length=remaining_applications * 5)
         
         stats["jobs_found"] = len(new_jobs)
         

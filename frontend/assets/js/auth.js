@@ -7,6 +7,16 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
+    // Initialize Forgot Password Modal
+    const forgotPasswordModal = new ForgotPasswordModal();
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            forgotPasswordModal.open();
+        });
+    }
+
     // Initialize based on which form exists on the page
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');

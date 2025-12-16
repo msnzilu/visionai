@@ -113,7 +113,7 @@ class Settings(BaseSettings):
     
     # Paystack - REQUIRED for payments
     PAYSTACK_SECRET_KEY: str = Field(default_factory=lambda: get_secret("PAYSTACK_SECRET_KEY", ""))
-    PAYSTACK_PUBLIC_KEY: str = Field(default="", env="PAYSTACK_PUBLIC_KEY")
+    PAYSTACK_PUBLIC_KEY: str = Field(default_factory=lambda: get_secret("PAYSTACK_PUBLIC_KEY", ""))
     PAYSTACK_BASIC_PLAN_CODE: str = Field(default="", env="PAYSTACK_BASIC_PLAN_CODE")
     PAYSTACK_PREMIUM_PLAN_CODE: str = Field(default="", env="PAYSTACK_PREMIUM_PLAN_CODE")
 
@@ -128,7 +128,7 @@ class Settings(BaseSettings):
     PAYPAL_MODE: str = Field(default="sandbox", env="PAYPAL_MODE") # sandbox or live
 
     # IntaSend - Optional
-    INTASEND_PUBLIC_KEY: str = Field(default="", env="INTASEND_PUBLIC_KEY")
+    INTASEND_PUBLIC_KEY: str = Field(default_factory=lambda: get_secret("INTASEND_PUBLIC_KEY", ""))
     INTASEND_SECRET_KEY: str = Field(default_factory=lambda: get_secret("INTASEND_SECRET_KEY", ""))
     INTASEND_IS_LIVE: bool = Field(default=False, env="INTASEND_IS_LIVE")
     

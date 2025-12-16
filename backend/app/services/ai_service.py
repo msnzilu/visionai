@@ -258,6 +258,12 @@ class AIService:
                 total_years = self._calculate_total_experience(cv_data["experience"])
                 profile_updates["profile.experience_years"] = total_years
             
+            # Save recommended roles
+            if "recommended_roles" in cv_data and cv_data["recommended_roles"]:
+                profile_updates["profile.recommended_roles"] = cv_data["recommended_roles"]
+                # Also verify if we should auto-populate preferences
+                # profile_updates["preferences.job_search_queries"] = cv_data["recommended_roles"]
+            
             # Update database
             if profile_updates:
                 from bson import ObjectId

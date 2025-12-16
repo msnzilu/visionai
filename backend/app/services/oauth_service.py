@@ -190,7 +190,8 @@ class OAuthService:
         last_name: str,
         oauth_provider: str,
         oauth_id: str,
-        location_data: Optional[Dict] = None
+        location_data: Optional[Dict] = None,
+        registration_ip: Optional[str] = None
     ) -> Tuple[Dict, str, bool]:
         """
         Handle OAuth user - create or login
@@ -230,6 +231,14 @@ class OAuthService:
             user = await users_collection.find_one({"_id": user["_id"]})
         else:
             # Create new user
+            
+            # Check Registration IP Limit
+            if registration_ip:
+                from app.services.security_service import SecurityService
+                if not await SecurityService.check_registration_ip_limit(registration_ip):
+                     from fastapi import HTTPException
+                     raise HTTPException(status_code=400, detail="Maximum number of accounts reached for this device/network.")
+
             is_new_user = True
             
             # Generate unique referral code
@@ -255,6 +264,7 @@ class OAuthService:
                 },
                 "referral_code": referral_code,
                 "created_at": datetime.utcnow(),
+                "registration_ip": registration_ip,
                 "updated_at": datetime.utcnow(),
                 "last_login": datetime.utcnow(),
                 # Initialize profile with location if provided

@@ -1,7 +1,6 @@
-# backend/app/services/email_service.py
-
 import logging
 from typing import Optional, Dict, Any
+from pathlib import Path
 
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
@@ -27,6 +26,7 @@ if (settings.MAIL_SERVER and
             MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
             USE_CREDENTIALS=True,
             VALIDATE_CERTS=True,
+            TEMPLATE_FOLDER=Path(__file__).parent.parent / 'templates' / 'email',
         )
         _fm = FastMail(conf)
         logger.info("Email service configured successfully")
@@ -84,7 +84,7 @@ class EmailService:
                 recipients=recipients,
                 body=body if not template_name else None,
                 subtype=subtype,
-                attachments=attachments,
+                attachments=attachments or [],
             )
 
             if template_name and template_body:

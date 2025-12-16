@@ -444,3 +444,4 @@ class AuthService:
         except Exception as e:
             logger.error(f"Failed to get user stats: {str(e)}")
             return None
+
