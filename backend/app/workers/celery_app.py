@@ -35,26 +35,6 @@ celery_app.conf.update(
 )
 
 celery_app.conf.beat_schedule = {
-    'scrape-tech-jobs': {
-        'task': 'app.workers.job_scraper.scrape_jobs_task',
-        'schedule': crontab(hour='*/6'),
-        'args': ('software engineer', 'San Francisco, CA')
-    },
-    'scrape-data-science-jobs': {
-        'task': 'app.workers.job_scraper.scrape_jobs_task',
-        'schedule': crontab(hour='*/6', minute=15),
-        'args': ('data scientist', 'New York, NY')
-    },
-    'expire-old-jobs': {
-        'task': 'app.workers.job_scraper.expire_old_jobs_task',
-        'schedule': crontab(hour=2, minute=0),
-        'args': ()
-    },
-    'clean-expired-cache': {
-        'task': 'app.workers.job_scraper.clean_cache_task',
-        'schedule': crontab(hour=3, minute=0),
-        'args': ()
-    },
     # Email monitoring tasks
     'scan-all-inboxes': {
         'task': 'app.workers.email_monitor.scan_all_inboxes',
