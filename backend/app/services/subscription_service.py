@@ -451,8 +451,9 @@ class SubscriptionService:
                     subscription = Subscription(**sub_data)
                     return subscription
                 except Exception as e:
-                    logger.error(f"Failed to create Subscription object: {e}")
-                    raise
+                    logger.error(f"Failed to create Subscription object from DB data: {e}")
+                    logger.error(f"Problematic data: {sub_data}")
+                    raise ValueError(f"Data validation error for subscription: {e}")
             
             # Auto-create free subscription if none exists
             logger.info(f"No subscription found for user {user_id}, attempting to create free subscription")
@@ -640,8 +641,9 @@ class SubscriptionService:
     async def get_plan(self, plan_id: str) -> Optional[SubscriptionPlan]:
         """Get subscription plan by ID or tier"""
         # First try to get by tier enum
-        for tier, plan in self.PLANS.items():
-            if plan.id == plan_id or tier.value == plan_id:
+        # First try to get by tier enum
+        for key, plan in self.PLANS.items():
+            if plan.id == plan_id or plan.tier.value == plan_id:
                 return plan
         
         # Try to match by plan ID prefix

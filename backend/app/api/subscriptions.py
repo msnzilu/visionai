@@ -212,23 +212,32 @@ async def get_usage_stats(
     db = Depends(get_database)
 ):
     """Get usage statistics"""
-    user_id = get_user_id(current_user)
-    service = SubscriptionService(db)
-    subscription = await service.get_user_subscription(user_id)
-    
-    if not subscription:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscription found")
-    
-    plan = await service.get_plan(subscription.plan_id)
-    
-    return {
-        "subscription_id": subscription.id,
-        "plan": plan.name if plan else "Unknown",
-        "tier": subscription.plan_id,
-        "current_usage": subscription.current_usage,
-        "usage_reset_date": subscription.usage_reset_date,
-        "current_period_end": subscription.current_period_end
-    }
+    try:
+        user_id = get_user_id(current_user)
+        service = SubscriptionService(db)
+        subscription = await service.get_user_subscription(user_id)
+        
+        if not subscription:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscription found")
+        
+        plan = await service.get_plan(subscription.plan_id)
+        
+        return {
+            "subscription_id": subscription.id,
+            "plan": plan.name if plan else "Unknown",
+            "tier": subscription.plan_id,
+            "current_usage": subscription.current_usage,
+            "usage_reset_date": subscription.usage_reset_date,
+            "current_period_end": subscription.current_period_end
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching usage stats: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load usage stats: {str(e)}"
+        )
 
 # ==================== REFERRAL ENDPOINTS ====================
 

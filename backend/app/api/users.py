@@ -67,7 +67,8 @@ async def get_current_user_profile(
             referral_code=current_user.get("referral_code", ""),
             created_at=current_user.get("created_at"),
             last_login=current_user.get("last_login"),
-            gmail_connected=bool(current_user.get("gmail_auth"))
+            gmail_connected=bool(current_user.get("gmail_auth")),
+            cv_data=current_user.get("cv_data")
         )
         
     except KeyError as ke:

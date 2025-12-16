@@ -204,7 +204,7 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         user_id = str(user["_id"])
         
         # Get user's CV data
-        user_cv = user.get("cv_parsed", {})
+        user_cv = user.get("cv_data", {})
         if not user_cv:
             return {"success": False, "error": "No CV data found", "stats": stats}
 
@@ -349,12 +349,11 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                     })
 
                 # Send application via email agent
-                form_data = {
-                    "full_name": user.get("full_name"),
-                    "email": user.get("email"),
-                    "phone": user_cv.get("phone", ""),
-                    "message": f"Please find attached my CV and cover letter for the {job.get('title')} position."
-                }
+                # Extract rich form data using the shared service for consistency with Quick Apply
+                form_data = await email_agent_service.extract_form_data_from_cv(user_id, cv_data=user_cv)
+                
+                # Add the specific message for this application
+                form_data["message"] = f"Please find attached my CV and cover letter for the {job.get('title')} position."
                 
                 # Queue email sending
                 from app.workers.email_sender import send_application_email
@@ -415,7 +414,7 @@ def auto_apply_to_matching_jobs():
             auto_apply_users = await db.users.find({
                 "preferences.auto_apply_enabled": True,
                 "gmail_auth": {"$exists": True, "$ne": None},
-                "cv_parsed": {"$exists": True, "$ne": None}
+                "cv_data": {"$exists": True, "$ne": None}
             }).to_list(length=None)
             
             if not auto_apply_users:

@@ -50,28 +50,8 @@ async function loadPaymentConfig() {
                     await CVision.Payment.init('paystack', { publicKey: PAYSTACK_PUBLIC_KEY });
                 }
 
-                // Initialize Stripe
-                if (config.stripe?.public_key) {
-                    await CVision.Payment.init('stripe', { publicKey: config.stripe.public_key });
-                }
+                // Other providers (Stripe, IntaSend, PayPal) are disabled to enforce Paystack
 
-                // Initialize PayPal (Disabled for now)
-                /*
-                if (config.paypal?.client_id) {
-                    await CVision.Payment.init('paypal', {
-                        clientId: config.paypal.client_id,
-                        currency: 'USD' // Default currency
-                    });
-                }
-                */
-
-                // Initialize IntaSend
-                if (config.intasend?.public_key) {
-                    await CVision.Payment.init('intasend', {
-                        publicKey: config.intasend.public_key,
-                        live: config.intasend.live
-                    });
-                }
 
                 console.log('[Subscriptions] Payment gateways initialized');
             }
@@ -144,11 +124,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load data
     await Promise.all([
         loadCurrentSubscription(),
-        loadPlans(),
+        loadPlans(false),
         loadReferralStats()
     ]).catch(error => {
         console.error('Failed to load initial data:', error);
     });
+
+    // Render plans after all data (especially currentSubscription) is loaded
+    displayFilteredPlans();
 });
 
 async function loadCurrentSubscription() {
@@ -185,12 +168,22 @@ async function loadCurrentSubscription() {
 function displayCurrentPlan(subscription) {
     const tierName = subscription.plan_id.replace('plan_', '').toUpperCase();
     document.getElementById('currentTierName').textContent = `${tierName} Plan`;
-    document.getElementById('currentTierStatus').textContent = `Status: ${subscription.status}`;
+
+    let statusText = `Status: ${subscription.status}`;
+    if (subscription.cancel_at_period_end) {
+        const endDate = new Date(subscription.current_period_end).toLocaleDateString();
+        statusText = `Status: Active (Cancels on ${endDate})`;
+        document.getElementById('currentTierStatus').classList.add('text-orange-600');
+    } else {
+        document.getElementById('currentTierStatus').classList.remove('text-orange-600');
+    }
+    document.getElementById('currentTierStatus').textContent = statusText;
 
     // Show/hide buttons based on plan tier
     const isFree = subscription.plan_id === 'plan_free';
     const isBasic = subscription.plan_id === 'plan_basic';
     const isPremium = subscription.plan_id === 'plan_premium';
+    const isCancelled = subscription.cancel_at_period_end;
 
     // Get buttons
     const manageBtn = document.getElementById('manageBillingBtn');
@@ -206,11 +199,22 @@ function displayCurrentPlan(subscription) {
         // Paid tiers: Show manage and cancel buttons
         // Hide Manage Billing for Paystack as there isn't a direct portal
         if (manageBtn) manageBtn.style.display = 'none';
-        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
+        // Hide cancel button if already scheduled to cancel
+        if (cancelBtn) {
+            cancelBtn.style.display = isCancelled ? 'none' : 'inline-block';
+        }
 
         // Show upgrade only if not on premium
         if (upgradeBtn) {
+            // Can user upgrade if pending cancellation? Yes, probably creates new sub or upgrades existing.
+            // Let's allow it, but usually you might want to reactivate.
             upgradeBtn.style.display = isPremium ? 'none' : 'inline-block';
+        }
+
+        // If cancelled, maybe show a "Reactivate" button? (Not requested yet, keep simple)
+        if (isCancelled && upgradeBtn) {
+            upgradeBtn.textContent = 'Reactivate / Upgrade';
         }
     }
 }
@@ -249,7 +253,7 @@ async function loadUsageStats() {
     }
 }
 
-async function loadPlans() {
+async function loadPlans(render = true) {
     try {
         const currency = getUserCurrency();
         const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/plans?currency=${currency}`);
@@ -257,7 +261,7 @@ async function loadPlans() {
         if (!response.ok) throw new Error('Failed to load plans');
 
         allPlans = await response.json();
-        displayFilteredPlans();
+        if (render) displayFilteredPlans();
     } catch (error) {
         console.error('Failed to load plans:', error);
         CVision.Utils.showAlert('Failed to load subscription plans', 'error');
@@ -514,10 +518,8 @@ async function handlePaymentSubmit(e) {
         if (provider === 'paystack') {
             // Paystack: Use User's Local Currency
             targetCurrency = CVision.Currency.getUserCurrency();
-        } else if (provider === 'paypal') {
-            // PayPal: Use USD
-            targetCurrency = 'USD';
         }
+
 
         // Perform Conversion if needed (Base is USD)
         if (targetCurrency !== 'USD' && window.CVision && window.CVision.Currency) {

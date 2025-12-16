@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadTierCards() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/plans`);
-        
+
         if (response.ok) {
             const plans = await response.json();
             displayTierCards(plans);
@@ -48,57 +48,96 @@ async function loadTierCards() {
 }
 
 /**
- * Display tier cards
+ * Display tier cards - grouped by tier (not by billing cycle)
  */
 function displayTierCards(plans) {
     const container = document.getElementById('tierCardsContainer');
     const tierColors = {
-        'free': { border: 'border-gray-200', bg: 'bg-gray-100', text: 'text-gray-600' },
-        'basic': { border: 'border-blue-500', bg: 'bg-blue-100', text: 'text-blue-600' },
-        'premium': { border: 'border-purple-500', bg: 'bg-purple-100', text: 'text-purple-600' }
+        'free': { border: 'border-gray-200', bg: 'bg-gray-100', text: 'text-gray-600', gradient: 'from-gray-400 to-gray-500' },
+        'basic': { border: 'border-blue-500', bg: 'bg-blue-100', text: 'text-blue-600', gradient: 'from-blue-500 to-blue-600' },
+        'premium': { border: 'border-purple-500', bg: 'bg-purple-100', text: 'text-purple-600', gradient: 'from-purple-500 to-pink-500' }
     };
-    
-    container.innerHTML = plans.map(plan => {
+
+    // Group plans by tier to avoid duplicates (monthly/annual)
+    const tierMap = new Map();
+    plans.forEach(plan => {
+        const tier = plan.tier || 'free';
+        // Keep only one plan per tier (prefer the first one or the popular one)
+        if (!tierMap.has(tier) || plan.is_popular) {
+            tierMap.set(tier, plan);
+        }
+    });
+
+    // Convert to array and sort: free, basic, premium
+    const tierOrder = ['free', 'basic', 'premium'];
+    const uniquePlans = tierOrder
+        .filter(tier => tierMap.has(tier))
+        .map(tier => tierMap.get(tier));
+
+    container.innerHTML = uniquePlans.map(plan => {
         const tier = plan.tier || 'free';
         const colors = tierColors[tier] || tierColors.free;
         const isPopular = plan.is_popular;
-        
+        const isPaid = tier !== 'free';
+
         // Determine referral reward text
         let rewardText = '';
+        let rewardIcon = '';
         if (tier === 'free') {
-            rewardText = 'No rewards (only paid referrals count)';
+            rewardText = 'Referrals only count when they subscribe to a paid plan';
+            rewardIcon = '❌';
         } else {
             rewardText = '<strong>5 manual + 5 auto applications</strong> per 5 paid referrals';
+            rewardIcon = '🎁';
         }
-        
+
+        // Get tier display name (capitalize first letter)
+        const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
+
         return `
-            <div class="border-2 ${colors.border} rounded-lg p-6 ${isPopular ? 'relative' : ''} hover:shadow-lg transition-shadow">
+            <div class="border-2 ${colors.border} rounded-xl p-6 ${isPopular ? 'relative ring-2 ring-blue-500 ring-offset-2' : ''} hover:shadow-lg transition-all duration-300 bg-white">
                 ${isPopular ? `
                     <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                        <span class="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-semibold">POPULAR</span>
+                        <span class="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-1 rounded-full text-xs font-semibold shadow-lg">MOST POPULAR</span>
                     </div>
                 ` : ''}
-                <div class="flex items-center mb-4">
-                    <div class="${colors.bg} rounded-full p-3 mr-3">
-                        <svg class="w-6 h-6 ${colors.text}" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                            <path fill-rule="evenodd"
-                                d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                                clip-rule="evenodd" />
-                        </svg>
+                
+                <!-- Tier Header -->
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br ${colors.gradient} rounded-xl flex items-center justify-center shadow-lg">
+                        ${tier === 'free' ? `
+                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                            </svg>
+                        ` : tier === 'basic' ? `
+                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
+                            </svg>
+                        ` : `
+                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                        `}
                     </div>
-                    <h3 class="text-xl font-bold">${plan.name}</h3>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">${tierName}</h3>
+                        <p class="text-sm text-gray-500">${tier === 'free' ? 'Get started' : tier === 'basic' ? 'For job seekers' : 'Maximum power'}</p>
+                    </div>
                 </div>
-                <p class="text-gray-600 mb-4">${plan.description}</p>
+                
+                <!-- Referral Reward Highlight -->
+                <div class="mb-4 p-3 rounded-lg ${isPaid ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}">
+                    <div class="flex items-start gap-2">
+                        <span class="text-lg">${rewardIcon}</span>
+                        <div>
+                            <p class="text-sm font-medium ${isPaid ? 'text-green-800' : 'text-gray-600'}">Referral Rewards</p>
+                            <p class="text-xs ${isPaid ? 'text-green-700' : 'text-gray-500'}">${rewardText}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Key Features -->
                 <ul class="space-y-2">
-                    <li class="flex items-start text-sm">
-                        <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clip-rule="evenodd" />
-                        </svg>
-                        <span>${rewardText}</span>
-                    </li>
                     ${plan.features.slice(0, 3).map(feature => `
                         <li class="flex items-start text-sm">
                             <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -106,7 +145,7 @@ function displayTierCards(plans) {
                                     d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                     clip-rule="evenodd" />
                             </svg>
-                            <span>${feature}</span>
+                            <span class="text-gray-700">${feature}</span>
                         </li>
                     `).join('')}
                 </ul>
@@ -129,11 +168,11 @@ async function loadReferralCode() {
         if (response.ok) {
             const data = await response.json();
             userReferralCode = data.code;
-            
+
             // Update all referral code displays
             const codeElements = document.querySelectorAll('#referralCodeMain, #referralCodeDisplay');
             codeElements.forEach(el => el.textContent = userReferralCode);
-            
+
             // Update referral link
             const referralLink = `${window.location.origin}/signup.html?ref=${userReferralCode}`;
             const linkInput = document.getElementById('referralLinkInput');
@@ -180,12 +219,89 @@ function updateStatsDisplay() {
 
     document.getElementById('totalReferrals').textContent = referralStats.total_referrals || 0;
     document.getElementById('activeReferrals').textContent = referralStats.paid_referrals || 0;
-    
+
     // Show total bonus applications (manual + auto)
     const bonusApps = (referralStats.bonus_manual_applications || 0) + (referralStats.bonus_auto_applications || 0);
     document.getElementById('bonusApplications').textContent = bonusApps;
-    
+
     document.getElementById('pendingRewards').textContent = referralStats.next_reward_in || 0;
+
+    // Update milestone progress tracker
+    updateMilestoneProgress();
+}
+
+/**
+ * Update the milestone progress tracker UI
+ */
+function updateMilestoneProgress() {
+    if (!referralStats) return;
+
+    const paidReferrals = referralStats.paid_referrals || 0;
+    const totalReferrals = referralStats.total_referrals || 0;
+    const bonusApps = (referralStats.bonus_manual_applications || 0) + (referralStats.bonus_auto_applications || 0);
+
+    // Calculate progress within current milestone cycle (every 5 referrals = 1 milestone)
+    const currentCycleProgress = paidReferrals % 5;
+    const completedMilestones = Math.floor(paidReferrals / 5);
+    const referralsToNextReward = currentCycleProgress === 0 && paidReferrals === 0 ? 5 : (5 - currentCycleProgress);
+
+    // Update progress bar (0-100%)
+    const progressPercent = (currentCycleProgress / 5) * 100;
+    const progressBar = document.getElementById('progressBar');
+    if (progressBar) {
+        // Animate the progress bar
+        setTimeout(() => {
+            progressBar.style.width = `${progressPercent}%`;
+        }, 100);
+    }
+
+    // Update progress text
+    const progressText = document.getElementById('progressText');
+    if (progressText) {
+        progressText.textContent = `${currentCycleProgress} / 5 referrals`;
+    }
+
+    // Update referrals needed
+    const referralsNeeded = document.getElementById('referralsNeeded');
+    if (referralsNeeded) {
+        referralsNeeded.textContent = referralsToNextReward;
+    }
+
+    // Update total earned apps
+    const totalEarnedApps = document.getElementById('totalEarnedApps');
+    if (totalEarnedApps) {
+        totalEarnedApps.textContent = bonusApps;
+    }
+
+    // Update milestones completed badge
+    const milestonesCompleted = document.getElementById('totalMilestonesCompleted');
+    if (milestonesCompleted) {
+        milestonesCompleted.textContent = completedMilestones;
+    }
+
+    // Update milestone markers
+    for (let i = 1; i <= 5; i++) {
+        const marker = document.getElementById(`milestone${i}Marker`);
+        if (marker) {
+            if (currentCycleProgress >= i) {
+                // Milestone reached - show completed state
+                marker.classList.remove('bg-gray-300');
+                marker.classList.add('bg-gradient-to-r', 'from-purple-500', 'to-blue-500');
+
+                // Add check icon for completed milestones
+                if (i === 5 && currentCycleProgress >= 5) {
+                    const checkIcon = document.getElementById('milestone5Check');
+                    if (checkIcon) {
+                        checkIcon.classList.remove('hidden');
+                    }
+                }
+            } else {
+                // Milestone not reached
+                marker.classList.add('bg-gray-300');
+                marker.classList.remove('bg-gradient-to-r', 'from-purple-500', 'to-blue-500');
+            }
+        }
+    }
 }
 
 /**
@@ -194,7 +310,7 @@ function updateStatsDisplay() {
 async function loadReferralList(page = 1) {
     currentReferralPage = page;
     const container = document.getElementById('referralListContainer');
-    
+
     try {
         // Show loading state
         container.innerHTML = `
@@ -405,7 +521,7 @@ async function loadRecentActivity() {
  */
 function displayRecentActivity(activities) {
     const container = document.getElementById('recentActivity');
-    
+
     if (!activities || activities.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-500 py-8">No recent activity</p>';
         return;
@@ -576,12 +692,12 @@ function closeShareModal() {
  */
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
-    
+
     const date = new Date(dateString);
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
         return 'Today';
     } else if (diffDays === 1) {
@@ -595,10 +711,10 @@ function formatDate(dateString) {
         const months = Math.floor(diffDays / 30);
         return `${months} month${months > 1 ? 's' : ''} ago`;
     } else {
-        return date.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
         });
     }
 }

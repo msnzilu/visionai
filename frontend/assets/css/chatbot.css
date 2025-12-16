@@ -1,5 +1,15 @@
 /* Chatbot Widget Styles */
 
+/* Fallback CSS variables for pages that don't include global.css */
+:root {
+    --primary-50: #f0f4ff;
+    --primary-100: #e0e7ff;
+    --primary-300: #a5b4fc;
+    --primary-500: #667eea;
+    --primary-600: #5a67d8;
+    --primary-700: #4c51bf;
+}
+
 /* Chat Button (Minimized State) */
 .chat-button {
     position: fixed;

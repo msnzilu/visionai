@@ -75,10 +75,14 @@ class DocumentService:
             db = await get_database()
             result = await db.documents.insert_one(document_record)
             
-            # Update user's CV upload timestamp
+            # Sync cv_data to user profile for quick access by other services
             await db.users.update_one(
                 {"_id": user_id if isinstance(user_id, object) else self._to_object_id(user_id)},
-                {"$set": {"cv_uploaded_at": datetime.utcnow()}}
+                {"$set": {
+                    "cv_uploaded_at": datetime.utcnow(),
+                    "cv_data": document_record["cv_data"],  # Sync to user profile
+                    "active_cv_document_id": str(result.inserted_id)
+                }}
             )
             
             logger.info(f"Successfully processed CV upload for user {user_id}")

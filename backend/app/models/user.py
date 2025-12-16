@@ -238,6 +238,7 @@ class UserResponse(BaseModel):
     created_at: datetime
     last_login: Optional[datetime] = None
     gmail_connected: bool = False
+    cv_data: Optional[Dict[str, Any]] = None  # Parsed CV data for frontend access
 
     @model_validator(mode='before')
     def generate_full_name(cls, values):

@@ -272,27 +272,162 @@ async def get_auto_apply_stats(
     }
 
 
+@router.get("/suggested-roles")
+async def get_suggested_roles(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_database)
+):
+    """
+    Get AI-suggested job roles based on CV analysis
+    """
+    user_id = str(current_user["_id"])
+    cv_data = current_user.get("cv_data", {})
+    
+    # If cv_data is empty on user profile, try to get it from documents collection
+    if not cv_data:
+        documents_collection = db["documents"]
+        cv_doc = await documents_collection.find_one({
+            "user_id": user_id,
+            "document_type": "cv",
+            "cv_data": {"$exists": True, "$ne": {}}
+        }, sort=[("uploaded_at", -1)])
+        
+        if cv_doc and cv_doc.get("cv_data"):
+            cv_data = cv_doc.get("cv_data", {})
+    
+    if not cv_data:
+        return {"suggested_roles": [], "message": "Please upload your CV first"}
+    
+    # Extract relevant info for role suggestions
+    skills = cv_data.get("skills", {})
+    if isinstance(skills, dict):
+        all_skills = skills.get("technical", []) + skills.get("soft", [])
+    else:
+        all_skills = skills if isinstance(skills, list) else []
+    
+    experience = cv_data.get("experience", [])
+    current_role = None
+    if experience and len(experience) > 0:
+        current_role = experience[0].get("title")
+    
+    professional_summary = cv_data.get("professional_summary", "")
+    
+    # Build suggested roles based on skills and experience
+    suggested_roles = []
+    
+    # 1. Add current/recent role if exists
+    if current_role:
+        suggested_roles.append({
+            "title": current_role,
+            "reason": "Your current role",
+            "match_type": "current"
+        })
+    
+    # 2. Add previous roles (unique)
+    seen_roles = {current_role.lower() if current_role else ""}
+    for exp in experience[1:4]:  # Next 3 previous roles
+        title = exp.get("title")
+        if title and title.lower() not in seen_roles:
+            suggested_roles.append({
+                "title": title,
+                "reason": "Previous experience",
+                "match_type": "experience"
+            })
+            seen_roles.add(title.lower())
+    
+    # 3. Suggest roles based on skills
+    skill_based_roles = _suggest_roles_from_skills(all_skills)
+    for role in skill_based_roles:
+        if role["title"].lower() not in seen_roles:
+            suggested_roles.append(role)
+            seen_roles.add(role["title"].lower())
+    
+    return {
+        "suggested_roles": suggested_roles[:8],  # Limit to 8 suggestions
+        "skills_analyzed": len(all_skills),
+        "experience_count": len(experience)
+    }
+
+
+def _suggest_roles_from_skills(skills: list) -> list:
+    """
+    Map skills to suggested job roles
+    """
+    skills_lower = [s.lower() for s in skills if isinstance(s, str)]
+    suggested = []
+    
+    # Role mappings based on skill combinations
+    role_mappings = {
+        "Full Stack Developer": ["javascript", "python", "react", "node", "sql", "html", "css"],
+        "Frontend Developer": ["react", "vue", "angular", "javascript", "typescript", "css", "html"],
+        "Backend Developer": ["python", "java", "node", "sql", "api", "django", "flask", "spring"],
+        "Data Scientist": ["python", "machine learning", "pandas", "numpy", "tensorflow", "data analysis"],
+        "Data Engineer": ["python", "sql", "spark", "etl", "airflow", "data pipeline"],
+        "DevOps Engineer": ["docker", "kubernetes", "aws", "azure", "ci/cd", "terraform", "jenkins"],
+        "Cloud Engineer": ["aws", "azure", "gcp", "cloud", "terraform", "kubernetes"],
+        "Mobile Developer": ["android", "ios", "react native", "flutter", "swift", "kotlin"],
+        "Product Manager": ["product management", "agile", "scrum", "roadmap", "stakeholder"],
+        "Project Manager": ["project management", "agile", "scrum", "jira", "planning"],
+        "UI/UX Designer": ["figma", "sketch", "user experience", "user interface", "wireframe"],
+        "QA Engineer": ["testing", "selenium", "qa", "automation", "quality assurance"],
+        "Machine Learning Engineer": ["machine learning", "tensorflow", "pytorch", "deep learning", "nlp"],
+        "Security Engineer": ["security", "penetration", "cybersecurity", "vulnerability", "compliance"],
+        "Software Engineer": ["programming", "software development", "coding", "algorithms"]
+    }
+    
+    for role, required_skills in role_mappings.items():
+        matching_skills = [s for s in required_skills if any(s in skill for skill in skills_lower)]
+        match_ratio = len(matching_skills) / len(required_skills) if required_skills else 0
+        
+        if match_ratio >= 0.3:  # At least 30% skill match
+            suggested.append({
+                "title": role,
+                "reason": f"Matches {len(matching_skills)} of your skills",
+                "match_type": "skills",
+                "match_score": round(match_ratio * 100)
+            })
+    
+    # Sort by match score
+    suggested.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+    return suggested[:5]  # Return top 5
+
+
 @router.get("/cv-data")
 async def get_cv_data(
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_database)
 ):
     """
     Get parsed CV data for current user
     """
-    cv_parsed = current_user.get("cv_parsed", {})
+    user_id = str(current_user["_id"])
+    cv_data = current_user.get("cv_data", {})
+    
+    # If cv_data is empty on user profile, try to get it from documents collection
+    if not cv_data:
+        documents_collection = db["documents"]
+        cv_doc = await documents_collection.find_one({
+            "user_id": user_id,
+            "document_type": "cv",
+            "cv_data": {"$exists": True, "$ne": {}}
+        }, sort=[("uploaded_at", -1)])
+        
+        if cv_doc and cv_doc.get("cv_data"):
+            cv_data = cv_doc.get("cv_data", {})
+            logger.info(f"CV data endpoint: Found CV data in documents for user {user_id}")
     
     return {
-        "full_name": current_user.get("full_name", ""),
-        "email": current_user.get("email", ""),
-        "phone": cv_parsed.get("phone", ""),
-        "location": cv_parsed.get("location", ""),
-        "years_of_experience": cv_parsed.get("years_of_experience", 0),
-        "education_level": cv_parsed.get("education_level", ""),
-        "current_role": cv_parsed.get("current_role", ""),
-        "skills": cv_parsed.get("skills", []),
-        "summary": cv_parsed.get("summary", ""),
-        "experience": cv_parsed.get("experience", []),
-        "education": cv_parsed.get("education", [])
+        "full_name": current_user.get("full_name", "") or cv_data.get("name", ""),
+        "email": current_user.get("email", "") or cv_data.get("email", ""),
+        "phone": cv_data.get("phone", ""),
+        "location": cv_data.get("location", ""),
+        "years_of_experience": cv_data.get("years_of_experience", 0),
+        "education_level": cv_data.get("education_level", ""),
+        "current_role": cv_data.get("current_role", ""),
+        "skills": cv_data.get("skills", []),
+        "summary": cv_data.get("summary", ""),
+        "experience": cv_data.get("experience", []),
+        "education": cv_data.get("education", [])
     }
 
 
@@ -306,9 +441,22 @@ async def get_matching_jobs(
     Get jobs matching user's CV with AI-calculated scores
     """
     user_id = str(current_user["_id"])
-    cv_parsed = current_user.get("cv_parsed", {})
+    cv_data = current_user.get("cv_data", {})
     
-    if not cv_parsed:
+    # If cv_data is empty on user profile, try to get it from documents collection
+    if not cv_data:
+        documents_collection = db["documents"]
+        cv_doc = await documents_collection.find_one({
+            "user_id": user_id,
+            "document_type": "cv",
+            "cv_data": {"$exists": True, "$ne": {}}
+        }, sort=[("uploaded_at", -1)])
+        
+        if cv_doc and cv_doc.get("cv_data"):
+            cv_data = cv_doc.get("cv_data", {})
+            logger.info(f"Found CV data in documents collection for user {user_id}")
+    
+    if not cv_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Please upload your CV first"
@@ -332,10 +480,10 @@ async def get_matching_jobs(
     user_cv = {
         "user_id": user_id,
         "full_name": current_user.get("full_name"),
-        "skills": cv_parsed.get("skills", []),
-        "experience": cv_parsed.get("experience", []),
-        "education": cv_parsed.get("education", []),
-        "years_of_experience": cv_parsed.get("years_of_experience", 0)
+        "skills": cv_data.get("skills", []),
+        "experience": cv_data.get("experience", []),
+        "education": cv_data.get("education", []),
+        "years_of_experience": cv_data.get("years_of_experience", 0)
     }
     
     jobs_with_scores = []
