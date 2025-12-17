@@ -399,6 +399,22 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
 });
 
+// Load public navbar component
+async function loadPublicNavbar() {
+    const navbarContainer = document.getElementById('public-navbar-container');
+    if (navbarContainer) {
+        try {
+            const response = await fetch('/components/public-navbar.html');
+            if (response.ok) {
+                const html = await response.text();
+                navbarContainer.innerHTML = html;
+            }
+        } catch (error) {
+            console.error('Failed to load public navbar:', error);
+        }
+    }
+}
+
 // Load footer component
 async function loadFooter() {
     const footerContainer = document.getElementById('footer-container');
@@ -415,10 +431,14 @@ async function loadFooter() {
     }
 }
 
-// Load footer on page load
+// Load components on page load
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadFooter);
+    document.addEventListener('DOMContentLoaded', () => {
+        loadPublicNavbar();
+        loadFooter();
+    });
 } else {
+    loadPublicNavbar();
     loadFooter();
 }
 

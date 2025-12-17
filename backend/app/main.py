@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
-    logger.info("Starting CVision - AI Job Application Platform...")
+    logger.info("Starting Synovae - AI Job Application Platform...")
     
     Path(settings.UPLOAD_DIR).mkdir(exist_ok=True)
     Path("logs").mkdir(exist_ok=True)
@@ -316,6 +316,18 @@ try:
     logger.info("Email analysis router loaded")
 except ImportError as e:
     logger.warning(f"Email analysis router not available: {e}")
+
+try:
+    from app.api.migration import router as migration_router
+    app.include_router(
+        migration_router,
+        prefix=f"{settings.API_V1_STR}",
+        tags=["Migration"]
+    )
+    logger.info("Migration router loaded")
+except ImportError as e:
+    logger.warning(f"Migration router not available: {e}")
+
 
 
 

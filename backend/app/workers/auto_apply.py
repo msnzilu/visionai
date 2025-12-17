@@ -7,7 +7,9 @@ Fully automated job application without user intervention
 from app.workers.celery_app import celery_app
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
+from app.services.cv_customization_service import cv_customization_service
 from app.services.email_agent_service import email_agent_service
+from app.services.pdf_service import pdf_service
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -140,6 +142,26 @@ async def generate_custom_cv(user_cv: Dict, job: Dict) -> str:
         # Note: The service has a private _store_generated_cv, but we can replicate the storage logic here
         # or expose a public store method. For now, we'll store it directly to ensure compatibility
         
+        # Generate PDF for the customized CV
+        try:
+            pdf_buffer = await pdf_service.generate_cv_pdf(
+                cv_content=customized_cv,
+                template="professional",
+                user_id=user_cv.get("user_id")
+            )
+            
+            # Save PDF to disk
+            file_path = await pdf_service.save_pdf(
+                pdf_buffer=pdf_buffer,
+                user_id=user_cv.get("user_id"),
+                job_id=str(job.get("_id")),
+                doc_type="cv"
+            )
+            logger.info(f"Generated and saved CV PDF at: {file_path}")
+        except Exception as pdf_error:
+            logger.error(f"Failed to generate CV PDF: {pdf_error}")
+            file_path = None
+
         db = await get_database()
         cv_doc = {
             "user_id": user_cv.get("user_id"),
@@ -148,6 +170,7 @@ async def generate_custom_cv(user_cv: Dict, job: Dict) -> str:
             "content": customized_cv,
             "original_cv_id": user_cv.get("_id"),
             "match_score": match_score,
+            "file_path": file_path,  # Critical for email attachment
             "created_at": datetime.utcnow()
         }
         
@@ -193,6 +216,25 @@ async def generate_cover_letter(user_cv: Dict, job: Dict) -> str:
         # Extract the full text content nicely
         content_text = cover_letter_data.get("content", {}).get("full_text", "")
         
+        # Generate PDF for cover letter
+        try:
+            pdf_buffer = await pdf_service.generate_cover_letter_pdf(
+                letter_content=cover_letter_data,
+                template="professional"
+            )
+            
+            # Save PDF to disk
+            file_path = await pdf_service.save_pdf(
+                pdf_buffer=pdf_buffer,
+                user_id=user_cv.get("user_id"),
+                job_id=str(job.get("_id")),
+                doc_type="cover_letter"
+            )
+            logger.info(f"Generated and saved Cover Letter PDF at: {file_path}")
+        except Exception as pdf_error:
+            logger.error(f"Failed to generate Cover Letter PDF: {pdf_error}")
+            file_path = None
+
         # Save cover letter to database
         db = await get_database()
         cover_doc = {
@@ -201,6 +243,7 @@ async def generate_cover_letter(user_cv: Dict, job: Dict) -> str:
             "type": "cover_letter",
             "content": content_text, # Store text for email sending compatibility
             "structured_content": cover_letter_data, # Store structured for future use
+            "file_path": file_path, # Critical for email attachment
             "created_at": datetime.utcnow()
         }
         
@@ -478,18 +521,26 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                     "job_id": job_id,
                     "job_title": job.get("title"),
                     "company_name": job.get("company_name"),
+                    "location": job.get("location"),
                     "status": "submitted",
                     "source": "auto_apply",
                     "auto_applied": True,
+                    "priority": "medium",
                     "match_score": match_score,
                     "cv_document_id": custom_cv_id,
                     "cover_letter_document_id": cover_letter_id,
                     "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                    "deleted_at": None,  # Critical: API queries for deleted_at: None
                     "timeline": [{
                         "status": "submitted",
                         "timestamp": datetime.utcnow(),
                         "note": f"Auto-applied (match score: {match_score:.2f})"
-                    }]
+                    }],
+                    "documents": [],
+                    "communications": [],
+                    "interviews": [],
+                    "tasks": []
                 }
                 
                 result = await db.applications.insert_one(application)
@@ -530,13 +581,10 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                 stats["applications_sent"] += 1
                 logger.info(f"Successfully auto-applied to job {job_id}")
                 
-                # Notify user about auto-application
-                from app.workers.email_campaigns import send_status_notification
-                send_status_notification.delay(
-                    application_id,
-                    "draft",
-                    "submitted"
-                )
+                
+                applications_sent += 1
+                stats["applications_sent"] += 1
+                logger.info(f"Successfully auto-applied to job {job_id}")
                 
             except Exception as e:
                 logger.error(f"Error auto-applying to job {job.get('_id')}: {e}")

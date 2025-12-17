@@ -28,6 +28,13 @@ if auth_available:
 if documents_available:
     api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 
+try:
+    from . import migration
+    api_router.include_router(migration.router, tags=["migration"])
+except ImportError:
+    pass
+
+
 __all__ = ["api_router"]
 
 # Future modules to implement:

@@ -440,7 +440,7 @@ async def get_applications_by_status(
         )
 
 
-@router.get("/{application_id}", response_model=Application)
+@router.get("/{application_id}")
 async def get_application(
     application_id: str,
     current_user: Dict[str, Any] = Depends(get_current_active_user),
@@ -473,7 +473,9 @@ async def get_application(
                 detail="You don't have permission to view this application"
             )
         
-        return Application(**application)
+        # Return raw dict instead of validating through Pydantic model
+        # The model expects complex nested structures that don't match our simple schema
+        return application
         
     except HTTPException:
         raise
