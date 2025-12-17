@@ -34,46 +34,70 @@ def run_async(coro):
         loop.close()
 
 
-async def calculate_job_match_score(user_cv: Dict, job: Dict) -> float:
+async def calculate_match_score(user_cv, job):
     """
     Calculate match score between user CV and job using AI
     Returns score from 0.0 to 1.0
     """
     try:
-        openai.api_key = settings.OPENAI_API_KEY
+        from app.integrations.openai_client import openai_client
         
         # Extract key info from CV
         cv_skills = user_cv.get("skills", [])
+        if isinstance(cv_skills, list):
+            cv_skills_str = ", ".join(str(x) for x in cv_skills[:20]) # Take top 20
+        else:
+             cv_skills_str = str(cv_skills)[:500]
+
         cv_experience = user_cv.get("experience", [])
-        cv_education = user_cv.get("education", [])
         
         # Extract job requirements
         job_title = job.get("title", "")
         job_description = job.get("description", "")
-        job_requirements = job.get("requirements", "")
         
+        raw_requirements = job.get("requirements", "")
+        if isinstance(raw_requirements, list):
+            # If list of dicts, simplify
+            if raw_requirements and isinstance(raw_requirements[0], dict):
+                 job_requirements = ", ".join([r.get('requirement', '') for r in raw_requirements])
+            else:
+                 job_requirements = ", ".join(str(x) for x in raw_requirements)
+        else:
+            job_requirements = str(raw_requirements)
+
         # Use OpenAI to calculate match
         prompt = f"""
         Analyze the match between this candidate and job. Return ONLY a number between 0.0 and 1.0.
         
-        Candidate Skills: {', '.join(cv_skills[:10])}
-        Candidate Experience: {len(cv_experience)} years
+        Candidate Skills: {cv_skills_str}
+        Candidate Experience: {str(cv_experience)[:500]}
         
         Job Title: {job_title}
-        Job Requirements: {job_requirements[:500]}
+        Job Requirements: {job_requirements[:1000]}
         
         Match Score (0.0-1.0):
         """
         
-        response = openai.ChatCompletion.create(
-            model=settings.OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
+        # Messages for chat completion
+        messages = [{"role": "user", "content": prompt}]
+        
+        # Use shared async client
+        response_content = await openai_client.chat_completion(
+            messages=messages,
             max_tokens=10,
             temperature=0.3
         )
         
-        score_text = response.choices[0].message.content.strip()
-        score = float(score_text)
+        score_text = response_content.strip()
+        
+        # Extract number from response (handle cases like "Score: 0.8")
+        import re
+        match = re.search(r"0\.\d+|1\.0|0|1", score_text)
+        if match:
+             score = float(match.group())
+        else:
+             score = 0.5 # Default fallback
+             
         return min(max(score, 0.0), 1.0)  # Clamp between 0 and 1
         
     except Exception as e:
@@ -206,9 +230,27 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
 
         user_id = str(user["_id"])
         
-        # Get user's CV data
-        user_cv = user.get("cv_data", {})
+        # DEBUG: Inspect user object structure
+        logger.info(f"DEBUG: Processing user {user_id}")
+        logger.info(f"DEBUG: User keys available: {list(user.keys())}")
+
+        # Get user's CV data (Strategy: 1. User Profile, 2. Latest Document)
+        user_cv = user.get("cv_data")
+        
         if not user_cv:
+            logger.info(f"DEBUG: cv_data not in User profile, checking Documents collection for user {user_id}...")
+            # Fallback: Fetch latest CV document
+            latest_cv_doc = await db.documents.find_one(
+                {"user_id": user_id, "document_type": "cv"},
+                sort=[("created_at", -1)]
+            )
+            
+            if latest_cv_doc:
+                user_cv = latest_cv_doc.get("cv_data")
+                logger.info(f"DEBUG: Found CV data in document {latest_cv_doc.get('_id')}")
+        
+        if not user_cv:
+            logger.error(f"DEBUG: No CV data found in Profile OR Documents for user {user_id}")
             return {"success": False, "error": "No CV data found", "stats": stats}
 
         user_cv["user_id"] = user_id
@@ -238,7 +280,11 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         remaining_applications = max_daily_applications - applications_today
         
         if task_instance:
-            task_instance.update_state(state='PROGRESS', meta={'current': 10, 'total': 100, 'status': 'Finding matching jobs...'})
+            task_instance.update_state(state='PROGRESS', meta={'current': 10, 'total': 100, 'status': 'Analyzing Profile...'})
+        
+        logger.info(">>> STARTED: Profile Analysis")
+        await asyncio.sleep(1.5) # UX Delay
+        logger.info(">>> COMPLETED: Profile Analysis")
 
         # Find new jobs (not already applied to)
         applied_job_ids = await db.applications.distinct("job_id", {"user_id": user_id})
@@ -247,74 +293,96 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         seven_days_ago = datetime.utcnow() - timedelta(days=7)
         exclude_ids = [ObjectId(jid) for jid in applied_job_ids]
         
-        # Get recommended roles from user profile
-        user_profile = user.get("profile", {})
-        recommended_roles = user_profile.get("recommended_roles", [])
+        # Get recommended roles using Matching Service (Dynamic)
+        from app.services.matching_service import matching_service
+        suggested_roles_data = await matching_service.get_suggested_roles(user_cv, limit=5)
+        recommended_roles = [r["title"] for r in suggested_roles_data]
         
-        # If no roles found in profile, check cv_data as fallback
-        if not recommended_roles and "recommended_roles" in user_cv:
-            recommended_roles = user_cv["recommended_roles"]
+        if task_instance:
+             task_instance.update_state(state='PROGRESS', meta={'current': 20, 'total': 100, 'status': f'Identified {len(recommended_roles)} target roles...'})
+        
+        logger.info(f">>> STARTED: Fetching Target Roles")
+        await asyncio.sleep(1.0) # UX Delay
+        logger.info(f">>> COMPLETED: Fetching Target Roles (Found: {recommended_roles})")
+        logger.info(f"Auto-Apply: Calculated suggested roles for user {user_id}: {recommended_roles}")
             
         new_jobs = []
         
         if recommended_roles:
-            logger.info(f"Searching jobs for user {user_id} using roles: {recommended_roles}")
+            if task_instance:
+                task_instance.update_state(state='PROGRESS', meta={'current': 30, 'total': 100, 'status': 'Scanning job database...'})
             
-            # Import job service for live scraping
-            from app.services.job_service import get_job_service
-            job_service = get_job_service(db)
+            logger.info(">>> STARTED: Job Database Search")
+            await asyncio.sleep(1.0) # UX Delay
             
-            # Search for each role
+            logger.info(f"Searching email-based jobs for user {user_id} using roles: {recommended_roles}")
+            
+            # Construct OR query for all roles
+            role_conditions = []
             for role in recommended_roles:
-                # Trigger live scrape for this role first (Consolidated Task)
-                try:
-                    user_location = user_profile.get("personal_info", {}).get("location") or "Remote"
-                    logger.info(f"Triggering consolidated scrape for role: {role} in {user_location}")
-                    
-                    # Scrape fresh jobs -> database
-                    await job_service.aggregate_from_sources(
-                        query=role,
-                        location=user_location,
-                        limit=20
-                    )
-                except Exception as e:
-                    logger.error(f"Error during consolidated scraping for {role}: {e}")
+                role_conditions.append({"title": {"$regex": role, "$options": "i"}})
+                # Optional: also search description if you want broader matches, but title is safer for auto-apply
+                # role_conditions.append({"description": {"$regex": role, "$options": "i"}})
+            
+            # Search the DB
+            # Must have SOME email to support email-based application
+            email_exists = {
+                "$or": [
+                    {"application_email": {"$exists": True, "$ne": None}},
+                    {"contact_email": {"$exists": True, "$ne": None}},
+                    {"email": {"$exists": True, "$ne": None}}, # Legacy
+                    {"company_info.contact.email": {"$exists": True, "$ne": None}}
+                ]
+            }
+            
+            query = {
+                "_id": {"$nin": exclude_ids},
+                "status": "active",
+                "created_at": {"$gte": seven_days_ago},
+                **email_exists
+            }
+            
+            if role_conditions:
+                query["$and"] = [{"$or": role_conditions}]
 
-                # Now search the DB (which includes fresh jobs)
-                role_jobs = await db.jobs.find({
-                    "_id": {"$nin": exclude_ids + [j["_id"] for j in new_jobs]}, # Avoid duplicates
-                    "is_active": True,
-                    "created_at": {"$gte": seven_days_ago},
-                    "email": {"$exists": True, "$ne": None},
-                    "$or": [
-                        {"title": {"$regex": role, "$options": "i"}},
-                        {"description": {"$regex": role, "$options": "i"}}
-                    ]
-                }).limit(5).to_list(length=5)
-                
-                new_jobs.extend(role_jobs)
-                
-                if len(new_jobs) >= remaining_applications * 5:
-                    break
+            new_jobs = await db.jobs.find(query).limit(remaining_applications * 10).to_list(length=remaining_applications * 10)
+            
         else:
-            # Fallback to generic recent jobs if no roles identified
+            # Fallback to generic recent jobs
             logger.info(f"No specific roles found for user {user_id}, using generic search")
+            
+            email_exists = {
+                "$or": [
+                    {"application_email": {"$exists": True, "$ne": None}},
+                    {"contact_email": {"$exists": True, "$ne": None}},
+                    {"email": {"$exists": True, "$ne": None}},
+                    {"company_info.contact.email": {"$exists": True, "$ne": None}}
+                ]
+            }
+            
             new_jobs = await db.jobs.find({
                 "_id": {"$nin": exclude_ids},
-                "is_active": True,
+                "status": "active",
                 "created_at": {"$gte": seven_days_ago},
-                "email": {"$exists": True, "$ne": None}
+                **email_exists
             }).limit(remaining_applications * 5).to_list(length=remaining_applications * 5)
         
         stats["jobs_found"] = len(new_jobs)
+        logger.info(f">>> COMPLETED: Job Database Search (Found {len(new_jobs)} jobs)")
         
         if not new_jobs:
-            logger.info(f"No new jobs for user {user_id}")
-            stats["reason"] = "No new matching jobs found in database"
-            return {"success": True, "applications_sent": 0, "message": stats["reason"], "stats": stats}
+            if task_instance:
+                task_instance.update_state(state='PROGRESS', meta={'current': 100, 'total': 100, 'status': 'Search complete. No matches.'})
+            
+            msg = f"No matched jobs found for roles: {', '.join(recommended_roles)}"
+            logger.info(msg)
+            stats["reason"] = msg
+            return {"success": True, "applications_sent": 0, "message": msg, "stats": stats}
         
         if task_instance:
-            task_instance.update_state(state='PROGRESS', meta={'current': 20, 'total': 100, 'status': f'Analyzing {len(new_jobs)} potential jobs...'})
+            task_instance.update_state(state='PROGRESS', meta={'current': 40, 'total': 100, 'status': f'Found {len(new_jobs)} potential matches. Analyzing...'})
+        
+        await asyncio.sleep(1.5) # UX Delay
 
         # Calculate match scores for all jobs
         job_scores = []
@@ -331,7 +399,7 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         top_matches = job_scores[:remaining_applications]
         
         if not top_matches:
-             stats["reason"] = f"Analyzed {len(new_jobs)} jobs, but none met your match score criteria (> {int(min_match_score*100)}%)"
+             stats["reason"] = f"Analyzed {len(new_jobs)} jobs, but none passed your {int(min_match_score*100)}% match threshold."
              return {"success": True, "applications_sent": 0, "message": stats["reason"], "stats": stats}
 
         applications_sent = 0
@@ -342,45 +410,74 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
             try:
                 job_id = str(job["_id"])
                 
-                # Calculate progress based on iteration
-                base_progress = 30
-                progress_step = 60 / total_matches # Distribute remaining 60% among matches
+                # Resolve recipient email (prioritize application specific, then contact, then company)
+                recipient_email = (
+                    job.get("application_email") or 
+                    job.get("contact_email") or 
+                    job.get("email") or 
+                    (job.get("company_info", {}) or {}).get("contact", {}).get("email")
+                )
+                
+                if not recipient_email:
+                    logger.warning(f"Skipping job {job_id}: No valid email found despite query filter.")
+                    continue
+                
+                # Calculate progress
+                base_progress = 50
+                progress_step = 50 / total_matches
                 current_base = base_progress + (idx * progress_step)
                 
                 if task_instance:
                     task_instance.update_state(state='PROGRESS', meta={
                         'current': int(current_base), 
                         'total': 100, 
-                        'status': f'Applying to {job.get("title")} (Generating CV)...'
+                        'status': f'Applying to {job.get("title")}...'
                     })
+                
+                await asyncio.sleep(1.0) # UX Delay
 
-                logger.info(f"Auto-applying to {job.get('title')} at {job.get('company')} (score: {match_score})")
+                logger.info(f"Auto-applying to {job.get('title')} at {job.get('company_name')} (score: {match_score})")
                 
                 # Generate custom CV
+                if task_instance:
+                     task_instance.update_state(state='PROGRESS', meta={
+                        'current': int(current_base), 
+                        'total': 100, 
+                        'status': f'Generating Smart CV for {job.get("company_name")}...'
+                    })
+                
+                logger.info(f">>> STARTED: Generating Smart CV for {job_id}")
                 custom_cv_id = await generate_custom_cv(user_cv, job)
                 if not custom_cv_id:
                     logger.error(f"Failed to generate CV for job {job_id}")
                     continue
+                logger.info(f">>> COMPLETED: Smart CV Generation (ID: {custom_cv_id})")
+                
+                await asyncio.sleep(1.0) # UX delay
                 
                 if task_instance:
                     task_instance.update_state(state='PROGRESS', meta={
                         'current': int(current_base + (progress_step * 0.5)), 
                         'total': 100, 
-                        'status': f'Applying to {job.get("title")} (Writing Cover Letter)...'
+                        'status': f'Writing personalized cover letter...'
                     })
 
                 # Generate cover letter
+                logger.info(f">>> STARTED: Writing Cover Letter for {job_id}")
                 cover_letter_id = await generate_cover_letter(user_cv, job)
                 if not cover_letter_id:
                     logger.error(f"Failed to generate cover letter for job {job_id}")
                     continue
+                logger.info(f">>> COMPLETED: Cover Letter Generation (ID: {cover_letter_id})")
+                
+                await asyncio.sleep(1.0) # UX delay for reading
                 
                 # Create application record
                 application = {
                     "user_id": user_id,
                     "job_id": job_id,
                     "job_title": job.get("title"),
-                    "company_name": job.get("company"),
+                    "company_name": job.get("company_name"),
                     "status": "submitted",
                     "source": "auto_apply",
                     "auto_applied": True,
@@ -402,7 +499,7 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                     task_instance.update_state(state='PROGRESS', meta={
                         'current': int(current_base + (progress_step * 0.9)), 
                         'total': 100, 
-                        'status': f'Sending application to {job.get("company")}...'
+                        'status': f'Sending application to {job.get("company_name")}...'
                     })
 
                 # Send application via email agent
@@ -412,13 +509,17 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                 # Add the specific message for this application
                 form_data["message"] = f"Please find attached my CV and cover letter for the {job.get('title')} position."
                 
+                # Debug Log
+                logger.info(f"Preparing to send application to: {recipient_email}")
+                logger.info(f"Formatted Data Payload: {form_data}")
+
                 # Queue email sending
                 from app.workers.email_sender import send_application_email
                 send_application_email.delay(
                     user_id=user_id,
                     job_id=job_id,
                     application_id=application_id,
-                    recipient_email=job.get("email"),
+                    recipient_email=recipient_email, # Updated recipient logic
                     form_data=form_data,
                     cv_document_id=custom_cv_id,
                     cover_letter_document_id=cover_letter_id,

@@ -49,6 +49,15 @@ async function initializeDashboard() {
             }
         });
         uploader.init();
+
+        // Initialize GmailConnect Component
+        if (typeof GmailConnect !== 'undefined') {
+            const gmailConnect = new GmailConnect({
+                containerId: 'gmail-connect-container'
+            });
+            gmailConnect.init();
+        }
+
         // Initialize RunTestButton
         const runTestBtn = new RunTestButton({
             buttonId: 'testRunBtn',
@@ -172,19 +181,14 @@ async function initializeDashboard() {
                     // usage_stats.total_applications is handled by loadDashboardStats now for consistency
                 }
 
-                // Check Gmail connection status
-                if (!user.gmail_connected) {
-                    showGmailConnectAlert();
-                } else {
-                    showGmailConnectedAlert(user);
-                }
+                // Check Gmail connection status - Handled by GmailConnect component now
             }
         } catch (error) {
             console.error('Error loading user profile:', error);
             // Fallback for skeletons on error handled in loadDashboardStats
 
             // Allow default gmail connect to show if profile fails
-            showGmailConnectAlert();
+            // showGmailConnectAlert(); // Removed
         }
     }
 
@@ -470,71 +474,7 @@ async function initializeDashboard() {
         }
     }
 
-    function showGmailConnectAlert() {
-        // Hide others
-        const connectedAlert = document.getElementById('gmailConnectedAlert');
-        if (connectedAlert) connectedAlert.classList.add('hidden');
 
-        // Hide skeleton
-        const skeleton = document.getElementById('gmailAlertSkeleton');
-        if (skeleton) skeleton.classList.add('hidden');
-
-        // Show Connect Alert
-        const alert = document.getElementById('connectGmailAlert');
-        if (alert) alert.classList.remove('hidden');
-    }
-
-    function showGmailConnectedAlert(user) {
-        // Hide Connect Alert
-        const connectAlert = document.getElementById('connectGmailAlert');
-        if (connectAlert) connectAlert.classList.add('hidden');
-
-        // Show Connected Alert
-        const alert = document.getElementById('gmailConnectedAlert');
-        if (alert) {
-            // Hide skeleton
-            const skeleton = document.getElementById('gmailAlertSkeleton');
-            if (skeleton) skeleton.classList.add('hidden');
-
-            alert.classList.remove('hidden');
-
-            const emailSpan = document.getElementById('gmailTrackingEmail');
-            if (emailSpan) emailSpan.textContent = user.email || 'your Gmail account';
-
-            // Initialize AutoApplyButton (id is already in static HTML)
-            const autoApplyBtn = new AutoApplyButton({
-                containerId: 'dashboardAutoApplyContainer',
-                textColor: 'text-gray-800', // Dark text for light alert background
-                label: 'Auto-Apply',
-                onToggle: (isEnabled) => {
-                    automationEnabled = isEnabled;
-                }
-            });
-
-            // Initialize Quick RunTestButton
-            const quickTestBtn = new RunTestButton({
-                buttonId: 'quickRunTestBtn',
-                apiUrl: `${API_BASE_URL}/api/v1/auto-apply`,
-                onStart: () => {
-                    CVision.Utils.showAlert('Test run started in background...', 'info');
-                },
-                onProgress: (data) => { },
-                onComplete: (data) => {
-                    if (data.applications_sent > 0) {
-                        CVision.Utils.showAlert(`Success! ${data.applications_sent} applications sent.`, 'success');
-                    }
-                    loadAutomationStatus();
-                },
-                onError: (error) => {
-                    CVision.Utils.showAlert(`Test Failed: ${error.message}`, 'error');
-                }
-            });
-
-            // Initialize components
-            if (autoApplyBtn.init) autoApplyBtn.init();
-            if (quickTestBtn.init) quickTestBtn.init();
-        }
-    }
 
     // ============================================================================
     // Automation Logic (Ported from cv-analysis.js)
@@ -592,23 +532,19 @@ async function initializeDashboard() {
         const maxApps = parseInt(document.getElementById('maxAppsSlider').value);
         const minScore = parseInt(document.getElementById('minScoreSlider').value) / 100;
 
-        // Check tier for Save
-        const user = CVision.Utils.getUser();
-        const userTier = user?.subscription_tier?.toLowerCase() || 'free';
-
-        // Free users cannot save settings
-        if (userTier === 'free' || userTier === 'freemium') {
-            if (typeof UpgradeModal !== 'undefined') {
-                UpgradeModal.show(
-                    'Premium Feature',
-                    'Saving automation settings is available for Basic and Premium users. Upgrade to unlock full automation control.'
-                );
-            } else {
-                // Fallback if component not loaded yet
-                console.error('UpgradeModal not loaded');
-                alert('Premium Feature: Saving settings is for Basic/Premium users.');
+        // Check Premium Access
+        if (typeof PremiumGuard !== 'undefined') {
+            if (!PremiumGuard.enforce('AUTO_APPLY', 'Premium Automation', 'Saving automation settings requires a Basic or Premium subscription.')) {
+                return;
             }
-            return;
+        } else {
+            // Fallback if PremiumGuard missing (shouldn't happen if loaded correctly)
+            const user = CVision.Utils.getUser();
+            const userTier = user?.subscription_tier?.toLowerCase() || 'free';
+            if (userTier === 'free' || userTier === 'freemium') {
+                alert('Premium Feature: Saving settings is for Basic/Premium users.');
+                return;
+            }
         }
 
         try {
@@ -658,27 +594,23 @@ async function initializeDashboard() {
         }
     }
 
-    async function connectGmail() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/auth/gmail/connect`, {
-                headers: {
-                    'Authorization': `Bearer ${CVision.Utils.getToken()}`
-                }
-            });
 
-            if (!response.ok) throw new Error('Failed to initiate connection');
-
-            const data = await response.json();
-            if (data.success && data.data.auth_url) {
-                window.location.href = data.data.auth_url;
-            }
-        } catch (error) {
-            console.error('Gmail connect error:', error);
-            CVision.Utils.showAlert('Failed to connect Gmail', 'error');
-        }
-    }
 
     function upgradeNow() {
         window.location.href = 'pages/subscription.html';
     }
+
+    // Expose functions to global scope for HTML onclick handlers
+    // window.connectGmail = connectGmail; // Removed as part of refactor
+    window.searchJobs = searchJobs;
+    window.viewApplications = viewApplications;
+    window.upgradeAccount = upgradeAccount;
+    window.viewJobDetails = viewJobDetails;
+    window.unsaveJob = unsaveJob;
+    window.closeAutomationPanel = closeAutomationPanel;
+    window.saveAutomationSettings = saveAutomationSettings;
+    window.updateSliderValue = updateSliderValue;
+    window.upgradeNow = upgradeNow;
+    window.viewProfile = viewProfile;
+    window.logout = logout;
 }

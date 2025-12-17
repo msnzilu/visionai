@@ -20,21 +20,30 @@ const UpgradeModal = {
 
     show: function (title, message) {
         const modal = document.getElementById('premiumModal');
-        if (modal) {
-            if (title) {
-                const titleEl = document.getElementById('premiumModalTitle');
-                if (titleEl) titleEl.textContent = title;
-            }
-            if (message) {
-                const msgEl = document.getElementById('premiumModalDescription');
-                if (msgEl) msgEl.textContent = message;
-            }
 
-            modal.style.display = 'flex';
-            modal.style.pointerEvents = 'auto';
-        } else {
-            console.warn('Upgrade Modal not initialized');
+        // If modal doesn't exist yet, try to find it again (maybe loaded late)
+        if (!modal) {
+            console.warn('Upgrade Modal DOM element not found. Ensure init() has completed or container exists.');
+            // Fallback: redirects to subscription page if modal really fails? 
+            // Better to just alert for now so user isn't stuck.
+            if (confirm(`${title}\n\n${message}\n\nClick OK to Upgrade.`)) {
+                window.location.href = window.location.pathname.includes('/pages/') ? 'subscription.html' : 'pages/subscription.html';
+            }
+            return;
         }
+
+        if (title) {
+            const titleEl = document.getElementById('premiumModalTitle');
+            if (titleEl) titleEl.textContent = title;
+        }
+        if (message) {
+            const msgEl = document.getElementById('premiumModalDescription');
+            if (msgEl) msgEl.textContent = message;
+        }
+
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden'); // Just in case class based toggling is used
+        modal.style.pointerEvents = 'auto';
     },
 
     close: function () {

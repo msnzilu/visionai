@@ -184,11 +184,25 @@ class JobActionComponent {
         const modal = document.getElementById('customizeModal');
         if (!modal) return;
 
-        // Check generation limits first
+        // 1. Check Tier Access using PremiumGuard
+        if (typeof PremiumGuard !== 'undefined') {
+            // "CV_CUSTOMIZATION" requires at least 'basic'
+            if (!PremiumGuard.enforce('CV_CUSTOMIZATION', 'Unlock Customization', 'Tailoring your CV for every job is a Pro feature. Upgrade to create unlimited custom versions!')) {
+                return;
+            }
+        }
+
+        // 2. Check Usage Limits (if any for paid tiers)
+        // Currently Basic/Premium are unlimited (9999), but we keep this check for future proofing
+        // or if we switch back to credit based.
         const canGenerate = await this.checkGenerationLimits();
         if (!canGenerate) {
-            // Show upgrade prompt instead of opening modal
-            this.showUpgradePrompt();
+            // If they passed PremiumGuard but failed this, it means they hit a hard cap (unlikely for now)
+            if (typeof UpgradeModal !== 'undefined') {
+                UpgradeModal.show('Limit Reached', 'You have reached your generation limit for this month.');
+            } else {
+                alert('Limit Reached');
+            }
             return;
         }
 
@@ -202,113 +216,35 @@ class JobActionComponent {
 
     async checkGenerationLimits() {
         try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/users/me`, {
+            // We already checked tier access via PremiumGuard.
+            // Here we just check if they are over the limit for their tier.
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/applications/stats/overview`, {
                 headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
             });
 
             if (response.ok) {
-                const user = await response.json();
-                const tier = user.subscription_tier || 'free';
+                const stats = await response.json();
+                const generationsUsed = stats.cv_generations_this_month || 0;
 
-                // Get usage stats
-                const statsResponse = await fetch(`${CONFIG.API_BASE_URL}/api/v1/applications/stats/overview`, {
-                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
-                });
+                // Fetch user to confirm tier logic if needed, or rely on what PremiumGuard assumes
+                // Ideally this logic should be unified in backend or PremiumGuard, 
+                // but for now we mirror the logic: 
+                // Basic/Premium = 9999 (Unlimited).
+                // If we are here, we are at least Basic.
 
-                if (statsResponse.ok) {
-                    const stats = await statsResponse.json();
-                    const generationsUsed = stats.cv_generations_this_month || 0;
-
-                    // Check limits based on tier
-                    const limits = {
-                        'free': 0,  // Free tier has no CV customization
-                        'basic': 9999,  // Unlimited for basic
-                        'premium': 9999  // Unlimited for premium
-                    };
-
-                    const limit = limits[tier] || 0;
-                    return generationsUsed < limit;
-                }
+                return generationsUsed < 9999;
             }
-            return true; // If we can't check, allow it (will fail at backend)
+            return true; // Fail open if stat check fails
         } catch (error) {
             console.error('Failed to check limits:', error);
-            return true; // If we can't check, allow it
+            return true;
         }
     }
 
     showUpgradePrompt() {
-        const closeModal = () => {
-            // Try to close SweetAlert if it exists
-            if (window.Swal) {
-                Swal.close();
-            }
-            // Try to close fallback modal
-            const fallbackModal = document.getElementById('upgradePromptModal');
-            if (fallbackModal) {
-                fallbackModal.remove();
-            }
-        };
-
-        const message = `
-            <div class="text-center">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                    </svg>
-                </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">CV Customization Not Available</h3>
-                <p class="text-sm text-gray-500 mb-4">CV customization is only available for Basic and Premium subscribers.</p>
-                <div class="flex gap-3 justify-center">
-                    <button id="upgradePromptCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                        Cancel
-                    </button>
-                    <a href="subscription.html" class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg">
-                        Upgrade Now
-                    </a>
-                </div>
-            </div>
-        `;
-
-        // Use SweetAlert2 if available, otherwise use native alert
-        if (window.Swal) {
-            Swal.fire({
-                html: message,
-                showConfirmButton: false,
-                showCloseButton: true,
-                customClass: {
-                    popup: 'rounded-xl'
-                },
-                didOpen: () => {
-                    document.getElementById('upgradePromptCancel')?.addEventListener('click', closeModal);
-                }
-            });
-        } else {
-            // Fallback to custom modal
-            const modalHTML = `
-                <div id="upgradePromptModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div class="bg-white rounded-xl max-w-md w-full p-6">
-                        ${message}
-                    </div>
-                </div>
-            `;
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-            // Attach event listeners
-            setTimeout(() => {
-                const modal = document.getElementById('upgradePromptModal');
-                const cancelBtn = document.getElementById('upgradePromptCancel');
-
-                if (cancelBtn) {
-                    cancelBtn.addEventListener('click', closeModal);
-                }
-
-                if (modal) {
-                    modal.addEventListener('click', (e) => {
-                        if (e.target === modal) closeModal();
-                    });
-                }
-            }, 100);
+        // Deprecated - Replaced by UpgradeModal.show() via PremiumGuard
+        if (typeof UpgradeModal !== 'undefined') {
+            UpgradeModal.show('Premium Feature', 'Please upgrade to access this feature.');
         }
     }
 

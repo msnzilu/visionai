@@ -394,7 +394,31 @@ class SubscriptionService:
                     # Check for mismatch
                     current_plan_id = sub_data.get("plan_id") if sub_data else None
                     
+                    should_sync = False
                     if current_plan_id != target_plan_id:
+                        logger.info(f"Sync check for user {user_id}: current={current_plan_id}, target={target_plan_id}, user_tier={user_tier}")
+                        should_sync = True
+                        if current_plan_id:
+                            current_plan = await self.get_plan(current_plan_id)
+                            if current_plan:
+                                logger.info(f"Current plan found: {current_plan.id}, tier={current_plan.tier.value}")
+                                
+                                # Robust comparison
+                                c_tier = str(current_plan.tier.value).lower()
+                                u_tier = str(user_tier).lower()
+                                
+                                if c_tier == u_tier:
+                                    should_sync = False
+                                    logger.info("Sync skipped: Tier matches.")
+                                    
+                                # Explicit protection for Annual plans
+                                if "annual" in str(current_plan_id).lower() and u_tier in str(current_plan_id).lower():
+                                    should_sync = False
+                                    logger.info("Sync skipped: Annual plan detected.")
+                            else:
+                                logger.warning(f"Current plan ID {current_plan_id} not found in plans.")
+
+                    if should_sync:
                         logger.info(f"Syncing subscription for user {user_id}: Subscription={current_plan_id}, User={target_plan_id}")
                         
                         if sub_data:

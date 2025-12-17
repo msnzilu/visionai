@@ -654,6 +654,13 @@ async function loadMatchingJobs(cvData = null) {
 
 // Save settings
 async function saveSettings() {
+    // Check Premium Access
+    if (typeof PremiumGuard !== 'undefined') {
+        if (!PremiumGuard.enforce('AUTO_APPLY', 'Premium Automation', 'Saving automation settings requires a Basic or Premium subscription.')) {
+            return;
+        }
+    }
+
     const maxApps = parseInt(document.getElementById('maxApplicationsSlider').value);
     const minScore = parseInt(document.getElementById('minScoreSlider').value) / 100;
 

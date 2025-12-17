@@ -166,7 +166,7 @@ async function loadCurrentSubscription() {
 }
 
 function displayCurrentPlan(subscription) {
-    const tierName = subscription.plan_id.replace('plan_', '').toUpperCase();
+    const tierName = subscription.plan_id.replace('plan_', '').replace(/_/g, ' ').toUpperCase();
     document.getElementById('currentTierName').textContent = `${tierName} Plan`;
 
     let statusText = `Status: ${subscription.status}`;
@@ -261,6 +261,7 @@ async function loadPlans(render = true) {
         if (!response.ok) throw new Error('Failed to load plans');
 
         allPlans = await response.json();
+        console.log('[Subscriptions] Loaded plans:', allPlans);
         if (render) displayFilteredPlans();
     } catch (error) {
         console.error('Failed to load plans:', error);
@@ -436,6 +437,7 @@ function displayPlans(plans) {
 
 function selectPlan(planId, planName, price, planCode) {
     selectedPlan = { id: planId, name: planName, price: price, planCode: planCode };
+    console.log('[Subscriptions] Selected plan:', selectedPlan);
 
     if (planId === 'plan_free') {
         subscribeToPlan(planId, null);
@@ -560,18 +562,21 @@ async function handlePaymentSubmit(e) {
             },
             onSuccess: async (result) => {
                 try {
-                    console.log('Payment checkout successful, verifying:', result);
-                    // Transaction successful, verify on backend
-                    await subscribeToPlan(selectedPlan.id, result.reference, referralCode);
+                    // Use reusable SubscriptionManager
+                    if (typeof SubscriptionManager === 'undefined') {
+                        throw new Error('SubscriptionManager component not loaded');
+                    }
 
-
-                    closeSubscriptionModal();
-                    CVision.Utils.showAlert('Subscription successful!', 'success');
-                    setTimeout(() => window.location.reload(), 2000);
+                    await SubscriptionManager.handlePaymentSuccess(result, selectedPlan, referralCode, () => {
+                        closeSubscriptionModal();
+                    });
 
                 } catch (error) {
-                    console.error('Backend verification failed:', error);
-                    CVision.Utils.showAlert(error.message || 'Verification failed', 'error');
+                    console.error('Subscription error:', error);
+                    CVision.Utils.showAlert('Subscription processing error: ' + error.message, 'error');
+
+                    // Start buttons are re-enabled by the catch block below if this throws
+                    // But handlePaymentSuccess usually handles the UI alert
                     submitButton.disabled = false;
                     submitButton.textContent = 'Subscribe Now';
                 }
@@ -596,27 +601,7 @@ async function handlePaymentSubmit(e) {
     }
 
 }
-
-async function subscribeToPlan(planId, reference, referralCode) {
-    const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/subscriptions/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            plan_id: planId,
-            reference: reference, // Pass transaction reference
-            referral_code: referralCode
-        })
-    });
-
-    if (!response || !response.ok) {
-        const error = await response.json().catch(() => ({ detail: 'Subscription failed' }));
-        throw new Error(error.detail || 'Subscription failed');
-    }
-
-    return await response.json();
-}
+// Legacy subscribeToPlan removed (logic moved to SubscriptionManager)
 
 function showCancelModal() {
     document.getElementById('cancelModal').classList.remove('hidden');
