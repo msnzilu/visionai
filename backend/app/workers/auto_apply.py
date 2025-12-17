@@ -387,7 +387,7 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         # Calculate match scores for all jobs
         job_scores = []
         for job in new_jobs:
-            score = await calculate_job_match_score(user_cv, job)
+            score = await calculate_match_score(user_cv, job)
             stats["jobs_analyzed"] += 1
             if score >= min_match_score:
                 job_scores.append((job, score))
@@ -504,7 +504,7 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
 
                 # Send application via email agent
                 # Extract rich form data using the shared service for consistency with Quick Apply
-                form_data = await email_agent_service.extract_form_data_from_cv(user_id, cv_data=user_cv)
+                form_data = await email_agent_service.extract_form_data_from_cv(user_id, cv_data=user_cv, db=db)
                 
                 # Add the specific message for this application
                 form_data["message"] = f"Please find attached my CV and cover letter for the {job.get('title')} position."

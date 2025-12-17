@@ -83,21 +83,12 @@ def send_application_email(
                 form_data=form_data,
                 cv_document_id=cv_document_id,
                 cover_letter_document_id=cover_letter_document_id,
-                additional_message=additional_message
+                additional_message=additional_message,
+                db=db
             )
             
             # Update application status to "sent"
-            await db.applications.update_one(
-                {"_id": ObjectId(application_id)},
-                {
-                    "$set": {
-                        "email_status": "sent",
-                        "email_sent_at": datetime.utcnow(),
-                        "gmail_message_id": result.get("message_id"),
-                        "email_thread_id": result.get("thread_id")
-                    }
-                }
-            )
+            # Application status is updated inside send_application_via_gmail
             
             logger.info(f"Application email sent successfully for job {job_id}")
             

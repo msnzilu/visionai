@@ -30,19 +30,22 @@ class EmailAgentService:
     """
     
     @staticmethod
-    async def extract_form_data_from_cv(user_id: str, cv_data: Optional[Dict] = None) -> Dict[str, Any]:
+    @staticmethod
+    async def extract_form_data_from_cv(user_id: str, cv_data: Optional[Dict] = None, db = None) -> Dict[str, Any]:
         """
         Extract form-fillable data from user's CV
         
         Args:
             user_id: User ID
             cv_data: Optional CV data (if not provided, fetches latest)
+            db: Optional database connection (dependency injection)
             
         Returns:
             Dict with form fields ready for prefilling
         """
         try:
-            db = await get_database()
+            if db is None:
+                db = await get_database()
             
             # Get user data
             user = await db.users.find_one({"_id": ObjectId(user_id)})
@@ -317,7 +320,8 @@ class EmailAgentService:
         form_data: Dict[str, Any],
         cv_document_id: str,
         cover_letter_document_id: Optional[str] = None,
-        additional_message: Optional[str] = None
+        additional_message: Optional[str] = None,
+        db = None
     ) -> Dict[str, Any]:
         """
         Send job application via Gmail API
@@ -331,12 +335,14 @@ class EmailAgentService:
             cv_document_id: CV document ID
             cover_letter_document_id: Optional cover letter document ID
             additional_message: Optional additional message
+            db: Optional database connection (dependency injection)
             
         Returns:
             Dict with send result and Gmail message ID
         """
         try:
-            db = await get_database()
+            if db is None:
+                db = await get_database()
             
             # Get user and Gmail auth
             user = await db.users.find_one({"_id": ObjectId(user_id)})
@@ -371,21 +377,23 @@ class EmailAgentService:
             
             # 2. If not found, try generated documents
             if not cv_doc:
+                logger.info(f"CV {cv_document_id} not found in documents, checking generated_documents")
                 cv_doc = await db.generated_documents.find_one({"_id": ObjectId(cv_document_id)})
                 if cv_doc:
                      logger.info(f"Found generated CV document: {cv_document_id}")
             
             if cv_doc:
-                # Generated documents might have 'file_path' or be content-based.
-                # Assuming PDF generation saves to file_path for generated docs too (based on previous context).
-                # If generated doc stores content directly but not file_path, we might need a different handling,
-                # but 'generated_cv_path' implies a path exists.
-                file_path = cv_doc.get("file_path") or cv_doc.get("pdf_path")
+                # Debug fields
+                logger.info(f"CV Document fields: {list(cv_doc.keys())}")
+                file_path = cv_doc.get("file_path") or cv_doc.get("pdf_path") or cv_doc.get("path")
+                
+                logger.info(f"Resolved file_path: {file_path}")
+                
                 if file_path:
                     attachments.append(file_path)
                     logger.info(f"Attached CV file: {file_path}")
                 else:
-                    logger.warning(f"CV document {cv_document_id} found but has no file_path")
+                    logger.warning(f"CV document {cv_document_id} found but has no file_path/pdf_path/path")
             else:
                 logger.warning(f"CV document {cv_document_id} not found in documents or generated_documents")
             
@@ -420,7 +428,7 @@ class EmailAgentService:
                         "email_sent_via": "gmail",
                         "gmail_message_id": gmail_result.get("id"),
                         "gmail_thread_id": gmail_result.get("threadId"),
-                        "email_sent_at": datetime.utcnow(),
+                        "last_email_at": datetime.utcnow(),
                         "recipient_email": recipient_email,
                         "email_subject": email_data["subject"],
                         "updated_at": datetime.utcnow()
@@ -529,16 +537,17 @@ class EmailAgentService:
                     recipient_email = app.get("recipient_email")
                     # Fallback to applied_date or created_at if email_sent_at missing
                     email_sent_at = app.get("email_sent_at") or app.get("applied_date") or app.get("created_at")
+                    last_email_at = app.get("last_email_at") or app.get("applied_date") or app.get("created_at")
                     # Ensure it's a datetime object (applied_date might be string in some legacy data, but model says datetime)
-                    if isinstance(email_sent_at, str):
+                    if isinstance(last_email_at, str):
                         try:
-                            email_sent_at = datetime.fromisoformat(email_sent_at.replace('Z', '+00:00'))
+                            last_email_at = datetime.fromisoformat(last_email_at.replace('Z', '+00:00'))
                         except:
-                            email_sent_at = datetime.utcnow() - timedelta(days=7) # Fallback
+                            last_email_at = datetime.utcnow() - timedelta(days=7) # Fallback
 
                     gmail_thread_id = app.get("gmail_thread_id")
                     
-                    if not recipient_email or not email_sent_at:
+                    if not recipient_email or not last_email_at:
                         logger.debug(f"Skipping app {app.get('_id')}: missing recipient or date")
                         continue
                     

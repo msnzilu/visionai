@@ -75,7 +75,7 @@ class CoverLetterService:
                 max_tokens=1500
             )
             
-            letter_content = result.get("content", "")
+            letter_content = result
             
             # Parse and structure
             structured_letter = self._structure_cover_letter(

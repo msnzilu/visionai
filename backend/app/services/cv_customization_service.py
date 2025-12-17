@@ -108,6 +108,17 @@ class CVCustomizationService:
         description = job_data.get("description", "")
         requirements = job_data.get("requirements", [])
         
+        # Handle requirements which can be list of strings or list of dicts
+        req_list = []
+        if requirements and isinstance(requirements, list):
+            for r in requirements:
+                if isinstance(r, dict):
+                     req_list.append(r.get("requirement", ""))
+                else:
+                     req_list.append(str(r))
+        
+        req_str = ', '.join(req_list[:10]) if req_list else 'Not specified'
+
         prompt = f"""
 Customize this CV for a {job_title} position at {company}.
 
@@ -115,7 +126,7 @@ JOB DETAILS:
 Title: {job_title}
 Company: {company}
 Description: {description[:1000]}
-Key Requirements: {', '.join(requirements[:10]) if requirements else 'Not specified'}
+Key Requirements: {req_str}
 
 CURRENT CV DATA:
 {self._format_cv_for_prompt(cv_data)}
@@ -274,7 +285,14 @@ Please provide a customized CV in the following JSON structure:
                 job_skills = set(s.lower() for s in job_data["skills_required"])
             elif job_data.get("requirements"):
                 # Extract skills from requirements if available
-                job_skills = set(s.lower() for s in job_data["requirements"][:10])
+                reqs = job_data["requirements"][:10]
+                extracted_reqs = []
+                for r in reqs:
+                    if isinstance(r, dict):
+                         extracted_reqs.append(r.get("requirement", ""))
+                    else:
+                         extracted_reqs.append(str(r))
+                job_skills = set(s.lower() for s in extracted_reqs)
             
             # Calculate Jaccard similarity
             if not job_skills:
