@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Daily Job Matches</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f8;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+
+        .roles-container {
+            display: block;
+            margin-bottom: 30px;
+        }
+
+        .role-tag {
+            display: inline-block;
+            background: #f0f4ff;
+            color: #5a67d8;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid #e0e7ff;
+            white-space: nowrap;
+            margin: 0 4px 8px 0;
+        }
+
+        .job-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: transform 0.1s;
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            background: white;
+        }
+
+        .job-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .job-title {
+            font-weight: 600;
+            font-size: 18px;
+            color: #2d3748;
+            margin-right: 10px;
+        }
+
+        .match-score {
+            background: #dcfce7;
+            color: #166534;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .company-name {
+            color: #718096;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .job-details {
+            font-size: 13px;
+            color: #94a3b8;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .cta-button {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            padding: 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 25px;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+        }
+
+        .footer {
+            background: #f8fafc;
+            padding: 30px 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .promo-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        @media only screen and (max-width: 620px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                width: 100% !important;
+                max-width: 100%;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+
+
+            .job-card {
+                padding: 15px;
+            }
+
+            .job-title {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Your Daily Job Matches</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 14px;">{{ date }}</p>
+        </div>
+
+        <div class="content">
+            <p>Hi {{ full_name }},</p>
+            <p>We've analyzed your profile and found these opportunities that match your specific skills and experience.
+            </p>
+
+            {% if suggested_roles %}
+            <div class="section-title">Based on your roles</div>
+            <div class="roles-container">
+                {% for role in suggested_roles %}
+                <span class="role-tag">{{ role.title }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="section-title">Top Matched Jobs</div>
+
+            {% for job in matching_jobs %}
+            <a href="{{ frontend_url }}/jobs?jobId={{ job._id }}" class="job-card">
+                <div class="job-header">
+                    <div class="job-title">{{ job.title }}</div>
+                    {% if job.match_score %}
+                    <div class="match-score">{{ (job.match_score * 100)|round|int }}% Match</div>
+                    {% endif %}
+                </div>
+                <div class="company-name">{{ job.company }}</div>
+                <div class="job-details">
+                    <span>📍 {{ job.location }}</span>
+                    <span>💼 {{ job.type }}</span>
+                </div>
+            </a>
+            {% endfor %}
+
+            <a href="{{ frontend_url }}/jobs" class="cta-button">View All Matches</a>
+
+            {% if not is_premium %}
+            <div class="promo-box">
+                <div class="promo-text">Stop applying manually! Let our AI agent apply to these jobs for you.</div>
+                <a href="{{ frontend_url }}/pricing" class="promo-link">Upgrade to Auto-Apply &rarr;</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>You received this email because you have job alerts enabled on Synovate.</p>
+            <p>
+                <a href="{{ frontend_url }}/profile/preferences">Update Preferences</a> |
+                <a href="{{ frontend_url }}/unsubscribe">Unsubscribe</a>
+            </p>
+            <p>&copy; {{ year }} Synovate. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>

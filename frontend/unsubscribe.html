@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unsubscribe - CVision</title>
+    <script src="/assets/js/auth-guard.js"></script>
+    <link rel="stylesheet" href="/assets/css/global.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            100: '#e0e7ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 font-sans min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100 max-w-md w-full p-8 text-center">
+        <div class="mb-6">
+            <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                </path>
+            </svg>
+        </div>
+
+        <div id="content-container">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Unsubscribe?</h1>
+            <p class="text-gray-600 mb-8">
+                Are you sure you want to unsubscribe? You will miss out on daily job matches and application updates.
+            </p>
+
+            <div class="space-y-4">
+                <button id="unsubscribeBtn"
+                    class="w-full bg-red-50 text-red-600 hover:bg-red-100 py-3 rounded-lg font-semibold transition-colors">
+                    Yes, Unsubscribe Me
+                </button>
+                <button onclick="window.location.href='/pages/profile.html#preferences'"
+                    class="w-full bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 py-3 rounded-lg font-medium transition-colors">
+                    Manage Preferences Instead
+                </button>
+            </div>
+        </div>
+
+        <div id="login-prompt" class="hidden text-center">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h1>
+            <p class="text-gray-600 mb-8">
+                Please log in to manage your email preferences.
+            </p>
+            <a href="/login.html"
+                class="inline-block w-full bg-primary-600 text-white hover:bg-primary-700 py-3 rounded-lg font-semibold transition-colors">
+                Log In
+            </a>
+        </div>
+
+        <div id="statusMessage" class="mt-6 hidden">
+            <p class="text-sm font-medium"></p>
+        </div>
+    </div>
+
+    <script src="/assets/js/config.js"></script>
+    <script src="/assets/js/utils/api.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check auth
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                document.getElementById('content-container').classList.add('hidden');
+                document.getElementById('login-prompt').classList.remove('hidden');
+
+                // Store return URL so login can redirect back (if implemented)
+                // Or just modify the login link to include returnUrl if your login supports it
+                const loginLink = document.querySelector('#login-prompt a');
+                loginLink.href = `/login.html?returnUrl=${encodeURIComponent(window.location.pathname)}`;
+                return;
+            }
+
+            document.getElementById('unsubscribeBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('unsubscribeBtn');
+                const status = document.getElementById('statusMessage');
+                const statusText = status.querySelector('p');
+
+                btn.disabled = true;
+                btn.innerHTML = `<svg class="animate-spin h-5 w-5 mx-auto text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>`;
+
+                try {
+                    // Fetch current preferences first to avoid overwriting other settings
+                    const prefResponse = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/preferences`, {
+                        headers: {
+                            'Authorization': `Bearer ${CVision.Utils.getToken()}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    let currentPrefs = {};
+                    if (prefResponse.ok) {
+                        currentPrefs = await prefResponse.json();
+                    }
+
+                    // Call API to unsubscribe from emails
+                    const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/preferences`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${CVision.Utils.getToken()}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            ...currentPrefs, // Keep existing prefs
+                            job_alerts: false,
+                            application_reminders: false,
+                            weekly_reports: false,
+                            marketing_emails: false
+                        })
+                    });
+
+                    if (response.ok) {
+                        status.classList.remove('hidden');
+                        statusText.className = 'text-green-600';
+                        statusText.textContent = 'You have been successfully unsubscribed.';
+                        btn.textContent = 'Unsubscribed';
+                    } else {
+                        throw new Error('Failed to unsubscribe');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    status.classList.remove('hidden');
+                    statusText.className = 'text-red-600';
+                    statusText.textContent = 'Something went wrong. Please try again.';
+                    btn.disabled = false;
+                    btn.textContent = 'Yes, Unsubscribe Me';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

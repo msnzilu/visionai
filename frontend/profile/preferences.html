@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Preferences - CVision</title>
+    <script src="/assets/js/auth-guard.js"></script>
+    <link rel="stylesheet" href="/assets/css/global.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            100: '#e0e7ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 font-sans">
+    <div id="navbar-container"></div>
+
+    <main class="max-w-2xl mx-auto px-4 py-8">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Email Preferences</h1>
+
+        <div id="content-container">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <p class="text-gray-600 mb-6">Manage the emails you receive from us.</p>
+
+                <form id="preferencesForm" class="space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="jobAlerts" type="checkbox"
+                                    class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="jobAlerts" class="font-medium text-gray-700">Daily Job Matches</label>
+                                <p class="text-gray-500">Get a daily digest of jobs that strictly match your CV and
+                                    preferences.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="appReminders" type="checkbox"
+                                    class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="appReminders" class="font-medium text-gray-700">Application Updates</label>
+                                <p class="text-gray-500">Receive notifications when your application status changes or
+                                    when
+                                    you need to take action.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="weeklyReports" type="checkbox"
+                                    class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="weeklyReports" class="font-medium text-gray-700">Weekly Summary</label>
+                                <p class="text-gray-500">A weekly overview of your job search progress and stats.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="marketing" type="checkbox"
+                                    class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="marketing" class="font-medium text-gray-700">Product Updates & Tips</label>
+                                <p class="text-gray-500">Occasional emails about new features and job search advice.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-gray-100 flex justify-end">
+                        <button type="submit"
+                            class="px-6 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors">
+                            Save Preferences
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="mt-6 text-center">
+                <a href="/pages/profile.html" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                    &larr; Back to Profile
+                </a>
+            </div>
+        </div>
+
+        <div id="login-prompt" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+            <div class="mb-6">
+                <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                    </path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+            <p class="text-gray-600 mb-8">Please log in to view and manage your email preferences.</p>
+            <a href="/login.html"
+                class="inline-block px-8 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors">
+                Log In
+            </a>
+        </div>
+    </main>
+
+    <script src="/assets/js/config.js"></script>
+    <script src="/assets/js/utils/api.js"></script>
+    <script src="/assets/js/components/navbar.js"></script>
+    <script>
+        // Load Navbar
+        fetch('/components/navbar.html')
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById('navbar-container').innerHTML = html;
+                if (window.CVisionNavbar) window.CVisionNavbar.init('Profile');
+            });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Auth Check
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                document.getElementById('content-container').classList.add('hidden');
+                document.getElementById('login-prompt').classList.remove('hidden');
+
+                const loginLink = document.querySelector('#login-prompt a');
+                loginLink.href = `/login.html?returnUrl=${encodeURIComponent(window.location.pathname)}`;
+                return;
+            }
+
+            const form = document.getElementById('preferencesForm');
+            const jobAlerts = document.getElementById('jobAlerts');
+            const appReminders = document.getElementById('appReminders');
+            const weeklyReports = document.getElementById('weeklyReports');
+            const marketing = document.getElementById('marketing');
+
+            // Load Preferences
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/preferences`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const prefs = await response.json();
+                    jobAlerts.checked = prefs.job_alerts !== false; // Default true logic handled by backend usually, but purely checking boolean here 
+                    appReminders.checked = prefs.application_reminders !== false;
+                    weeklyReports.checked = prefs.weekly_reports !== false;
+                    marketing.checked = prefs.marketing_emails === true;
+                }
+            } catch (error) {
+                console.error('Failed to load preferences:', error);
+            }
+
+            // Save Preferences
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = form.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                btn.textContent = 'Saving...';
+                btn.disabled = true;
+
+                try {
+                    // Fetch current preferences first to avoid overwriting other settings
+                    const prefResponse = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/preferences`, {
+                        headers: {
+                            'Authorization': `Bearer ${CVision.Utils.getToken()}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    let currentPrefs = {};
+                    if (prefResponse.ok) {
+                        currentPrefs = await prefResponse.json();
+                    }
+
+                    const updateData = {
+                        ...currentPrefs,
+                        job_alerts: jobAlerts.checked,
+                        application_reminders: appReminders.checked,
+                        weekly_reports: weeklyReports.checked,
+                        marketing_emails: marketing.checked
+                    };
+
+                    const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/users/me/preferences`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${CVision.Utils.getToken()}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updateData)
+                    });
+
+                    if (!response.ok) throw new Error('Failed to save');
+
+                    CVision.Utils.showAlert('Preferences updated successfully', 'success');
+                } catch (error) {
+                    console.error('Save failed:', error);
+                    CVision.Utils.showAlert('Failed to save preferences', 'error');
+                } finally {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

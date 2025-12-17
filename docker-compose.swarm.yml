@@ -12,9 +12,9 @@ services:
       - ENVIRONMENT=production
       
       # Database Configuration (REQUIRED)
-      - MONGODB_URL=mongodb://mongodb:27017/job_platform
+      - MONGODB_URL=mongodb://mongodb:27017/synovae_db
       - REDIS_URL=redis://redis:6379
-      - DATABASE_NAME=job_platform
+      - DATABASE_NAME=synovae_db
       
       # Celery Configuration (REQUIRED)
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -62,7 +62,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_data:/data/db
+      - mongodb_data:/data/synovae_db
     deploy:
       replicas: 1
       update_config:
@@ -117,9 +117,9 @@ services:
       - app-network
     environment:
       - DEBUG=false
-      - MONGODB_URL=mongodb://mongodb:27017/job_platform
+      - MONGODB_URL=mongodb://mongodb:27017/synovae_db
       - REDIS_URL=redis://redis:6379
-      - DATABASE_NAME=job_platform
+      - DATABASE_NAME=synovae_db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - FRONTEND_URL=https://visionsai.store
@@ -162,9 +162,9 @@ services:
       - app-network
     environment:
       - DEBUG=false
-      - MONGODB_URL=mongodb://mongodb:27017/job_platform
+      - MONGODB_URL=mongodb://mongodb:27017/synovae_db
       - REDIS_URL=redis://redis:6379
-      - DATABASE_NAME=job_platform
+      - DATABASE_NAME=synovae_db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - FRONTEND_URL=https://visionsai.store

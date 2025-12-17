@@ -131,25 +131,22 @@ class Settings(BaseSettings):
     INTASEND_PUBLIC_KEY: str = Field(default_factory=lambda: get_secret("INTASEND_PUBLIC_KEY", ""))
     INTASEND_SECRET_KEY: str = Field(default_factory=lambda: get_secret("INTASEND_SECRET_KEY", ""))
     INTASEND_IS_LIVE: bool = Field(default=False, env="INTASEND_IS_LIVE")
-    
-    # Email service - Optional (for notifications)
-    SMTP_HOST: Optional[str] = Field(default=None, env="SMTP_HOST")
-    SMTP_PORT: int = Field(default=587, env="SMTP_PORT")
-    SMTP_USERNAME: Optional[str] = Field(default=None, env="SMTP_USERNAME")
-    SMTP_PASSWORD: Optional[str] = Field(default=None, env="SMTP_PASSWORD")
-    SMTP_USE_TLS: bool = Field(default=True, env="SMTP_USE_TLS")
 
-    # Mail settings
+    # Email/SMTP Configuration
+    MAIL_SERVER: Optional[str] = Field(default=None, env="MAIL_SERVER")
+    MAIL_PORT: int = Field(default=587, env="MAIL_PORT")
     MAIL_USERNAME: Optional[str] = Field(default=None, env="MAIL_USERNAME")
     MAIL_PASSWORD: Optional[str] = Field(default=None, env="MAIL_PASSWORD")
-    MAIL_FROM: str = Field(default="noreply@visionsai.store", env="MAIL_FROM")
-    MAIL_FROM_NAME: str = Field(default="VisionAI", env="MAIL_FROM_NAME")
-    MAIL_PORT: int = Field(default=587, env="MAIL_PORT")
-    MAIL_SERVER: Optional[str] = Field(default=None, env="MAIL_SERVER")
+    MAIL_FROM: str = Field(default="no-reply@synovae.io", env="MAIL_FROM")
+    MAIL_FROM_NAME: str = Field(default="Synovae", env="MAIL_FROM_NAME")
     MAIL_STARTTLS: bool = Field(default=True, env="MAIL_STARTTLS")
     MAIL_SSL_TLS: bool = Field(default=False, env="MAIL_SSL_TLS")
-    SUPPORT_EMAIL: str = Field(default="support@visionsai.store", env="SUPPORT_EMAIL")
-    COMPANY_NAME: str = Field(default="VisionAI", env="COMPANY_NAME")
+    
+    # Additional email settings
+    SUPPORT_EMAIL: str = Field(default="support@synovae.io", env="SUPPORT_EMAIL")
+    COMPANY_NAME: str = Field(default="Synovae", env="COMPANY_NAME")
+    
+
 
     # OAuth - REQUIRED for Google/LinkedIn login
     GOOGLE_CLIENT_ID: str = Field(default_factory=lambda: get_secret("GOOGLE_CLIENT_ID", ""))

@@ -1,318 +1,271 @@
-# backend/app/services/matching_service.py
-"""
-Job matching service - Score and rank jobs based on user profile
-"""
-
-from typing import List, Dict, Optional, Tuple, Union
-from datetime import datetime
-from geopy.distance import geodesic
-from geopy.geocoders import Nominatim
 import logging
-
-from app.models.job import (
-    Job, JobResponse, JobMatch, ExperienceLevel, 
-    WorkArrangement, EmploymentType
-)
-from app.models.user import User
+from typing import List, Dict, Optional, Any
+from datetime import datetime, timedelta
+from bson import ObjectId
+from app.core.config import settings
+import openai
 
 logger = logging.getLogger(__name__)
 
-
 class MatchingService:
-    """Service for matching jobs to user profiles"""
-    
-    def __init__(self):
-        self.geocoder = Nominatim(user_agent="job_platform")
-        self.location_cache = {}
-        
-    async def calculate_match_score(
-        self,
-        user: Union[User, Dict],  # Can be dict or User model
-        job: JobResponse
-    ) -> Tuple[float, JobMatch]:
-        """Calculate comprehensive match score"""
-        
-        # Handle both dict and User model
-        if isinstance(user, dict):
-            user_skills = set(s.lower() for s in (user.get('skills') or []))
-            user_location = user.get('location')
-            user_experience_years = user.get('years_of_experience') or 0
-            user_salary_expectation = user.get('salary_expectation')
-            user_id = str(user.get('_id') or user.get('id'))
+    """Service for job matching and role suggestions"""
+
+    def __init__(self, db=None):
+        self.db = db
+
+    async def get_suggested_roles(self, user_cv: Dict, limit: int = 8) -> List[Dict]:
+        """
+        Get suggested job roles based on CV analysis
+        """
+        if not user_cv:
+            return []
+
+        # Extract relevant info
+        skills = user_cv.get("skills", {})
+        if isinstance(skills, dict):
+            all_skills = skills.get("technical", []) + skills.get("soft", [])
         else:
-            user_skills = set(s.lower() for s in (user.skills or []))
-            user_location = user.location
-            user_experience_years = user.years_of_experience or 0
-            user_salary_expectation = user.salary_expectation
-            user_id = str(user.id)
+            all_skills = skills if isinstance(skills, list) else []
         
-        skills_score = self._calculate_skills_match(
-            user_skills, 
-            set(s.lower() for s in job.skills_required)
-        )
+        experience = user_cv.get("experience", [])
+        current_role = None
+        if experience and len(experience) > 0:
+            current_role = experience[0].get("title")
         
-        location_score = await self._calculate_location_match(
-            user_location,
-            job.location,
-            job.work_arrangement
-        )
+        suggested_roles = []
         
-        experience_score = self._calculate_experience_match(
-            user_experience_years,
-            job.experience_level
-        )
+        # 1. Add current/recent role if exists
+        if current_role:
+            suggested_roles.append({
+                "title": current_role,
+                "reason": "Your current role",
+                "match_type": "current"
+            })
         
-        salary_score = self._calculate_salary_match(
-            user_salary_expectation,
-            job.salary_range
-        )
+        # 2. Add previous roles (unique)
+        seen_roles = {current_role.lower() if current_role else ""}
+        for exp in experience[1:4]:  # Next 3 previous roles
+            title = exp.get("title")
+            if title and title.lower() not in seen_roles:
+                suggested_roles.append({
+                    "title": title,
+                    "reason": "Previous experience",
+                    "match_type": "experience"
+                })
+                seen_roles.add(title.lower())
         
-        composite_score = (
-            skills_score * 0.40 +
-            location_score * 0.25 +
-            experience_score * 0.20 +
-            salary_score * 0.15
-        )
+        # 3. Suggest roles based on skills
+        skill_based_roles = self._suggest_roles_from_skills(all_skills)
+        for role in skill_based_roles:
+            if role["title"].lower() not in seen_roles:
+                suggested_roles.append(role)
+                seen_roles.add(role["title"].lower())
         
-        matching_skills = list(user_skills & set(s.lower() for s in job.skills_required))
-        missing_skills = list(set(s.lower() for s in job.skills_required) - user_skills)
+        return suggested_roles[:limit]
+
+    def _suggest_roles_from_skills(self, skills: list) -> list:
+        """
+        Map skills to suggested job roles
+        """
+        skills_lower = [s.lower() for s in skills if isinstance(s, str)]
+        suggested = []
         
-        match_reasons = self._generate_match_reasons(
-            skills_score, location_score, experience_score, 
-            salary_score, matching_skills
-        )
-        
-        recommendations = self._generate_recommendations(
-            missing_skills, experience_score
-        )
-        
-        job_match = JobMatch(
-            job_id=job.id,
-            user_id=user_id,
-            match_score=round(composite_score, 2),
-            relevance_score=round(skills_score, 2),
-            matching_skills=matching_skills[:5],
-            missing_skills=missing_skills[:5],
-            match_reasons=match_reasons,
-            recommendations=recommendations
-        )
-        
-        return round(composite_score, 2), job_match
-    
-    def _calculate_skills_match(self, user_skills: set, job_skills: set) -> float:
-        if not job_skills:
-            return 0.5
-        if not user_skills:
-            return 0.0
-        
-        intersection = len(user_skills & job_skills)
-        union = len(user_skills | job_skills)
-        
-        return intersection / union if union > 0 else 0.0
-    
-    async def _calculate_location_match(
-        self,
-        user_location: Optional[str],
-        job_location: str,
-        work_arrangement: Optional[WorkArrangement],
-        max_distance: float = 50.0
-    ) -> float:
-        if work_arrangement == WorkArrangement.REMOTE:
-            return 1.0
-        
-        if not user_location:
-            return 0.7
-        
-        if user_location.lower() in job_location.lower():
-            return 1.0
-        
-        try:
-            user_coords = await self._get_coordinates(user_location)
-            job_coords = await self._get_coordinates(job_location)
-            
-            if user_coords and job_coords:
-                distance = geodesic(user_coords, job_coords).miles
-                
-                if distance <= max_distance:
-                    return max(0.0, 1.0 - (distance / max_distance))
-        except Exception as e:
-            logger.warning(f"Location calculation error: {e}")
-        
-        return 0.3
-    
-    async def _get_coordinates(self, location: str) -> Optional[Tuple[float, float]]:
-        if location in self.location_cache:
-            return self.location_cache[location]
-        
-        try:
-            geo_location = self.geocoder.geocode(location)
-            if geo_location:
-                coords = (geo_location.latitude, geo_location.longitude)
-                self.location_cache[location] = coords
-                return coords
-        except Exception as e:
-            logger.error(f"Geocoding error for {location}: {e}")
-        
-        return None
-    
-    def _calculate_experience_match(
-        self,
-        user_years: int,
-        job_level: Optional[ExperienceLevel]
-    ) -> float:
-        if not job_level:
-            return 0.7
-        
-        level_ranges = {
-            ExperienceLevel.ENTRY_LEVEL: (0, 2),
-            ExperienceLevel.JUNIOR: (1, 3),
-            ExperienceLevel.MID_LEVEL: (3, 6),
-            ExperienceLevel.SENIOR: (6, 10),
-            ExperienceLevel.LEAD: (8, 15),
-            ExperienceLevel.PRINCIPAL: (10, 20),
-            ExperienceLevel.DIRECTOR: (12, 25),
-            ExperienceLevel.EXECUTIVE: (15, 40)
+        # Role mappings based on skill combinations
+        role_mappings = {
+            "Full Stack Developer": ["javascript", "python", "react", "node", "sql", "html", "css"],
+            "Frontend Developer": ["react", "vue", "angular", "javascript", "typescript", "css", "html"],
+            "Backend Developer": ["python", "java", "node", "sql", "api", "django", "flask", "spring"],
+            "Data Scientist": ["python", "machine learning", "pandas", "numpy", "tensorflow", "data analysis"],
+            "Data Engineer": ["python", "sql", "spark", "etl", "airflow", "data pipeline"],
+            "DevOps Engineer": ["docker", "kubernetes", "aws", "azure", "ci/cd", "terraform", "jenkins"],
+            "Cloud Engineer": ["aws", "azure", "gcp", "cloud", "terraform", "kubernetes"],
+            "Mobile Developer": ["android", "ios", "react native", "flutter", "swift", "kotlin"],
+            "Product Manager": ["product management", "agile", "scrum", "roadmap", "stakeholder"],
+            "Project Manager": ["project management", "agile", "scrum", "jira", "planning"],
+            "UI/UX Designer": ["figma", "sketch", "user experience", "user interface", "wireframe"],
+            "QA Engineer": ["testing", "selenium", "qa", "automation", "quality assurance"],
+            "Machine Learning Engineer": ["machine learning", "tensorflow", "pytorch", "deep learning", "nlp"],
+            "Security Engineer": ["security", "penetration", "cybersecurity", "vulnerability", "compliance"],
+            "Software Engineer": ["programming", "software development", "coding", "algorithms"]
         }
         
-        min_years, max_years = level_ranges.get(job_level, (0, 100))
+        for role, required_skills in role_mappings.items():
+            matching_skills = [s for s in required_skills if any(s in skill for skill in skills_lower)]
+            match_ratio = len(matching_skills) / len(required_skills) if required_skills else 0
+            
+            if match_ratio >= 0.3:  # At least 30% skill match
+                suggested.append({
+                    "title": role,
+                    "reason": f"Matches {len(matching_skills)} of your skills",
+                    "match_type": "skills",
+                    "match_score": round(match_ratio * 100)
+                })
         
-        if min_years <= user_years <= max_years:
-            return 1.0
-        
-        if user_years < min_years:
-            gap = min_years - user_years
-            return max(0.0, 1.0 - (gap * 0.2))
-        
-        if user_years > max_years:
-            excess = user_years - max_years
-            return max(0.5, 1.0 - (excess * 0.1))
-        
-        return 0.5
-    
-    def _calculate_salary_match(
-        self,
-        user_expectation: Optional[float],
-        job_salary: Optional[object]
-    ) -> float:
-        if not user_expectation or not job_salary:
-            return 0.7
-        
-        job_min = getattr(job_salary, 'min_amount', None)
-        job_max = getattr(job_salary, 'max_amount', None)
-        
-        if not job_min and not job_max:
-            return 0.7
-        
-        if job_min and job_max:
-            if job_min <= user_expectation <= job_max:
-                return 1.0
-            elif user_expectation < job_min:
-                return 0.9
-            else:
-                diff_pct = (user_expectation - job_max) / job_max
-                return max(0.0, 1.0 - diff_pct)
-        
-        if job_min:
-            return 0.9 if user_expectation >= job_min else 0.6
-        
-        if job_max:
-            return 0.9 if user_expectation <= job_max else 0.5
-        
-        return 0.7
-    
-    def _generate_match_reasons(
-        self,
-        skills_score: float,
-        location_score: float,
-        experience_score: float,
-        salary_score: float,
-        matching_skills: List[str]
-    ) -> List[str]:
-        reasons = []
-        
-        if skills_score > 0.7 and matching_skills:
-            skill_list = ", ".join(matching_skills[:3])
-            reasons.append(f"Strong skill match: {skill_list}")
-        elif skills_score > 0.4:
-            reasons.append("Partial skill match with this position")
-        
-        if location_score == 1.0:
-            reasons.append("Perfect location match or remote position")
-        elif location_score > 0.7:
-            reasons.append("Good location proximity")
-        
-        if experience_score > 0.8:
-            reasons.append("Your experience level aligns well")
-        elif experience_score < 0.5:
-            reasons.append("May require additional experience")
-        
-        if salary_score > 0.8:
-            reasons.append("Salary range matches your expectations")
-        
-        return reasons if reasons else ["General match based on profile"]
-    
-    def _generate_recommendations(
-        self,
-        missing_skills: List[str],
-        experience_score: float
-    ) -> List[str]:
-        recommendations = []
-        
-        if missing_skills:
-            skills_list = ", ".join(missing_skills[:3])
-            recommendations.append(
-                f"Consider highlighting transferable skills related to: {skills_list}"
-            )
-        
-        if experience_score < 0.6:
-            recommendations.append(
-                "Emphasize relevant projects and achievements in your application"
-            )
-        
-        return recommendations
-    
-    async def score_jobs(
-        self,
-        user: Union[User, Dict],  # Can be dict or User model
-        jobs: List[JobResponse]
-    ) -> List[JobResponse]:
-        scored_jobs = []
-        
-        for job in jobs:
-            score, match = await self.calculate_match_score(user, job)
-            job.match_score = score
-            job.relevance_score = match.relevance_score
-            scored_jobs.append(job)
-        
-        scored_jobs.sort(key=lambda j: j.match_score or 0, reverse=True)
-        
-        return scored_jobs
-    
-    async def get_matched_jobs(
-        self,
-        user: Union[User, Dict],  # Can be dict or User model
-        db,
-        limit: int = 20
-    ) -> List[JobResponse]:
-        from app.services.job_service import get_job_service
-        
-        job_service = get_job_service(db)
-        
-        # Handle both dict and User model for location
-        user_location = user.get('location') if isinstance(user, dict) else user.location
-        
-        result = await job_service.search_jobs(
-            query=None,
-            location=user_location,
-            filters=None,
-            page=1,
-            size=limit * 2
-        )
-        
-        jobs = result.get("jobs", [])
-        scored_jobs = await self.score_jobs(user, jobs)
-        
-        return scored_jobs[:limit]
+        # Sort by match score
+        suggested.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+        return suggested[:5]
 
+    async def calculate_match_score(self, user_cv: Dict, job: Dict, use_ai: bool = True) -> float:
+        """
+        Calculate match score between user CV and job
+        """
+        if use_ai and settings.OPENAI_API_KEY:
+            return await self._calculate_ai_match_score(user_cv, job)
+        else:
+            return self._calculate_simple_match_score(user_cv, job)
 
+    async def _calculate_ai_match_score(self, user_cv: Dict, job: Dict) -> float:
+        """
+        Use OpenAI to calculate match score
+        """
+        try:
+            openai.api_key = settings.OPENAI_API_KEY
+            
+            # Extract key info
+            cv_skills = user_cv.get("skills", [])
+            if isinstance(cv_skills, dict):
+                cv_skills = cv_skills.get("technical", []) + cv_skills.get("soft", [])
+                
+            cv_experience = len(user_cv.get("experience", []))
+            
+            job_title = job.get("title", "")
+            job_requirements = job.get("requirements", "")
+            if isinstance(job_requirements, list):
+                job_requirements = " ".join(job_requirements)
+            
+            prompt = f"""
+            Analyze the match between this candidate and job. Return ONLY a number between 0.0 and 1.0.
+            
+            Candidate Skills: {', '.join(cv_skills[:15] if cv_skills else [])}
+            Candidate Experience: {cv_experience} entries
+            
+            Job Title: {job_title}
+            Job Requirements: {job_requirements[:1000]}
+            
+            Match Score (0.0-1.0):
+            """
+            
+            response = await openai.ChatCompletion.acreate(
+                model=settings.OPENAI_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=10,
+                temperature=0.3
+            )
+            
+            score_text = response.choices[0].message.content.strip()
+            # Clean up response to ensure float
+            import re
+            match = re.search(r"0\.\d+|1\.0|0|1", score_text)
+            if match:
+                score = float(match.group(0))
+                return min(max(score, 0.0), 1.0)
+            return 0.5
+            
+        except Exception as e:
+            logger.error(f"Error calculating AI match score: {e}")
+            return self._calculate_simple_match_score(user_cv, job)
+
+    def _calculate_simple_match_score(self, user_cv: Dict, job: Dict) -> float:
+        """
+        Simple keyword-based match score
+        """
+        cv_skills = user_cv.get("skills", [])
+        if isinstance(cv_skills, dict):
+            cv_skills = cv_skills.get("technical", []) + cv_skills.get("soft", [])
+        
+        user_skills = set([s.lower() for s in cv_skills if isinstance(s, str)])
+        
+        # Extract skills from job
+        job_description = str(job.get("description", ""))
+        job_requirements = job.get("requirements", "")
+        if isinstance(job_requirements, list):
+            job_requirements = " ".join(job_requirements)
+        
+        job_text = (job_description + " " + str(job_requirements)).lower()
+        
+        # Count skill matches
+        matches = sum(1 for skill in user_skills if skill in job_text)
+        total_skills = len(user_skills)
+        
+        if total_skills == 0:
+            return 0.5
+        
+        score = matches / total_skills
+        
+        # Bonus for title match
+        job_title = job.get("title", "").lower()
+        current_role = ""
+        experience = user_cv.get("experience", [])
+        if experience:
+             current_role = experience[0].get("title", "").lower()
+        
+        if current_role and (current_role in job_title or job_title in current_role):
+            score += 0.2
+            
+        return min(max(score, 0.0), 1.0)
+
+    async def find_matching_jobs(self, user_id: str, cv_data: Dict, limit: int = 5, exclude_job_ids: List[ObjectId] = None, days_lookback: int = 7) -> List[Dict]:
+        """
+        Find best matching jobs for a user
+        """
+        if self.db is None:
+             logger.error("Database connection required for finding matching jobs")
+             return []
+
+        # Get jobs user hasn't applied to
+        applied_job_ids = await self.db.applications.distinct("job_id", {"user_id": user_id})
+        exclude_ids = [ObjectId(jid) for jid in applied_job_ids if ObjectId.is_valid(jid)]
+        
+        # Add explicitly excluded jobs (e.g. from previous emails)
+        if exclude_job_ids:
+            exclude_ids.extend(exclude_job_ids)
+        
+        # Remove duplicates from exclusions
+        exclude_ids = list(set(exclude_ids))
+
+        # Get recent jobs
+        start_date = datetime.utcnow() - timedelta(days=days_lookback)
+        
+        # Strategy: 
+        # 1. Get jobs matching suggested roles first (more relevant)
+        # 2. Fill with recent jobs
+        
+        suggested_roles = await self.get_suggested_roles(cv_data, limit=3)
+        role_queries = [{"title": {"$regex": role["title"], "$options": "i"}} for role in suggested_roles]
+        
+        candidate_jobs = []
+        
+        if role_queries:
+            candidate_jobs = await self.db.jobs.find({
+                "_id": {"$nin": exclude_ids},
+                "is_active": True,
+                "created_at": {"$gte": start_date},
+                "$or": role_queries
+            }).limit(limit * 3).to_list(length=limit * 3)
+            
+        # If not enough, get generic recent jobs
+        if len(candidate_jobs) < limit * 2:
+            current_ids = [j["_id"] for j in candidate_jobs]
+            more_jobs = await self.db.jobs.find({
+                "_id": {"$nin": exclude_ids + current_ids},
+                "is_active": True,
+                "created_at": {"$gte": start_date}
+            }).limit(limit * 2).to_list(length=limit * 2)
+            candidate_jobs.extend(more_jobs)
+            
+        # Score jobs
+        job_scores = []
+        for job in candidate_jobs:
+            score = await self.calculate_match_score(cv_data, job, use_ai=False) # Use simple score for speed in list
+            job_scores.append((job, score))
+            
+        # Sort and return top matches
+        job_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        return [
+            {**job, "match_score": score} 
+            for job, score in job_scores[:limit]
+        ]
+
+# Global instance
 matching_service = MatchingService()

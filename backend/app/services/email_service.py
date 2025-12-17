@@ -85,13 +85,13 @@ class EmailService:
                 body=body if not template_name else None,
                 subtype=subtype,
                 attachments=attachments or [],
+                template_body=template_body,
             )
 
-            if template_name and template_body:
+            if template_name:
                 await _fm.send_message(
                     message,
-                    template_name=template_name,
-                    template_body=template_body,
+                    template_name=template_name
                 )
             else:
                 await _fm.send_message(message)

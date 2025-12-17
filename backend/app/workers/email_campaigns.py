@@ -62,86 +62,143 @@ def send_daily_job_digest():
     Send daily email digest with top job matches to active users
     Runs every day at 9 AM
     """
-    async def _send_digest():
-        try:
-            db = await get_database()
-            
-            # Get active users (logged in within last 30 days)
-            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-            active_users = await db.users.find({
-                "last_login": {"$gte": thirty_days_ago},
-                "email_verified": True,
-                "preferences.daily_digest": {"$ne": False}  # Not opted out
-            }).to_list(length=None)
-            
-            sent_count = 0
-            for user in active_users:
-                try:
-                    user_id = str(user["_id"])
-                    
-                    # Find matching jobs
-                    jobs = await db.jobs.find({
-                        "is_active": True,
-                        "created_at": {"$gte": datetime.utcnow() - timedelta(days=3)},
-                    }).limit(5).to_list(length=5)
-                    
-                    if not jobs:
-                        continue
-                    
-                    # Get application stats
-                    stats = await db.applications.aggregate([
-                        {"$match": {"user_id": user_id}},
-                        {"$group": {
-                            "_id": "$status",
-                            "count": {"$sum": 1}
-                        }}
-                    ]).to_list(length=None)
-                    
-                    total_apps = sum(s["count"] for s in stats)
-                    
-                    # Compose email body
-                    job_list = "\n\n".join([
-                        f"• {job.get('title')} at {job.get('company')}\n  Location: {job.get('location', 'Remote')}\n  Apply: {settings.FRONTEND_URL}/jobs/{job.get('_id')}"
-                        for job in jobs
-                    ])
-                    
-                    email_body = f"""Hi {user.get('full_name', 'there')},
-
-Here are your top 5 job matches for today ({datetime.utcnow().strftime('%B %d, %Y')}):
-
-{job_list}
-
-Your Stats:
-- Total Applications: {total_apps}
-- Active Applications: {len([s for s in stats if s['_id'] not in ['rejected', 'withdrawn']])}
-
-View all jobs: {settings.FRONTEND_URL}/jobs
-
-Happy job hunting!
-Vision.AI Team"""
-                    
-                    # Send email
-                    success = await send_email_via_gmail(
-                        user,
-                        subject=f"Your Daily Job Digest - {len(jobs)} New Matches",
-                        body=email_body
-                    )
-                    
-                    if success:
-                        sent_count += 1
-                    
-                except Exception as e:
-                    logger.error(f"Error sending digest to user {user.get('_id')}: {e}")
+async def process_daily_job_digest():
+    """
+    Core logic for processing daily job digest
+    Separated for easier testing without Celery async wrapper
+    """
+    try:
+        db = await get_database()
+        from app.services.matching_service import matching_service
+        matching_service.db = db
+        
+        # Get active users (logged in within last 30 days)
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        active_users = await db.users.find({
+            "last_login": {"$gte": thirty_days_ago},
+            "email_verified": True,
+            "preferences.job_alerts": {"$ne": False}  # Not opted out
+        }).to_list(length=None)
+        
+        sent_count = 0
+        start_of_day = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        for user in active_users:
+            try:
+                user_id = str(user["_id"])
+                
+                # 0. Check Frequency (Idempotency)
+                # Check if digest already sent today
+                already_sent = await db.email_history.find_one({
+                    "user_id": user_id,
+                    "type": "daily_digest",
+                    "sent_at": {"$gte": start_of_day}
+                })
+                
+                if already_sent:
+                    logger.info(f"Skipping daily digest for {user.get('email')} - already sent today")
                     continue
-            
-            logger.info(f"Sent {sent_count} job digest emails")
-            return {"success": True, "sent": sent_count}
-            
-        except Exception as e:
-            logger.error(f"Error in send_daily_job_digest: {e}")
-            return {"success": False, "error": str(e)}
-    
-    return run_async(_send_digest())
+
+                # Get user's CV data for matching
+                user_cv = user.get("cv_data")
+                if not user_cv:
+                    # Try finding in documents if not in user profile
+                    cv_doc = await db.documents.find_one({
+                        "user_id": user_id, 
+                        "document_type": "cv"
+                    }, sort=[("uploaded_at", -1)])
+                    if cv_doc:
+                        user_cv = cv_doc.get("cv_data")
+                
+                if not user_cv:
+                    continue # Skip users without CV data
+                
+                # 1. Get Suggested Roles
+                suggested_roles = await matching_service.get_suggested_roles(user_cv)
+                
+                # 2. Get Matching Jobs with Deduplication
+                # Get job IDs sent in last 30 days to exclude
+                history_window = datetime.utcnow() - timedelta(days=30)
+                sent_history = await db.email_history.find({
+                    "user_id": user_id,
+                    "type": "daily_digest",
+                    "sent_at": {"$gte": history_window}
+                }).to_list(length=None)
+                
+                exclude_job_ids = []
+                for record in sent_history:
+                    exclude_job_ids.extend(record.get("job_ids", []))
+                
+                # Find matches (exclude previously sent, look back 2 days for freshness)
+                matching_jobs = await matching_service.find_matching_jobs(
+                    user_id, 
+                    user_cv, 
+                    limit=5, 
+                    exclude_job_ids=exclude_job_ids,
+                    days_lookback=2 # Only recently active jobs
+                )
+                
+                if not matching_jobs:
+                    logger.info(f"No new matching jobs for {user.get('email')}")
+                    continue
+                
+                # 3. Check Subscription Tier
+                subscription_tier = user.get("subscription_tier", "free")
+                is_premium = subscription_tier in ["basic", "premium"]
+                
+                # 4. Prepare Email Data
+                from app.services.email_service import EmailService
+                
+                template_body = {
+                    "full_name": user.get("full_name", "there"),
+                    "date": datetime.utcnow().strftime('%A, %B %d'),
+                    "suggested_roles": suggested_roles,
+                    "matching_jobs": matching_jobs, # List of dicts
+                    "frontend_url": settings.FRONTEND_URL,
+                    "is_premium": is_premium,
+                    "year": datetime.utcnow().year
+                }
+                
+                # 5. Send Email using Template
+                success = await EmailService.send_email(
+                    subject=f"Your Daily Job Matches - {len(matching_jobs)} New Roles Found",
+                    recipients=[user.get("email")],
+                    body="", # Template used
+                    template_name="daily_job_match.html",
+                    template_body=template_body
+                )
+                
+                if success:
+                    sent_count += 1
+                    # Log to history
+                    await db.email_history.insert_one({
+                        "user_id": user_id,
+                        "type": "daily_digest",
+                        "sent_at": datetime.utcnow(),
+                        "job_ids": [j["_id"] for j in matching_jobs],
+                        "recipient_email": user.get("email")
+                    })
+                    logger.info(f"Sent daily digest to {user.get('email')}")
+                
+            except Exception as e:
+                logger.error(f"Error sending digest to user {user.get('_id')}: {e}")
+                continue
+        
+        logger.info(f"Sent {sent_count} job digest emails")
+        return {"success": True, "sent": sent_count}
+        
+    except Exception as e:
+        logger.error(f"Error in process_daily_job_digest: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@celery_app.task(name="app.workers.email_campaigns.send_daily_job_digest")
+def send_daily_job_digest():
+    """
+    Send daily email digest with top job matches to active users
+    Runs every day at 9 AM
+    """
+    return run_async(process_daily_job_digest())
 
 
 @celery_app.task(name="app.workers.email_campaigns.send_welcome_email")
@@ -407,7 +464,7 @@ def send_weekly_summary(user_id: str = None):
             else:
                 users = await db.users.find({
                     "email_verified": True,
-                    "preferences.weekly_summary": {"$ne": False}
+                    "preferences.weekly_reports": {"$ne": False}
                 }).to_list(length=None)
             
             sent_count = 0

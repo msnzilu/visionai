@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Your Email - Synovae</title>
+    <link rel="stylesheet" href="/assets/css/global.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center font-sans">
+    <div class="text-center p-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl max-w-md w-full mx-4">
+        <div class="mb-6 text-primary-600">
+            <svg class="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M3 19v-8.93a2 2 0 01.89-1.664l7.171-4.166a2 2 0 011.956 0l7.171 4.166A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76">
+                </path>
+            </svg>
+        </div>
+
+        <h1 class="text-2xl font-bold text-gray-900 mb-3">Check Your Email</h1>
+
+        <p class="text-gray-600 mb-2">
+            We've sent a verification link to:
+        </p>
+        <p class="text-gray-900 font-semibold mb-6 text-lg" id="userEmail">your email address</p>
+
+        <p class="text-sm text-gray-500 mb-8 leading-relaxed">
+            Click the link in the email to verify your account and sign in.<br>
+            If you don't see it, check your spam folder.
+        </p>
+
+        <div class="space-y-4">
+            <a href="/login.html"
+                class="block w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg transition-colors">
+                Back to Sign In
+            </a>
+
+            <button id="resendBtn" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                Resend verification email
+            </button>
+        </div>
+
+        <div id="resendMessage" class="mt-4 text-sm hidden"></div>
+    </div>
+
+    <script src="assets/js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const email = urlParams.get('email');
+
+            if (email) {
+                document.getElementById('userEmail').textContent = email;
+            } else {
+                window.location.href = '/register.html';
+                return;
+            }
+
+            // Resend functionality
+            const resendBtn = document.getElementById('resendBtn');
+            const resendMessage = document.getElementById('resendMessage');
+
+            resendBtn.addEventListener('click', async function () {
+                resendBtn.disabled = true;
+                resendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                resendBtn.textContent = 'Sending...';
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_PREFIX}/auth/resend-verification`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email: email })
+                    });
+
+                    const data = await response.json();
+
+                    resendMessage.classList.remove('hidden', 'text-red-500', 'text-green-500');
+                    if (data.success) {
+                        resendMessage.textContent = 'Verification email sent!';
+                        resendMessage.classList.add('text-green-500');
+                    } else {
+                        throw new Error(data.message);
+                    }
+                } catch (error) {
+                    resendMessage.textContent = error.message || 'Failed to resend email';
+                    resendMessage.classList.add('text-red-500');
+                    resendMessage.classList.remove('hidden');
+
+                    // Re-enable button
+                    resendBtn.disabled = false;
+                    resendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    resendBtn.textContent = 'Resend verification email';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

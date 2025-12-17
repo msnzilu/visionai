@@ -7,10 +7,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    // Initialize Forgot Password Modal
-    const forgotPasswordModal = new ForgotPasswordModal();
+    // Initialize ForgotPasswordModal if available and needed
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
-    if (forgotPasswordLink) {
+    if (forgotPasswordLink && typeof ForgotPasswordModal !== 'undefined') {
+        const forgotPasswordModal = new ForgotPasswordModal();
         forgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
             forgotPasswordModal.open();
@@ -37,6 +37,25 @@ function initializeLoginPage() {
     const form = document.getElementById('loginForm');
     const loginButton = document.getElementById('loginButton');
     const togglePassword = document.getElementById('togglePassword');
+
+    // Check for URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('verified') === 'true') {
+        // Wait for modal to be initialized
+        setTimeout(() => {
+            if (window.GenericModal && window.GenericModal.instance) {
+                window.GenericModal.instance.show({
+                    title: 'Email Verified!',
+                    message: 'Your email has been successfully verified. You can now sign in to your account.',
+                    type: 'success',
+                    buttonText: 'Got it'
+                });
+            } else {
+                // Fallback if modal script not loaded yet
+                InlineMessage.success('Email verified successfully! Please sign in.');
+            }
+        }, 300); // Small delay to ensure DOM is ready
+    }
 
     // Password toggle functionality
     if (togglePassword) {
@@ -195,7 +214,16 @@ async function handleLogin() {
         console.error('Login error:', error);
 
         const errorMessage = error.message || 'Login failed. Please try again.';
-        InlineMessage.error(errorMessage);
+
+        if (window.GenericModal && window.GenericModal.instance) {
+            window.GenericModal.instance.show({
+                title: 'Login Failed',
+                message: errorMessage,
+                type: 'error'
+            });
+        } else {
+            InlineMessage.error(errorMessage);
+        }
 
     } finally {
         if (loginButton) {
@@ -241,21 +269,27 @@ async function handleRegister() {
         });
 
         if (response.success) {
-            InlineMessage.success('Account created successfully! Redirecting to login...');
-
-            // Redirect to login page
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 2000);
+            // Redirect to verification pending page
+            window.location.href = `verification-pending.html?email=${encodeURIComponent(email)}`;
         } else {
             throw new Error(response.message || 'Registration failed');
         }
+
 
     } catch (error) {
         console.error('Registration error:', error);
 
         const errorMessage = error.message || 'Registration failed. Please try again.';
-        InlineMessage.error(errorMessage);
+
+        if (window.GenericModal && window.GenericModal.instance) {
+            window.GenericModal.instance.show({
+                title: 'Registration Failed',
+                message: errorMessage,
+                type: 'error'
+            });
+        } else {
+            InlineMessage.error(errorMessage);
+        }
 
     } finally {
         if (registerButton) {
@@ -280,7 +314,15 @@ function validateLoginForm(email, password) {
     }
 
     if (errors.length > 0) {
-        InlineMessage.error(errors.join('. '));
+        if (window.GenericModal && window.GenericModal.instance) {
+            window.GenericModal.instance.show({
+                title: 'Validation Error',
+                message: errors.join('\n'),
+                type: 'error'
+            });
+        } else {
+            InlineMessage.error(errors.join('. '));
+        }
         return false;
     }
 
@@ -310,7 +352,15 @@ function validateRegisterForm(email, password, termsAccepted) {
     }
 
     if (errors.length > 0) {
-        InlineMessage.error(errors.join('. '));
+        if (window.GenericModal && window.GenericModal.instance) {
+            window.GenericModal.instance.show({
+                title: 'Validation Error',
+                message: errors.join('\n'),
+                type: 'error'
+            });
+        } else {
+            InlineMessage.error(errors.join('. '));
+        }
         return false;
     }
 
@@ -380,10 +430,19 @@ async function handleGoogleLogin() {
 
     } catch (error) {
         console.error('Google login error:', error);
-        InlineMessage.error('Google login failed. Please try again.', {
-            autoHide: true,
-            autoHideDelay: 4000
-        });
+
+        if (window.GenericModal && window.GenericModal.instance) {
+            window.GenericModal.instance.show({
+                title: 'Login Error',
+                message: 'Google login failed. Please try again.',
+                type: 'error'
+            });
+        } else {
+            InlineMessage.error('Google login failed. Please try again.', {
+                autoHide: true,
+                autoHideDelay: 4000
+            });
+        }
 
         const googleButton = document.getElementById('googleLogin') || document.getElementById('googleSignup');
         if (googleButton) {
@@ -414,10 +473,19 @@ async function handleLinkedInLogin() {
 
     } catch (error) {
         console.error('LinkedIn login error:', error);
-        InlineMessage.error('LinkedIn login failed. Please try again.', {
-            autoHide: true,
-            autoHideDelay: 4000
-        });
+
+        if (window.GenericModal && window.GenericModal.instance) {
+            window.GenericModal.instance.show({
+                title: 'Login Error',
+                message: 'LinkedIn login failed. Please try again.',
+                type: 'error'
+            });
+        } else {
+            InlineMessage.error('LinkedIn login failed. Please try again.', {
+                autoHide: true,
+                autoHideDelay: 4000
+            });
+        }
 
         const linkedinButton = document.getElementById('linkedinLogin') || document.getElementById('linkedinSignup');
         if (linkedinButton) {

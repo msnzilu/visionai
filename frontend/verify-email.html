@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifying Email... - synovae</title>
+    <link rel="stylesheet" href="/assets/css/global.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load api.js in the HEAD so it's available immediately -->
+    <script src="/assets/js/main.js"></script>
+</head>
+
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center">
+    <div class="text-center p-8 bg-white/80 backdrop-blur-md rounded-2xl shadow-xl max-w-md w-full mx-4">
+        <div id="loadingState">
+            <div class="mb-6">
+                <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary-600">
+                </div>
+            </div>
+
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Verifying Email...</h1>
+            <p class="text-gray-600">Please wait while we verify your email address.</p>
+        </div>
+
+        <div id="successMessage" class="hidden">
+            <div class="mb-6 text-green-500">
+                <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Email Verified!</h1>
+            <p class="text-gray-600 mb-6">Your account has been successfully verified. You can now log in.</p>
+            <a href="/login.html"
+                class="inline-block w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                Go to Login
+            </a>
+        </div>
+
+        <div id="errorMessage" class="hidden">
+            <div class="mb-6 text-red-500">
+                <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Verification Failed</h1>
+            <p id="errorText" class="text-gray-600 mb-6">The verification link is invalid or has expired.</p>
+            <a href="/login.html"
+                class="inline-block w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg transition-colors">
+                Return to Login
+            </a>
+        </div>
+    </div>
+
+    <script src="assets/js/inline-messages.js"></script>
+
+    <script>
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+
+            if (token) {
+                // Determine API base URL (handling both local and prod if needed, defaulting to main.js config)
+                // Assuming CONFIG is global from main.js, otherwise fallback
+                const apiBase = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE_URL) ? CONFIG.API_BASE_URL : '';
+                const apiPrefix = (typeof CONFIG !== 'undefined' && CONFIG.API_PREFIX) ? CONFIG.API_PREFIX : '/api/v1';
+                const url = `${apiBase}${apiPrefix}/auth/verify-email`;
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: token })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('loadingState').classList.add('hidden');
+                        if (data.success) {
+                            document.getElementById('successMessage').classList.remove('hidden');
+                            // Optional: auto-redirect after a few seconds
+                            setTimeout(() => {
+                                window.location.href = '/login.html?verified=true';
+                            }, 3000);
+                        } else {
+                            throw new Error(data.message || 'Verification failed');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        document.getElementById('loadingState').classList.add('hidden');
+                        document.getElementById('errorMessage').classList.remove('hidden');
+                        document.getElementById('errorText').textContent = error.message;
+                    });
+            } else {
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('errorMessage').classList.remove('hidden');
+                document.getElementById('errorText').textContent = 'No verification token provided.';
+            }
+        });
+    </script>
+</body>
+
+</html>

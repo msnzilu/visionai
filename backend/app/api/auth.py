@@ -82,6 +82,14 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 # API Routes
 @router.post("/register", response_model=APIResponse)
 async def register(user_data: UserRegister, request: Request):
@@ -127,16 +135,16 @@ async def register(user_data: UserRegister, request: Request):
         if not referral_code:
             logger.warning("Could not generate unique referral code after 5 attempts")
         
-        # Create user document
+        # Create user document with verification pending
         user_doc = {
             "email": user_data.email,
             "password": hash_password(user_data.password),
             "first_name": user_data.first_name or "",
             "last_name": user_data.last_name or "",
-            "referral_code": referral_code,  # This can be None if generation failed
+            "referral_code": referral_code,
             "subscription_tier": "free",
             "is_active": True,
-            "is_verified": True,  # Simplified for testing
+            "is_verified": False,   # Require verification
             "created_at": datetime.utcnow(),
             "registration_ip": client_ip,
             "usage_stats": {
@@ -148,34 +156,24 @@ async def register(user_data: UserRegister, request: Request):
         result = await users_collection.insert_one(user_doc)
         user_doc["_id"] = result.inserted_id
         
-        # Create token using centralized function
-        token = create_access_token(str(result.inserted_id))
+        # detailed user creation for auth service hook? No, keep it simple here or use AuthService
         
-        # Create full_name for frontend compatibility
+        # Create verification token and send email
+        from app.services.auth_service import AuthService
+        verification_token = AuthService.create_verification_token(user_data.email)
+        
+        # Send verification email
         full_name = f"{user_doc['first_name']} {user_doc['last_name']}".strip()
-        if not full_name:
-            full_name = user_doc["email"].split("@")[0]  # Fallback to email prefix
-        
-        user_response = {
-            "id": str(user_doc["_id"]),
-            "email": user_doc["email"],
-            "first_name": user_doc["first_name"],
-            "last_name": user_doc["last_name"],
-            "full_name": full_name,
-            "referral_code": user_doc["referral_code"],  # Include referral code in response
-            "subscription_tier": user_doc["subscription_tier"],
-            "created_at": user_doc["created_at"].isoformat(),
-            "gmail_connected": False
-        }
+        await EmailService.send_verification_email(
+            email=user_data.email,
+            full_name=full_name,
+            verification_token=verification_token
+        )
         
         return APIResponse(
             success=True,
-            message="User registered successfully",
-            data={
-                "access_token": token,
-                "token_type": "bearer",
-                "user": user_response
-            }
+            message="Registration successful. Please check your email to verify your account.",
+            data=None # No tokens returned until verification
         )
         
     except Exception as e:
@@ -211,6 +209,13 @@ async def login(login_data: UserLogin):
             return APIResponse(
                 success=False,
                 message="Invalid email or password"
+            )
+            
+        # Check if user is verified
+        if not user.get("is_verified", False):
+            return APIResponse(
+                success=False,
+                message="Email not verified. Please check your inbox or request a new verification link."
             )
         
         # Determine token expiration based on remember_me
@@ -451,6 +456,70 @@ async def reset_password(request: ResetPasswordRequest):
     return APIResponse(
         success=result["success"],
         message=result["message"]
+    )
+
+
+
+@router.post("/verify-email", response_model=APIResponse)
+async def verify_email(request: VerifyEmailRequest):
+    """Verify user email with token"""
+    from app.services.auth_service import AuthService
+    
+    # Verify token
+    email = AuthService.verify_verification_token(request.token)
+    if not email:
+        return APIResponse(
+            success=False,
+            message="Invalid or expired verification token"
+        )
+        
+    # Mark user as verified
+    user = await AuthService.verify_user_email(email)
+    if not user:
+        return APIResponse(
+            success=False,
+            message="User not found or already verified"
+        )
+        
+    return APIResponse(
+        success=True,
+        message="Email verified successfully. You can now login."
+    )
+
+
+@router.post("/resend-verification", response_model=APIResponse)
+async def resend_verification(request: ResendVerificationRequest):
+    """Resend email verification link"""
+    users_collection = await get_users_collection()
+    user = await users_collection.find_one({"email": request.email})
+    
+    if not user:
+        # Return success to prevent email enumeration, but do nothing
+        return APIResponse(
+            success=True,
+            message="If an account exists, a verification link has been sent."
+        )
+        
+    if user.get("is_verified", False):
+        return APIResponse(
+            success=True,
+            message="Account is already verified. Please login."
+        )
+        
+    # Generate new token and send email
+    from app.services.auth_service import AuthService
+    verification_token = AuthService.create_verification_token(request.email)
+    
+    full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+    await EmailService.send_verification_email(
+        email=request.email,
+        full_name=full_name,
+        verification_token=verification_token
+    )
+    
+    return APIResponse(
+        success=True,
+        message="Verification link sent. Please check your email."
     )
 
 

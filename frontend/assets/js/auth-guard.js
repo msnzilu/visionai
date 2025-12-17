@@ -11,7 +11,9 @@
         'register.html',
         'auth-callback.html',
         '/', // root
-        ''   // empty (root)
+        '',   // empty (root)
+        'unsubscribe',
+        'preferences'
     ];
 
     // Get current page

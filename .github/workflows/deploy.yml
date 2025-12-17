@@ -152,7 +152,7 @@ jobs:
 
           # Database
           MONGODB_URL=mongodb://mongodb:27017
-          DATABASE_NAME=vision_ai
+          DATABASE_NAME=synovae_db
 
           # Redis
           REDIS_URL=redis://redis:6379/0
@@ -178,35 +178,28 @@ jobs:
           STRIPE_BASIC_PRICE_ID=${{ secrets.STRIPE_BASIC_PRICE_ID }}
           STRIPE_PREMIUM_PRICE_ID=${{ secrets.STRIPE_PREMIUM_PRICE_ID }}
 
-          # Email/SMTP
-          SMTP_HOST=smtp.gmail.com
-          SMTP_PORT=587
-          SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-          SMTP_USE_TLS=true
 
-          MAIL_USERNAME=${{ secrets.SMTP_USERNAME }}
-          MAIL_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-          MAIL_FROM=noreply@cvision.ai
-          MAIL_FROM_NAME=CVision AI
+          MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+          MAIL_FROM=noreply@synovae.io
+          MAIL_FROM_NAME=Synovae
           MAIL_PORT=587
-          MAIL_SERVER=smtp.gmail.com
+          MAIL_SERVER=smtp.privateemail.com
           MAIL_STARTTLS=true
           MAIL_SSL_TLS=false
-          SUPPORT_EMAIL=support@cvision.ai
-          COMPANY_NAME=CVision AI
+          SUPPORT_EMAIL=support@synovae.io
+          COMPANY_NAME=Synovae
 
           # OAuth
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REDIRECT_URI=https://visionsai.store/api/v1/auth/google/callback
-
           LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}
           LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
           LINKEDIN_REDIRECT_URI=https://visionsai.store/auth/linkedin/callback
 
           # Frontend
-          FRONTEND_URL=https://visionsai.store
+          FRONTEND_URL=https://synovae.io
 
           # Job Boards
           INDEED_PUBLISHER_ID=${{ secrets.INDEED_PUBLISHER_ID }}
@@ -240,10 +233,6 @@ jobs:
           REFERRALS_FOR_FREE_ATTEMPT=3
           BASIC_REFERRAL_BONUS=10
           PREMIUM_REFERRAL_BONUS=20
-
-          # Browser Automation
-          BROWSER_AUTOMATION_URL=http://automation:3000
-          AUTOMATION_SERVICE_TOKEN=${{ secrets.AUTOMATION_SERVICE_TOKEN }}
 
           # Machine Learning
           ML_MODEL_PATH=models

@@ -14,9 +14,10 @@ from app.database import get_database
 from app.models.user import User
 from app.workers.auto_apply import (
     enable_auto_apply_for_user,
-    calculate_job_match_score,
     trigger_single_user_test
 )
+from app.services.matching_service import matching_service
+
 from celery.result import AsyncResult
 import logging
 
@@ -298,98 +299,20 @@ async def get_suggested_roles(
     if not cv_data:
         return {"suggested_roles": [], "message": "Please upload your CV first"}
     
-    # Extract relevant info for role suggestions
+    suggested_roles = await matching_service.get_suggested_roles(cv_data)
+    
+    # Calculate stats for response
     skills = cv_data.get("skills", {})
     if isinstance(skills, dict):
-        all_skills = skills.get("technical", []) + skills.get("soft", [])
+        skill_count = len(skills.get("technical", [])) + len(skills.get("soft", []))
     else:
-        all_skills = skills if isinstance(skills, list) else []
-    
-    experience = cv_data.get("experience", [])
-    current_role = None
-    if experience and len(experience) > 0:
-        current_role = experience[0].get("title")
-    
-    professional_summary = cv_data.get("professional_summary", "")
-    
-    # Build suggested roles based on skills and experience
-    suggested_roles = []
-    
-    # 1. Add current/recent role if exists
-    if current_role:
-        suggested_roles.append({
-            "title": current_role,
-            "reason": "Your current role",
-            "match_type": "current"
-        })
-    
-    # 2. Add previous roles (unique)
-    seen_roles = {current_role.lower() if current_role else ""}
-    for exp in experience[1:4]:  # Next 3 previous roles
-        title = exp.get("title")
-        if title and title.lower() not in seen_roles:
-            suggested_roles.append({
-                "title": title,
-                "reason": "Previous experience",
-                "match_type": "experience"
-            })
-            seen_roles.add(title.lower())
-    
-    # 3. Suggest roles based on skills
-    skill_based_roles = _suggest_roles_from_skills(all_skills)
-    for role in skill_based_roles:
-        if role["title"].lower() not in seen_roles:
-            suggested_roles.append(role)
-            seen_roles.add(role["title"].lower())
-    
-    return {
-        "suggested_roles": suggested_roles[:8],  # Limit to 8 suggestions
-        "skills_analyzed": len(all_skills),
-        "experience_count": len(experience)
-    }
-
-
-def _suggest_roles_from_skills(skills: list) -> list:
-    """
-    Map skills to suggested job roles
-    """
-    skills_lower = [s.lower() for s in skills if isinstance(s, str)]
-    suggested = []
-    
-    # Role mappings based on skill combinations
-    role_mappings = {
-        "Full Stack Developer": ["javascript", "python", "react", "node", "sql", "html", "css"],
-        "Frontend Developer": ["react", "vue", "angular", "javascript", "typescript", "css", "html"],
-        "Backend Developer": ["python", "java", "node", "sql", "api", "django", "flask", "spring"],
-        "Data Scientist": ["python", "machine learning", "pandas", "numpy", "tensorflow", "data analysis"],
-        "Data Engineer": ["python", "sql", "spark", "etl", "airflow", "data pipeline"],
-        "DevOps Engineer": ["docker", "kubernetes", "aws", "azure", "ci/cd", "terraform", "jenkins"],
-        "Cloud Engineer": ["aws", "azure", "gcp", "cloud", "terraform", "kubernetes"],
-        "Mobile Developer": ["android", "ios", "react native", "flutter", "swift", "kotlin"],
-        "Product Manager": ["product management", "agile", "scrum", "roadmap", "stakeholder"],
-        "Project Manager": ["project management", "agile", "scrum", "jira", "planning"],
-        "UI/UX Designer": ["figma", "sketch", "user experience", "user interface", "wireframe"],
-        "QA Engineer": ["testing", "selenium", "qa", "automation", "quality assurance"],
-        "Machine Learning Engineer": ["machine learning", "tensorflow", "pytorch", "deep learning", "nlp"],
-        "Security Engineer": ["security", "penetration", "cybersecurity", "vulnerability", "compliance"],
-        "Software Engineer": ["programming", "software development", "coding", "algorithms"]
-    }
-    
-    for role, required_skills in role_mappings.items():
-        matching_skills = [s for s in required_skills if any(s in skill for skill in skills_lower)]
-        match_ratio = len(matching_skills) / len(required_skills) if required_skills else 0
+        skill_count = len(skills) if isinstance(skills, list) else 0
         
-        if match_ratio >= 0.3:  # At least 30% skill match
-            suggested.append({
-                "title": role,
-                "reason": f"Matches {len(matching_skills)} of your skills",
-                "match_type": "skills",
-                "match_score": round(match_ratio * 100)
-            })
-    
-    # Sort by match score
-    suggested.sort(key=lambda x: x.get("match_score", 0), reverse=True)
-    return suggested[:5]  # Return top 5
+    return {
+        "suggested_roles": suggested_roles,
+        "skills_analyzed": skill_count,
+        "experience_count": len(cv_data.get("experience", []))
+    }
 
 
 @router.get("/cv-data")
@@ -462,36 +385,15 @@ async def get_matching_jobs(
             detail="Please upload your CV first"
         )
     
-    # Get jobs user hasn't applied to
-    applications_collection = db["applications"]
-    applied_job_ids = await applications_collection.distinct("job_id", {"user_id": user_id})
+    # Use matching service to find jobs
+    # Note: We need to inject the db into the service or ensure it's initialized
+    matching_service.db = db
+    matching_jobs = await matching_service.find_matching_jobs(user_id, cv_data, limit=limit)
     
-    # Get recent active jobs
-    jobs_collection = db["jobs"]
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    
-    jobs = await jobs_collection.find({
-        "_id": {"$nin": [ObjectId(jid) for jid in applied_job_ids if ObjectId.is_valid(jid)]},
-        "is_active": True,
-        "created_at": {"$gte": seven_days_ago}
-    }).limit(limit * 2).to_list(length=limit * 2)
-    
-    # Calculate match scores for each job
-    user_cv = {
-        "user_id": user_id,
-        "full_name": current_user.get("full_name"),
-        "skills": cv_data.get("skills", []),
-        "experience": cv_data.get("experience", []),
-        "education": cv_data.get("education", []),
-        "years_of_experience": cv_data.get("years_of_experience", 0)
-    }
-    
-    jobs_with_scores = []
-    for job in jobs:
-        # Simple match score calculation (can be enhanced with AI)
-        score = await calculate_simple_match_score(user_cv, job)
-        
-        jobs_with_scores.append({
+    # Format for response
+    formatted_jobs = []
+    for job in matching_jobs:
+        formatted_jobs.append({
             "_id": str(job["_id"]),
             "title": job.get("title", ""),
             "company": job.get("company", ""),
@@ -500,46 +402,11 @@ async def get_matching_jobs(
             "description": job.get("description", ""),
             "requirements": job.get("requirements", ""),
             "created_at": job.get("created_at"),
-            "match_score": score,
+            "match_score": job.get("match_score", 0),
             "applied": False
         })
     
-    # Sort by match score
-    jobs_with_scores.sort(key=lambda x: x["match_score"], reverse=True)
-    
-    return jobs_with_scores[:limit]
-
-
-async def calculate_simple_match_score(user_cv: dict, job: dict) -> float:
-    """
-    Simple match score calculation based on skills overlap
-    Can be enhanced with OpenAI for better accuracy
-    """
-    user_skills = set([s.lower() for s in user_cv.get("skills", [])])
-    
-    # Extract skills from job description and requirements
-    job_text = (job.get("description", "") + " " + job.get("requirements", "")).lower()
-    
-    # Count skill matches
-    matches = sum(1 for skill in user_skills if skill in job_text)
-    total_skills = len(user_skills)
-    
-    if total_skills == 0:
-        return 0.5  # Default score if no skills
-    
-    # Calculate base score
-    base_score = matches / total_skills
-    
-    # Adjust for experience level
-    required_exp = job.get("experience_years", 0)
-    user_exp = user_cv.get("years_of_experience", 0)
-    
-    if required_exp > 0:
-        exp_match = min(user_exp / required_exp, 1.5) / 1.5
-        base_score = (base_score + exp_match) / 2
-    
-    # Clamp between 0 and 1
-    return min(max(base_score, 0.0), 1.0)
+    return formatted_jobs
 
 
 @router.put("/settings")
