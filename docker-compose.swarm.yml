@@ -21,7 +21,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       
       # Application URLs
-      - FRONTEND_URL=https://visionsai.store
+      - FRONTEND_URL=https://synovae.io
     secrets:
       - OPENAI_API_KEY
       - STRIPE_SECRET_KEY
@@ -122,7 +122,7 @@ services:
       - DATABASE_NAME=synovae_db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - FRONTEND_URL=https://visionsai.store
+      - FRONTEND_URL=https://synovae.io
     secrets:
       - OPENAI_API_KEY
       - STRIPE_SECRET_KEY
