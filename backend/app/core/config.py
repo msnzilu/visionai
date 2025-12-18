@@ -52,7 +52,7 @@ def get_secret(secret_name: str, default: Optional[str] = None) -> Optional[str]
 
 class Settings(BaseSettings):
     # Project information
-    PROJECT_NAME: str = Field(default="VisionAI", env="PROJECT_NAME")
+    PROJECT_NAME: str = Field(default="Synovae", env="PROJECT_NAME")
     PROJECT_DESCRIPTION: str = "Comprehensive AI-powered job application automation platform"
     PROJECT_VERSION: str = Field(default="1.0.0", env="PROJECT_VERSION")
     
@@ -75,8 +75,8 @@ class Settings(BaseSettings):
     REMEMBER_ME_REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(default=43200, env="REMEMBER_ME_REFRESH_TOKEN_EXPIRE_MINUTES")  # 30 days
 
     # CORS & Allowed Hosts
-    CORS_ORIGINS_RAW: Union[str, List[str]] = Field(default='["http://localhost", "http://localhost:80", "http://localhost:3000", "https://visionsai.store", "https://www.visionsai.store"]', alias="CORS_ORIGINS")
-    ALLOWED_HOSTS: List[str] = ["*"]
+    CORS_ORIGINS_RAW: Union[str, List[str]] = Field(default='["http://localhost", "http://localhost:80", "http://localhost:3000", "https://synovae.io", "https://www.synovae.io"]', alias="CORS_ORIGINS")
+    ALLOWED_HOSTS: List[str] = ["synovae.io", "www.synovae.io", "localhost", "localhost:80", "localhost:8000"]
     
     @property
     def CORS_ORIGINS(self) -> List[str]:
@@ -147,18 +147,17 @@ class Settings(BaseSettings):
     COMPANY_NAME: str = Field(default="Synovae", env="COMPANY_NAME")
     
 
-
     # OAuth - REQUIRED for Google/LinkedIn login
     GOOGLE_CLIENT_ID: str = Field(default_factory=lambda: get_secret("GOOGLE_CLIENT_ID", ""))
     GOOGLE_CLIENT_SECRET: str = Field(default_factory=lambda: get_secret("GOOGLE_CLIENT_SECRET", ""))
-    GOOGLE_REDIRECT_URI: str = Field(default="https://visionsai.store/api/v1/auth/google/callback", env="GOOGLE_REDIRECT_URI")
+    GOOGLE_REDIRECT_URI: str = Field(default="https://synovae.io/api/v1/auth/google/callback", env="GOOGLE_REDIRECT_URI")
     
     LINKEDIN_CLIENT_ID: Optional[str] = Field(default=None, env="LINKEDIN_CLIENT_ID")
     LINKEDIN_CLIENT_SECRET: Optional[str] = Field(default=None, env="LINKEDIN_CLIENT_SECRET")
-    LINKEDIN_REDIRECT_URI: str = Field(default="https://visionsai.store/api/auth/linkedin/callback", env="LINKEDIN_REDIRECT_URI")
+    LINKEDIN_REDIRECT_URI: str = Field(default="https://synovae.io/api/auth/linkedin/callback", env="LINKEDIN_REDIRECT_URI")
     
     # Frontend URL
-    FRONTEND_URL: str = Field(default="https://visionsai.store", env="FRONTEND_URL")
+    FRONTEND_URL: str = Field(default="https://synovae.io", env="FRONTEND_URL")
 
     # Job board APIs - Optional (for job scraping)
     INDEED_PUBLISHER_ID: Optional[str] = Field(default=None, env="INDEED_PUBLISHER_ID")

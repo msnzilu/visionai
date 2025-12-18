@@ -144,7 +144,7 @@ jobs:
           PASSWORD_RESET_TOKEN_EXPIRE_HOURS=24
 
           # CORS
-          CORS_ORIGINS=["https://visionsai.store"]
+          CORS_ORIGINS=["https://synovae.io"]
 
           # AWS
           AWS_ACESS_KEY_SECRET=${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -193,10 +193,10 @@ jobs:
           # OAuth
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REDIRECT_URI=https://visionsai.store/api/v1/auth/google/callback
+          GOOGLE_REDIRECT_URI=https://synovae.io/api/v1/auth/google/callback
           LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}
           LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
-          LINKEDIN_REDIRECT_URI=https://visionsai.store/auth/linkedin/callback
+          LINKEDIN_REDIRECT_URI=https://synovae.io/auth/linkedin/callback
 
           # Frontend
           FRONTEND_URL=https://synovae.io
@@ -439,7 +439,7 @@ jobs:
 
             echo "=== External Health Check ==="
             sleep 10
-            curl -f --connect-timeout 10 https://visionsai.store/api/v1/health || echo "External check failed, but continuing..."
+            curl -f --connect-timeout 10 https://synovae.io/api/v1/health || echo "External check failed, but continuing..."
             
             echo "Verification complete!"
           ENDSSH
@@ -460,7 +460,7 @@ jobs:
       - name: Send notification
         run: |
           if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ Deployment to visionsai.store completed!"
+            echo "✅ Deployment to synovae.io completed!"
           else
             echo "⚠️  Deployment completed with warnings - check logs!"
           fi

@@ -1,9 +1,9 @@
 services:
   mongo:
     image: mongo:7.0
-    container_name: vision_ai_mongo
+    container_name: synovae_db_mongo
     environment:
-      MONGO_INITDB_DATABASE: vision_ai
+      MONGO_INITDB_DATABASE: synovae_db
     volumes:
       - mongo_data:/data/db
     ports:
@@ -11,7 +11,7 @@ services:
     networks:
       - vision_ai_network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/vision_ai
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/synovae_db
       interval: 10s
       timeout: 5s
       retries: 5
@@ -66,7 +66,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=mongodb://mongo:27017/vision_ai
+      - DATABASE_URL=mongodb://mongo:27017/synovae_db
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - mongo
@@ -86,7 +86,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=mongodb://mongo:27017/vision_ai
+      - DATABASE_URL=mongodb://mongo:27017/synovae_db
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - mongo
