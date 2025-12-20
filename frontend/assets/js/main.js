@@ -156,7 +156,7 @@ const Utils = {
 
     // Get appropriate login URL based on current context
     getLoginUrl() {
-        return window.location.pathname.includes('/admin/') ? '/admin/login.html' : '/login.html';
+        return window.location.pathname.includes('/admin/') ? '/admin/login' : '/login';
     }
 };
 
@@ -349,7 +349,7 @@ const API = {
 // Auth guard for protected pages
 function requireAuth() {
     if (!Utils.isAuthenticated()) {
-        window.location.href = 'login.html';
+        window.location.href = '/login';
         return false;
     }
     return true;
@@ -374,11 +374,12 @@ function logout() {
 
 // Redirect authenticated users away from public pages
 function redirectIfAuthenticated() {
-    const publicPages = ['login.html', 'register.html'];
-    const currentPage = window.location.pathname.split('/').pop();
+    const publicPages = ['login', 'register'];
+    const path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+    const currentPage = path.split('/').pop().replace(/\.html$/, '') || 'index';
 
     if (publicPages.includes(currentPage) && Utils.isAuthenticated()) {
-        window.location.href = '/dashboard.html';
+        window.location.href = '/dashboard';
     }
 }
 
@@ -401,17 +402,10 @@ window.addEventListener('unhandledrejection', (e) => {
 
 // Load public navbar component
 async function loadPublicNavbar() {
-    const navbarContainer = document.getElementById('public-navbar-container');
-    if (navbarContainer) {
-        try {
-            const response = await fetch('/components/public-navbar.html');
-            if (response.ok) {
-                const html = await response.text();
-                navbarContainer.innerHTML = html;
-            }
-        } catch (error) {
-            console.error('Failed to load public navbar:', error);
-        }
+    if (window.PublicNavbar) {
+        await PublicNavbar.load('public-navbar-container');
+    } else {
+        console.warn('PublicNavbar component not loaded');
     }
 }
 

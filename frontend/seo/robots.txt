@@ -1,0 +1,53 @@
+# robots.txt for VisionAI
+
+# Allow all search engines to crawl public pages
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /features.html
+Allow: /pricing.html
+Allow: /how-it-works.html
+Allow: /contact.html
+Allow: /help.html
+Allow: legal/privacy.html
+Allow: legal/terms.html
+
+# Block private/authenticated pages
+Disallow: /dashboard.html
+Disallow: /login.html
+Disallow: /register.html
+Disallow: /reset-password.html
+Disallow: /auth-callback.html
+Disallow: /verify-email.html
+Disallow: /verification-pending.html
+Disallow: /unsubscribe.html
+
+# Block admin section
+Disallow: /admin/
+Disallow: /profile/
+
+# Block test and debug files
+Disallow: /test.html
+Disallow: /test-modal.html
+Disallow: /debug-quick-apply.html
+
+# Block internal directories
+Disallow: /components/
+Disallow: /.github/
+Disallow: /.vs/
+Disallow: /logs/
+
+# Block sensitive files
+Disallow: /*.log
+Disallow: /*.txt$
+Disallow: /verification*.txt
+Disallow: /verification*.log
+
+# Allow access to assets
+Allow: /assets/
+
+# Sitemap location
+Sitemap: https://synovae.io/sitemap.xml
+
+# Crawl-delay (optional - only if you want to limit crawl rate)
+# Crawl-delay: 10

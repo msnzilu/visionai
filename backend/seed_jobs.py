@@ -17,7 +17,7 @@ async def seed_jobs():
         {
             "title": "Security Engineer",
             "external_id": "seed_job_011",
-            "description": "Protect our infrastructure and applications from security threats. Conduct penetration testing and security audits. " * 5,
+            "description": "Protect our infrastructure and applications from security threats. Conduct penetration testing and security audits. ",
             "company_name": "SecureNet",
             "location": "Washington, DC",
             "employment_type": "full_time",
@@ -71,7 +71,7 @@ async def seed_jobs():
         {
             "title": "Mobile Developer (iOS)",
             "external_id": "seed_job_012",
-            "description": "Build beautiful native iOS applications for millions of users. Work with latest Swift and SwiftUI technologies. " * 5,
+            "description": "Build beautiful native iOS applications for millions of users. Work with latest Swift and SwiftUI technologies. ",
             "company_name": "AppVenture",
             "location": "San Jose, CA",
             "employment_type": "full_time",
@@ -125,7 +125,7 @@ async def seed_jobs():
         {
             "title": "Blockchain Developer",
             "external_id": "seed_job_013",
-            "description": "Develop smart contracts and decentralized applications on Ethereum. Work on cutting-edge Web3 projects. " * 5,
+            "description": "Develop smart contracts and decentralized applications on Ethereum. Work on cutting-edge Web3 projects. ",
             "company_name": "CryptoBuilders",
             "location": "Remote",
             "employment_type": "contract",
@@ -178,7 +178,7 @@ async def seed_jobs():
         {
             "title": "QA Automation Engineer",
             "external_id": "seed_job_014",
-            "description": "Design and implement automated testing frameworks for web and mobile applications. Ensure quality across all platforms. " * 5,
+            "description": "Design and implement automated testing frameworks for web and mobile applications. Ensure quality across all platforms. ",
             "company_name": "TestPro",
             "location": "Seattle, WA",
             "employment_type": "full_time",
@@ -231,7 +231,7 @@ async def seed_jobs():
         {
             "title": "AI Research Scientist",
             "external_id": "seed_job_015",
-            "description": "Conduct cutting-edge research in natural language processing and computer vision. Publish in top-tier conferences. " * 5,
+            "description": "Conduct cutting-edge research in natural language processing and computer vision. Publish in top-tier conferences. ",
             "company_name": "Neural Labs",
             "location": "Cambridge, MA",
             "employment_type": "full_time",
@@ -285,7 +285,7 @@ async def seed_jobs():
         {
             "title": "Game Developer (Unity)",
             "external_id": "seed_job_016",
-            "description": "Create immersive gaming experiences using Unity engine. Work on AAA mobile and PC games. " * 5,
+            "description": "Create immersive gaming experiences using Unity engine. Work on AAA mobile and PC games. ",
             "company_name": "PixelForge Studios",
             "location": "Los Angeles, CA",
             "employment_type": "full_time",
@@ -339,7 +339,7 @@ async def seed_jobs():
         {
             "title": "Cloud Architect",
             "external_id": "seed_job_017",
-            "description": "Design and implement scalable cloud infrastructure for enterprise clients. Lead cloud migration projects. " * 5,
+            "description": "Design and implement scalable cloud infrastructure for enterprise clients. Lead cloud migration projects. ",
             "company_name": "CloudVerse",
             "location": "Remote",
             "employment_type": "full_time",
@@ -393,7 +393,7 @@ async def seed_jobs():
         {
             "title": "Data Engineer",
             "external_id": "seed_job_018",
-            "description": "Build and maintain data pipelines and infrastructure. Work with petabyte-scale datasets. " * 5,
+            "description": "Build and maintain data pipelines and infrastructure. Work with petabyte-scale datasets. ",
             "company_name": "DataStream Inc",
             "location": "New York, NY",
             "employment_type": "full_time",
@@ -447,7 +447,7 @@ async def seed_jobs():
         {
             "title": "Site Reliability Engineer",
             "external_id": "seed_job_019",
-            "description": "Ensure high availability and performance of production systems. Build monitoring and alerting infrastructure. " * 5,
+            "description": "Ensure high availability and performance of production systems. Build monitoring and alerting infrastructure. ",
             "company_name": "ReliableOps",
             "location": "San Francisco, CA",
             "employment_type": "full_time",
@@ -501,7 +501,7 @@ async def seed_jobs():
         {
             "title": "Mobile Developer (Android)",
             "external_id": "seed_job_020",
-            "description": "Develop native Android applications using Kotlin and Jetpack Compose. Build features for millions of users. " * 5,
+            "description": "Develop native Android applications using Kotlin and Jetpack Compose. Build features for millions of users. ",
             "company_name": "MobileFusion",
             "location": "Austin, TX",
             "employment_type": "full_time",
@@ -555,7 +555,7 @@ async def seed_jobs():
         {
             "title": "Business Intelligence Analyst",
             "external_id": "seed_job_021",
-            "description": "Transform data into actionable insights. Build dashboards and reports for executive leadership. " * 5,
+            "description": "Transform data into actionable insights. Build dashboards and reports for executive leadership. ",
             "company_name": "Insights Analytics",
             "location": "Chicago, IL",
             "employment_type": "full_time",
@@ -609,7 +609,7 @@ async def seed_jobs():
         {
             "title": "Solutions Architect",
             "external_id": "seed_job_022",
-            "description": "Design technical solutions for enterprise clients. Work with sales and engineering teams. " * 5,
+            "description": "Design technical solutions for enterprise clients. Work with sales and engineering teams. ",
             "company_name": "Enterprise Solutions Co",
             "location": "Boston, MA",
             "employment_type": "full_time",
@@ -663,7 +663,7 @@ async def seed_jobs():
         {
             "title": "Backend Engineer (Go)",
             "external_id": "seed_job_023",
-            "description": "Build high-performance backend services using Go. Work on distributed systems and microservices. " * 5,
+            "description": "Build high-performance backend services using Go. Work on distributed systems and microservices. ",
             "company_name": "SpeedTech",
             "location": "Remote",
             "employment_type": "full_time",
@@ -717,7 +717,7 @@ async def seed_jobs():
         {
             "title": "Network Engineer",
             "external_id": "seed_job_024",
-            "description": "Design and maintain enterprise network infrastructure. Implement security and performance optimizations. " * 5,
+            "description": "Design and maintain enterprise network infrastructure. Implement security and performance optimizations. ",
             "company_name": "NetWorks Global",
             "location": "Dallas, TX",
             "employment_type": "full_time",
@@ -771,7 +771,7 @@ async def seed_jobs():
         {
             "title": "React Native Developer",
             "external_id": "seed_job_025",
-            "description": "Build cross-platform mobile applications with React Native. Deliver pixel-perfect UIs. " * 5,
+            "description": "Build cross-platform mobile applications with React Native. Deliver pixel-perfect UIs. ",
             "company_name": "CrossPlatform Apps",
             "location": "Remote",
             "employment_type": "contract",
@@ -824,7 +824,7 @@ async def seed_jobs():
         {
             "title": "Salesforce Developer",
             "external_id": "seed_job_026",
-            "description": "Customize and extend Salesforce platform. Build Lightning Web Components and Apex solutions. " * 5,
+            "description": "Customize and extend Salesforce platform. Build Lightning Web Components and Apex solutions. ",
             "company_name": "CRM Solutions Inc",
             "location": "Miami, FL",
             "employment_type": "full_time",
@@ -878,7 +878,7 @@ async def seed_jobs():
         {
             "title": "Computer Vision Engineer",
             "external_id": "seed_job_027",
-            "description": "Develop computer vision systems for autonomous vehicles. Work with cutting-edge AI technologies. " * 5,
+            "description": "Develop computer vision systems for autonomous vehicles. Work with cutting-edge AI technologies. ",
             "company_name": "AutoVision AI",
             "location": "Palo Alto, CA",
             "employment_type": "full_time",
@@ -932,7 +932,7 @@ async def seed_jobs():
         {
             "title": "Hardware Engineer",
             "external_id": "seed_job_028",
-            "description": "Design and test electronic hardware systems. Work on IoT devices and embedded systems. " * 5,
+            "description": "Design and test electronic hardware systems. Work on IoT devices and embedded systems. ",
             "company_name": "IoT Devices Corp",
             "location": "San Diego, CA",
             "employment_type": "full_time",
@@ -986,7 +986,7 @@ async def seed_jobs():
         {
             "title": "Engineering Manager",
             "external_id": "seed_job_029",
-            "description": "Lead a team of software engineers building next-generation products. Balance technical and people management. " * 5,
+            "description": "Lead a team of software engineers building next-generation products. Balance technical and people management. ",
             "company_name": "GrowthTech",
             "location": "Seattle, WA",
             "employment_type": "full_time",
@@ -1040,7 +1040,7 @@ async def seed_jobs():
         {
             "title": "WordPress Developer",
             "external_id": "seed_job_030",
-            "description": "Build custom WordPress themes and plugins for agency clients. Optimize performance and security. " * 5,
+            "description": "Build custom WordPress themes and plugins for agency clients. Optimize performance and security. ",
             "company_name": "WebCraft Agency",
             "location": "Remote",
             "employment_type": "contract",

@@ -46,39 +46,39 @@ const LandingConfig = {
             price: '$0',
             period: 'per month',
             features: [
-                { text: '1 job search per month', included: true },
-                { text: 'Up to 3 jobs per search', included: true },
+                { text: 'Upto 2 manual job applications', included: true },
+                { text: 'Upto 0 automated aplications', included: true },
                 { text: 'Basic CV customization', included: true },
                 { text: 'Watermarked documents', included: false }
             ],
             buttonText: 'Get Started',
-            buttonLink: 'register.html',
+            buttonLink: '/register',
             highlight: false
         },
         {
             name: 'Basic',
-            price: '$20',
+            price: '$19.99',
             period: 'per month',
             features: [
-                { text: '150 searches per month', included: true },
-                { text: 'Up to 10 jobs per search', included: true },
+                { text: 'Upto 15 daily manual job applications', included: true },
+                { text: 'Upto 7 daily automated applications', included: true },
                 { text: 'Premium CV templates', included: true },
                 { text: 'No watermarks', included: true },
                 { text: 'Basic auto-fill', included: true }
             ],
             buttonText: 'Start Trial',
-            buttonLink: 'register.html',
+            buttonLink: '/register',
             highlight: true,
             highlightText: 'Most Popular'
         },
         {
             name: 'Premium',
-            price: '$49',
+            price: '$39.99',
             period: 'per month',
             features: [
-                { text: '200 searches per month', included: true },
-                { text: 'All platform features', included: true },
-                { text: 'Priority support', included: true },
+                { text: 'Upto 25 daily manual applications per month', included: true },
+                { text: 'Upto 15 daily automated applications', included: true },
+                { text: 'Application Monitoring', included: true },
                 { text: 'Advanced analytics', included: true },
                 { text: 'Full automation', included: true }
             ],
@@ -199,7 +199,7 @@ const Landing = {
                     }));
 
                     // Redirect to login with file upload intent
-                    window.location.href = 'login.html';
+                    window.location.href = '/login';
                 } else {
                     CVision.Utils.showAlert('Please upload your CV first', 'warning');
                 }

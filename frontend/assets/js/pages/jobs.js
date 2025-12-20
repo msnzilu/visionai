@@ -81,21 +81,21 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 function populateFromURLParams() {
     const urlParams = new URLSearchParams(window.location.search);
-    
+
     // Populate search query
     const search = urlParams.get('search');
     if (search) {
         document.getElementById('searchQuery').value = decodeURIComponent(search);
         currentQuery = decodeURIComponent(search);
     }
-    
+
     // Populate location
     const location = urlParams.get('location');
     if (location) {
         document.getElementById('searchLocation').value = decodeURIComponent(location);
         currentLocation = decodeURIComponent(location);
     }
-    
+
     // Populate employment type checkboxes
     const employmentType = urlParams.get('employment_type');
     if (employmentType) {
@@ -105,7 +105,7 @@ function populateFromURLParams() {
             if (checkbox) checkbox.checked = true;
         });
     }
-    
+
     // Populate work arrangement checkboxes
     const workArrangement = urlParams.get('work_arrangement');
     if (workArrangement) {
@@ -115,18 +115,18 @@ function populateFromURLParams() {
             if (checkbox) checkbox.checked = true;
         });
     }
-    
+
     // Populate salary range
     const salaryMin = urlParams.get('salary_min');
     if (salaryMin) {
         document.getElementById('salaryMin').value = salaryMin;
     }
-    
+
     const salaryMax = urlParams.get('salary_max');
     if (salaryMax) {
         document.getElementById('salaryMax').value = salaryMax;
     }
-    
+
     // If search or filters are populated, trigger search automatically
     if (search || location || employmentType || workArrangement || salaryMin || salaryMax) {
         // Small delay to ensure DOM is ready
@@ -218,7 +218,6 @@ async function loadJobsFromDB() {
     try {
         showLoading();
 
-        // FIXED: Properly structure the request body to match JobSearch model
         const response = await fetch(`${API_BASE_URL}/api/v1/jobs/search`, {
             method: 'POST',
             headers: {
@@ -226,9 +225,9 @@ async function loadJobsFromDB() {
                 'Authorization': `Bearer ${CVision.Utils.getToken()}`
             },
             body: JSON.stringify({
-                query: null,  // FIXED: Added required field
-                location: null,  // FIXED: Added required field
-                filters: null,  // FIXED: Added required field
+                query: null,
+                location: null,
+                filters: null,
                 page: 1,
                 size: 20,
                 sort_by: 'created_at',
@@ -244,12 +243,14 @@ async function loadJobsFromDB() {
 
         const data = await response.json();
         currentJobs = data.jobs || [];
-        window.currentJobs = currentJobs; // Expose globally for JobApply.js
+        window.currentJobs = currentJobs;
+
+        // Sync with JobCard component
+        if (window.JobCard) window.JobCard.setJobs(currentJobs);
 
         document.getElementById('loadingState').classList.add('hidden');
 
         if (currentJobs.length === 0) {
-            // Show message encouraging user to add jobs
             document.getElementById('resultsCount').textContent = 'No jobs in database yet.';
             showEmptyStateWithSearchPrompt();
         } else {
@@ -259,7 +260,7 @@ async function loadJobsFromDB() {
                 updatePagination(data.page || 1, data.pages);
             }
 
-            // Fetch saved jobs to check for generated documents
+            // Sync saved status
             try {
                 const savedResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/saved/me?size=100`, {
                     headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
@@ -272,27 +273,17 @@ async function loadJobsFromDB() {
                     savedJobs.forEach(savedJob => {
                         const jobIndex = currentJobs.findIndex(j => (j._id || j.id) === (savedJob._id || savedJob.id));
                         if (jobIndex !== -1) {
-                            // Mark as saved for UI
                             currentJobs[jobIndex].is_saved = true;
                             needsUpdate = true;
 
-                            // Merge generated paths if they exist
-                            if (savedJob.generated_cv_path) {
-                                currentJobs[jobIndex].generated_cv_path = savedJob.generated_cv_path;
-                            }
-                            if (savedJob.generated_cover_letter_path) {
-                                currentJobs[jobIndex].generated_cover_letter_path = savedJob.generated_cover_letter_path;
-                            }
-                            if (savedJob.generated_cv_id) {
-                                currentJobs[jobIndex].generated_cv_id = savedJob.generated_cv_id;
-                            }
-                            if (savedJob.generated_cover_letter_id) {
-                                currentJobs[jobIndex].generated_cover_letter_id = savedJob.generated_cover_letter_id;
-                            }
+                            // Merge generated paths
+                            if (savedJob.generated_cv_path) currentJobs[jobIndex].generated_cv_path = savedJob.generated_cv_path;
+                            if (savedJob.generated_cover_letter_path) currentJobs[jobIndex].generated_cover_letter_path = savedJob.generated_cover_letter_path;
                         }
                     });
 
                     if (needsUpdate) {
+                        if (window.JobCard) window.JobCard.setJobs(currentJobs);
                         displayJobs(currentJobs);
                     }
                 }
@@ -405,6 +396,9 @@ async function performSearch(page = 1, sortBy = 'relevance') {
         const data = await response.json();
         currentJobs = data.jobs || [];
 
+        // Sync with JobCard component
+        if (window.JobCard) window.JobCard.setJobs(currentJobs);
+
         if (currentJobs.length === 0) {
             showEmptyState();
         } else {
@@ -490,276 +484,19 @@ function displayJobs(jobs) {
     document.getElementById('emptyState').classList.add('hidden');
     document.getElementById('loadingState').classList.add('hidden');
 
+    if (!window.JobCard) {
+        console.error('JobCard component not found');
+        return;
+    }
+
     jobs.forEach(job => {
-        const jobCard = createJobCard(job);
+        const jobCard = window.JobCard.render(job);
         container.appendChild(jobCard);
     });
 }
 
-
-function decodeHtmlEntities(text) {
-    if (!text) return '';
-    const textArea = document.createElement('textarea');
-    textArea.innerHTML = text;
-    return textArea.value;
-}
-
-function createJobCard(job) {
-    const card = document.createElement('div');
-    card.className = 'job-card bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 relative overflow-hidden group flex flex-col h-full';
-
-    // Match Score Gradient Border (Optional)
-    const matchBorder = job.match_score
-        ? `<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-primary-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>`
-        : '';
-
-    // Batch Selection Checkbox
-    const batchCheckboxHTML = batchModeActive ? `
-        <div class="absolute top-4 left-4 z-10">
-            <input type="checkbox" 
-                   class="job-select-checkbox w-5 h-5 rounded text-primary-600 border-gray-300 focus:ring-primary-500" 
-                   onchange="toggleJobSelection('${job._id || job.id}', this)">
-        </div>
-    ` : '';
-
-    // Header Section
-    const matchBadge = job.match_score
-        ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/></svg>
-             ${Math.round(job.match_score * 100)}% Match
-           </span>`
-        : '';
-
-    card.innerHTML = `
-        ${matchBorder}
-        ${batchCheckboxHTML}
-        
-        <div class="p-6 flex-1 flex flex-col cursor-pointer" onclick="showJobDetails('${job._id || job.id}')">
-            <!-- Header: Title & Company -->
-            <div class="flex justify-between items-start mb-4 ${batchModeActive ? 'ml-8' : ''}">
-                <div class="flex-1 min-w-0 pr-4">
-                    <div class="flex items-center gap-2 mb-1">
-                        ${matchBadge}
-                        <span class="text-xs text-gray-500 flex items-center">
-                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            ${formatDate(job.posted_date || job.created_at)}
-                        </span>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 leading-tight group-hover:text-primary-600 transition-colors line-clamp-2" title="${decodeHtmlEntities(job.title)}">
-                        ${decodeHtmlEntities(job.title)}
-                    </h3>
-                    <p class="text-base text-gray-600 font-medium mt-1 truncate">${decodeHtmlEntities(job.company_name)}</p>
-                </div>
-                <button class="save-job-btn p-2 rounded-full hover:bg-gray-100 ${job.is_saved ? 'text-primary-600' : 'text-gray-400'} hover:text-primary-600 transition-colors flex-shrink-0" 
-                        onclick="event.stopPropagation(); saveJob('${job._id || job.id}')" title="${job.is_saved ? 'Saved' : 'Save Job'}">
-                    ${job.is_saved ? `
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                    </svg>
-                    ` : `
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                    </svg>
-                    `}
-                </button>
-            </div>
-
-            <!-- Metadata Row -->
-            <div class="flex flex-wrap items-center gap-y-2 gap-x-4 text-sm text-gray-500 mb-4 ${batchModeActive ? 'ml-8' : ''}">
-                <div class="flex items-center">
-                    <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    ${decodeHtmlEntities(job.location)}
-                </div>
-                ${job.salary_range ? `
-                    <div class="flex items-center">
-                        <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        ${job.salary_range.min ? `${job.salary_range.min} - ` : ''}${job.salary_range.max} ${job.salary_range.currency || ''}
-                    </div>
-                ` : ''}
-            </div>
-
-            <!-- Tags -->
-            <div class="flex flex-wrap gap-2 mb-4 ${batchModeActive ? 'ml-8' : ''}">
-                ${job.employment_type ? `<span class="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-100">${formatEnumValue(job.employment_type)}</span>` : ''}
-                ${job.work_arrangement ? `<span class="px-2.5 py-0.5 bg-purple-50 text-purple-700 rounded-md text-xs font-medium border border-purple-100">${formatEnumValue(job.work_arrangement)}</span>` : ''}
-            </div>
-
-            <!-- Description -->
-            <p class="text-gray-600 text-sm line-clamp-3 mb-4 leading-relaxed ${batchModeActive ? 'ml-8' : ''}">
-                ${job.description ? decodeHtmlEntities(job.description).replace(/<[^>]*>?/gm, '') : 'No description available'}
-            </p>
-
-            <!-- Skills (Bottom of content) -->
-            ${job.skills_required && job.skills_required.length > 0 ? `
-                <div class="mt-auto pt-4 border-t border-gray-50 ${batchModeActive ? 'ml-8' : ''}">
-                    <div class="flex flex-wrap gap-2">
-                        ${job.skills_required.slice(0, 3).map(skill =>
-        `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">${decodeHtmlEntities(skill)}</span>`
-    ).join('')}
-                        ${job.skills_required.length > 3 ? `
-                            <span class="px-2 py-1 text-gray-400 text-xs">+${job.skills_required.length - 3}</span>
-                        ` : ''}
-                    </div>
-                </div>
-            ` : ''}
-        </div>
-
-        <!-- Footer Actions -->
-             <div class="mt-4">
-                 ${window.JobActions ? window.JobActions.getButtonsHTML(job) : ''}
-             </div>
-    `;
-
-    return card;
-}
-
-function showJobDetails(jobId) {
-    const job = currentJobs.find(j => (j._id || j.id) === jobId);
-    if (!job) return;
-
-    document.getElementById('modalTitle').textContent = job.title;
-    document.getElementById('modalCompany').textContent = job.company_name;
-    document.getElementById('modalLocation').textContent = job.location;
-
-    const content = document.getElementById('modalContent');
-    content.innerHTML = `
-        ${job.match_score ? `
-            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div class="flex items-center">
-                    <svg class="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
-                    </svg>
-                    <span class="font-semibold text-green-900">
-                        ${Math.round(job.match_score * 100)}% match with your profile
-                    </span>
-                </div>
-            </div>
-        ` : ''}
-
-        <div class="flex gap-3 flex-wrap">
-            ${job.employment_type ? `<span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">${formatEnumValue(job.employment_type)}</span>` : ''}
-            ${job.work_arrangement ? `<span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">${formatEnumValue(job.work_arrangement)}</span>` : ''}
-        </div>
-
-        <div class="mt-4">
-            <h4 class="font-semibold mb-2">Job Description</h4>
-            <p class="text-gray-700 whitespace-pre-line">${job.description || 'No description available'}</p>
-        </div>
-
-        ${job.requirements && job.requirements.length > 0 ? `
-            <div class="mt-4">
-                <h4 class="font-semibold mb-2">Requirements</h4>
-                <ul class="list-disc list-inside space-y-1 text-gray-700">
-                    ${job.requirements.map(req => `<li>${req}</li>`).join('')}
-                </ul>
-            </div>
-        ` : ''}
-
-        ${job.skills_required && job.skills_required.length > 0 ? `
-            <div class="mt-4">
-                <h4 class="font-semibold mb-2">Required Skills</h4>
-                <div class="flex flex-wrap gap-2">
-                    ${job.skills_required.map(skill =>
-        `<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded">${skill}</span>`
-    ).join('')}
-                </div>
-            </div>
-        ` : ''}
-
-        ${job.salary_range ? `
-            <div class="mt-4">
-                <h4 class="font-semibold mb-2">Salary Range</h4>
-                <p class="text-gray-700">${job.salary_range.min} - ${job.salary_range.max} ${job.salary_range.currency || 'USD'}</p>
-            </div>
-        ` : ''}
-
-
-        <div class="mt-6 pt-6 border-t border-gray-100">
-            <h4 class="font-semibold text-lg mb-3">Generated Documents</h4>
-            ${window.JobActions ? window.JobActions.getButtonsHTML(job, false) : ''}
-        </div>
-
-
-        ${job.external_url ? `
-            <div class="mt-4">
-                <h4 class="font-semibold mb-2">Application Link</h4>
-                <a href="${job.external_url}" target="_blank" class="text-primary-600 hover:text-primary-700 underline">
-                    Apply on company website
-                </a>
-            </div>
-        ` : ''
-        }
-`;
-
-    // Wire up Save Job button
-    const saveBtn = document.getElementById('modalSaveJob');
-    if (saveBtn) {
-        saveBtn.onclick = () => saveJob(jobId);
-        saveBtn.dataset.jobId = jobId;
-
-        if (job.is_saved) {
-            saveBtn.innerHTML = `
-                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-                Saved
-            `;
-            saveBtn.classList.remove('text-gray-700');
-            saveBtn.classList.add('text-primary-600');
-        } else {
-            saveBtn.innerHTML = 'Save Job';
-            saveBtn.classList.remove('text-primary-600');
-            saveBtn.classList.add('text-gray-700');
-        }
-    }
-
-    // Check for applied status
-    const isApplied = window.JobActions && window.JobActions.appliedJobIds.has(String(jobId));
-
-    // Wire up Customize button
-    const customizeBtn = document.getElementById('modalCustomize');
-    if (customizeBtn) {
-        if (isApplied) {
-            customizeBtn.style.display = 'none';
-        } else {
-            customizeBtn.style.display = 'flex';
-            customizeBtn.onclick = () => window.JobActions.openCustomizeModal(jobId);
-        }
-    }
-
-    // Wire up Apply button
-    const applyBtn = document.getElementById('modalApply');
-    if (applyBtn) {
-        if (isApplied) {
-            applyBtn.disabled = true;
-            applyBtn.innerHTML = `
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                Applied
-            `;
-            // Remove gradient classes and add applied styles
-            applyBtn.className = 'flex-1 bg-green-50 text-green-700 border border-green-200 rounded-lg px-4 py-2.5 text-sm font-semibold opacity-80 cursor-not-allowed flex items-center justify-center gap-2';
-            applyBtn.onclick = null;
-        } else {
-            applyBtn.disabled = false;
-            applyBtn.innerHTML = `
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                Apply Now
-            `;
-            // Restore gradient classes
-            applyBtn.className = 'flex-1 btn-gradient text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:shadow-lg transition-all shadow-md flex items-center justify-center gap-2';
-            applyBtn.onclick = () => window.JobApply.openApplyModal(jobId, job);
-        }
-    }
-
-
-
-    document.getElementById('jobModal').classList.remove('hidden');
-    document.getElementById('jobModal').classList.add('flex');
-}
-
 function closeJobModal() {
-    document.getElementById('jobModal').classList.add('hidden');
-    document.getElementById('jobModal').classList.remove('flex');
+    if (window.JobCard) window.JobCard.closeDetails();
 }
 
 async function saveJob(jobId, silent = false, extraData = null) {
@@ -871,27 +608,7 @@ function showEmptyState() {
     document.getElementById('loadingState').classList.add('hidden');
 }
 
-function formatEnumValue(value) {
-    return value.replace(/_/g, ' ')
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-}
 
-function formatDate(dateStr) {
-    if (!dateStr) return 'recently';
-
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'today';
-    if (diffDays === 1) return 'yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return `${Math.floor(diffDays / 30)} months ago`;
-}
 
 // Phase 3: Batch selection functions
 function toggleBatchMode(enabled) {
@@ -1074,14 +791,7 @@ async function trackApplication(jobId, cvId, coverLetterId) {
 /**
  * Show apply modal for job application
  */
-async function showApplyModal(jobId) {
-    if (window.JobApply) {
-        window.JobApply.openApplyModal(jobId);
-    } else {
-        console.error('JobApply component not loaded');
-        CVision.Utils.showAlert('Application component not loaded', 'error');
-    }
-}
+
 
 
 
@@ -1101,7 +811,6 @@ async function showApplyModal(jobId) {
 // ============================================================================
 // Make functions available globally for onclick handlers
 // ============================================================================
-window.showJobDetails = showJobDetails;
 window.saveJob = saveJob;
 
 window.toggleJobSelection = toggleJobSelection;

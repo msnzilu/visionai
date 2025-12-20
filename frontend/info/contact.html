@@ -6,8 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact Us - synovae</title>
 
+    <!-- SEO Injection -->
+    <script src="/assets/js/seo.js"></script>
+
     <!-- Global Styles -->
-    <link rel="stylesheet" href="assets/css/global.css">
+    <link rel="stylesheet" href="/assets/css/global.css">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -108,8 +111,7 @@
                             </div>
                             <div>
                                 <h3 class="font-semibold text-gray-900 mb-1">Help Center</h3>
-                                <a href="help.html" class="text-primary-600 hover:text-primary-700">Browse FAQs &
-                                    Guides</a>
+                                <a href="/info/help" class="text-primary-500 hover:underline">Help Center</a>
                                 <p class="text-sm text-gray-500 mt-1">Find answers instantly</p>
                             </div>
                         </div>
@@ -119,19 +121,19 @@
                     <div class="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                         <h3 class="font-semibold text-gray-900 mb-4">Quick Links</h3>
                         <ul class="space-y-2 text-sm">
-                            <li><a href="help.html#getting-started"
+                            <li><a href="/info/help#getting-started"
                                     class="text-gray-600 hover:text-primary-600 transition-colors">Getting Started
                                     Guide</a></li>
-                            <li><a href="help.html#faqs"
+                            <li><a href="/info/help#faqs"
                                     class="text-gray-600 hover:text-primary-600 transition-colors">Frequently Asked
                                     Questions</a></li>
-                            <li><a href="help.html#tutorials"
+                            <li><a href="/info/help#tutorials"
                                     class="text-gray-600 hover:text-primary-600 transition-colors">Video Tutorials</a>
                             </li>
-                            <li><a href="privacy.html"
+                            <li><a href="/info/legal/privacy"
                                     class="text-gray-600 hover:text-primary-600 transition-colors">Privacy Policy</a>
                             </li>
-                            <li><a href="terms.html"
+                            <li><a href="/info/legal/terms"
                                     class="text-gray-600 hover:text-primary-600 transition-colors">Terms of Service</a>
                             </li>
                         </ul>
@@ -206,8 +208,10 @@
                             </button>
 
                             <p class="text-xs text-gray-500 text-center">
-                                By submitting this form, you agree to our <a href="privacy.html"
-                                    class="text-primary-600 hover:text-primary-700">Privacy Policy</a>
+                                By sending this message, you agree to our <a href="/info/legal/terms"
+                                    class="text-primary-500 hover:underline">Terms of Service</a> and <a
+                                    href="/info/legal/privacy" class="text-primary-500 hover:underline">Privacy
+                                    Policy</a>
                             </p>
                         </form>
 
@@ -233,12 +237,13 @@
     <div id="footer-container"></div>
 
     <!-- Scripts -->
-    <script src="assets/js/main.js"></script>
-    <script src="assets/js/help.js"></script>
+    <script src="/assets/js/components/PublicNavbar.js"></script>
+    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/help.js"></script>
 
     <!-- Chatbot -->
-    <link rel="stylesheet" href="assets/css/chatbot.css">
-    <script src="assets/js/chatbot.js"></script>
+    <link rel="stylesheet" href="/assets/css/chatbot.css">
+    <script src="/assets/js/chatbot.js"></script>
 </body>
 
 </html>

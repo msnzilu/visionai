@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     // Check if user is already authenticated
     if (CVision && CVision.Utils && CVision.Utils.isAuthenticated()) {
-        window.location.href = 'dashboard.html';
+        window.location.href = '/dashboard';
         return;
     }
 
@@ -204,7 +204,7 @@ async function handleLogin() {
 
             // Redirect to dashboard
             setTimeout(() => {
-                window.location.href = 'dashboard.html';
+                window.location.href = '/dashboard';
             }, 1000);
         } else {
             throw new Error(response.message || 'Login failed');
@@ -270,7 +270,7 @@ async function handleRegister() {
 
         if (response.success) {
             // Redirect to verification pending page
-            window.location.href = `verification-pending.html?email=${encodeURIComponent(email)}`;
+            window.location.href = `/verification-pending?email=${encodeURIComponent(email)}`;
         } else {
             throw new Error(response.message || 'Registration failed');
         }

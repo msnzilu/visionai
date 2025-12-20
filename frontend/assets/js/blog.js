@@ -141,7 +141,7 @@
                         <span class="category-badge">${cat}</span>
                     `).join('')}
                 </div>
-                <a href="blog-post.html?slug=${post.slug}" class="blog-card-title hover:text-primary-600 transition">
+                <a href="/info/blog-post?slug=${post.slug}" class="blog-card-title hover:text-primary-600 transition">
                     ${post.title}
                 </a>
                 <p class="blog-card-excerpt">${post.excerpt || ''}</p>

@@ -225,35 +225,40 @@ class AutomationService:
         try:
             logger.info(f"Calling browser automation service for URL: {application_url}")
             
-            # Prepare request payload for Node.js service
+            # Prepare request payload for Node.js service (matching index.js expectations)
             payload = {
+                "session_id": application_id,
                 "url": application_url,
-                "user_data": {
+                "autofill_data": {
                     "personal_info": user_data.get("personal_info", {}),
                     "experience": user_data.get("experience", []),
                     "education": user_data.get("education", []),
                     "skills": user_data.get("skills", {})
                 },
-                "job_data": job_data,
-                "application_id": application_id,
-                "options": {
-                    "headless": True,
-                    "screenshot": True,
-                    "timeout": 60000  # 60 seconds
-                }
+                "job_source": AutomationService.detect_application_platform(application_url)
+            }
+            
+            # Use authentication token from settings
+            headers = {
+                "Authorization": f"Bearer {settings.AUTOMATION_SERVICE_TOKEN}"
             }
             
             # Call Node.js automation service
             async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(
-                    f"{BROWSER_AUTOMATION_URL}/api/autofill",
-                    json=payload
+                    f"{BROWSER_AUTOMATION_URL}/api/automation/start",
+                    json=payload,
+                    headers=headers
                 )
                 
                 if response.status_code == 200:
                     result = response.json()
-                    logger.info(f"Browser automation completed: {result.get('success')}")
-                    return result
+                    logger.info(f"Browser automation started: {result.get('status')}")
+                    return {
+                        "success": True, 
+                        "session_id": result.get("browser_session_id"),
+                        "status": result.get("status")
+                    }
                 else:
                     error_msg = f"Browser automation service error: {response.status_code}"
                     logger.error(error_msg)

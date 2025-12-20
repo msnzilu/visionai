@@ -374,7 +374,9 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                     {"application_email": {"$exists": True, "$ne": None}},
                     {"contact_email": {"$exists": True, "$ne": None}},
                     {"email": {"$exists": True, "$ne": None}}, # Legacy
-                    {"company_info.contact.email": {"$exists": True, "$ne": None}}
+                    {"company_info.contact.email": {"$exists": True, "$ne": None}},
+                    {"external_url": {"$exists": True, "$ne": None}},
+                    {"apply_url": {"$exists": True, "$ne": None}}
                 ]
             }
             
@@ -399,7 +401,9 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                     {"application_email": {"$exists": True, "$ne": None}},
                     {"contact_email": {"$exists": True, "$ne": None}},
                     {"email": {"$exists": True, "$ne": None}},
-                    {"company_info.contact.email": {"$exists": True, "$ne": None}}
+                    {"company_info.contact.email": {"$exists": True, "$ne": None}},
+                    {"external_url": {"$exists": True, "$ne": None}},
+                    {"apply_url": {"$exists": True, "$ne": None}}
                 ]
             }
             
@@ -564,27 +568,36 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                 logger.info(f"Preparing to send application to: {recipient_email}")
                 logger.info(f"Formatted Data Payload: {form_data}")
 
-                # Queue email sending
-                from app.workers.email_sender import send_application_email
-                send_application_email.delay(
-                    user_id=user_id,
-                    job_id=job_id,
-                    application_id=application_id,
-                    recipient_email=recipient_email, # Updated recipient logic
-                    form_data=form_data,
-                    cv_document_id=custom_cv_id,
-                    cover_letter_document_id=cover_letter_id,
-                    additional_message=None
-                )
-                
                 applications_sent += 1
                 stats["applications_sent"] += 1
-                logger.info(f"Successfully auto-applied to job {job_id}")
                 
+                # BRANCHING LOGIC: Email vs Browser Automation
+                if recipient_email:
+                    # Queue email sending
+                    from app.workers.email_sender import send_application_email
+                    send_application_email.delay(
+                        user_id=user_id,
+                        job_id=job_id,
+                        application_id=application_id,
+                        recipient_email=recipient_email,
+                        form_data=form_data,
+                        cv_document_id=custom_cv_id,
+                        cover_letter_document_id=cover_letter_id,
+                        additional_message=None
+                    )
+                    logger.info(f"Successfully queued email application for job {job_id}")
+                else:
+                    # Trigger browser automation
+                    from app.services.automation_service import AutomationService
+                    # This call is non-blocking (it just triggers the session in Node)
+                    await AutomationService.auto_apply_to_job(
+                        user_id=user_id,
+                        application_id=application_id,
+                        job_id=job_id
+                    )
+                    logger.info(f"Successfully triggered browser automation for job {job_id}")
                 
-                applications_sent += 1
-                stats["applications_sent"] += 1
-                logger.info(f"Successfully auto-applied to job {job_id}")
+                logger.info(f"Successfully processed auto-apply for job {job_id}")
                 
             except Exception as e:
                 logger.error(f"Error auto-applying to job {job.get('_id')}: {e}")

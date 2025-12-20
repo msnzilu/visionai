@@ -70,7 +70,7 @@
         // Categories
         const categoriesContainer = document.getElementById('article-categories');
         categoriesContainer.innerHTML = post.categories.map(cat => `
-            <a href="blog.html?category=${cat}" class="category-badge">${cat}</a>
+            <a href="/info/blog?category=${cat}" class="category-badge">${cat}</a>
         `).join('');
 
         // Title
@@ -118,7 +118,7 @@
         // Tags
         const tagsContainer = document.getElementById('article-tags');
         tagsContainer.innerHTML = post.tags.map(tag => `
-            <a href="blog.html?tag=${tag}" class="tag-badge">${tag}</a>
+            <a href="/info/blog?tag=${tag}" class="tag-badge">${tag}</a>
         `).join('');
 
         // Setup social sharing
@@ -161,7 +161,7 @@
                 <div class="blog-card">
                     <img src="${imageUrl}" alt="${post.title}" class="blog-card-image" loading="lazy">
                     <div class="blog-card-content">
-                        <a href="blog-post.html?slug=${post.slug}" class="blog-card-title hover:text-primary-600 transition">
+                        <a href="/info/blog-post?slug=${post.slug}" class="blog-card-title hover:text-primary-600 transition">
                             ${post.title}
                         </a>
                         <p class="blog-card-excerpt">${post.excerpt || ''}</p>
