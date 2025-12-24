@@ -208,13 +208,8 @@
     <!-- Pricing Section -->
     <section id="pricing" class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Simple Pricing</h2>
-                <p class="text-xl text-gray-600">Start free and upgrade as your job search accelerates</p>
-            </div>
-
-            <div id="pricing-container" class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                <!-- Pricing driven by JS -->
+            <div id="pricing-plans-container">
+                <!-- Rendered by PricingPlans component -->
             </div>
         </div>
     </section>
@@ -246,7 +241,10 @@
     <div id="footer-container"></div>
 
     <!-- Global Scripts -->
+    <script src="/assets/js/utils/geolocation.js"></script>
+    <script src="/assets/js/utils/currency.js"></script>
     <script src="/assets/js/components/PublicNavbar.js"></script>
+    <script src="/assets/js/components/PricingPlans.js"></script>
     <script src="/assets/js/main.js"></script>
     <script src="/assets/js/landing.js"></script>
 
@@ -255,8 +253,19 @@
     <script src="/assets/js/chatbot.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Logic moved to landing.js
+        document.addEventListener('DOMContentLoaded', async function () {
+            // Initialize currency from geolocation
+            if (window.CVision && window.CVision.Currency) {
+                await CVision.Currency.initFromGeolocation();
+            }
+
+            // Initialize pricing component (with annual toggle)
+            if (window.PricingPlans) {
+                PricingPlans.init({
+                    mode: 'public',
+                    container: '#pricing-plans-container'
+                });
+            }
         });
     </script>
 </body>

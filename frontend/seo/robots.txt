@@ -1,53 +1,58 @@
-# robots.txt for VisionAI
+# robots.txt for Synovae
+# https://www.synovae.io
 
 # Allow all search engines to crawl public pages
 User-agent: *
 Allow: /
-Allow: /index.html
-Allow: /features.html
-Allow: /pricing.html
-Allow: /how-it-works.html
-Allow: /contact.html
-Allow: /help.html
-Allow: legal/privacy.html
-Allow: legal/terms.html
+Allow: /features
+Allow: /pricing
+Allow: /how-it-works
+Allow: /login
+Allow: /register
+Allow: /info/contact
+Allow: /info/help
+Allow: /info/blog
+Allow: /info/legal/privacy
+Allow: /info/legal/terms
 
 # Block private/authenticated pages
-Disallow: /dashboard.html
-Disallow: /login.html
-Disallow: /register.html
-Disallow: /reset-password.html
-Disallow: /auth-callback.html
-Disallow: /verify-email.html
-Disallow: /verification-pending.html
-Disallow: /unsubscribe.html
+Disallow: /dashboard
+Disallow: /reset-password
+Disallow: /auth-callback
+Disallow: /verify-email
+Disallow: /verification-pending
+Disallow: /unsubscribe
+
+# Block authenticated user pages
+Disallow: /pages/
 
 # Block admin section
 Disallow: /admin/
+
+# Block profile section
 Disallow: /profile/
 
 # Block test and debug files
-Disallow: /test.html
-Disallow: /test-modal.html
-Disallow: /debug-quick-apply.html
+Disallow: /test
+Disallow: /test-modal
+Disallow: /debug-quick-apply
 
 # Block internal directories
 Disallow: /components/
+Disallow: /seo/
 Disallow: /.github/
 Disallow: /.vs/
 Disallow: /logs/
 
 # Block sensitive files
 Disallow: /*.log
-Disallow: /*.txt$
-Disallow: /verification*.txt
-Disallow: /verification*.log
+Disallow: /verification*
 
 # Allow access to assets
 Allow: /assets/
 
 # Sitemap location
-Sitemap: https://synovae.io/sitemap.xml
+Sitemap: https://www.synovae.io/sitemap.xml
 
 # Crawl-delay (optional - only if you want to limit crawl rate)
 # Crawl-delay: 10

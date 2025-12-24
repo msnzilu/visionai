@@ -43,54 +43,65 @@ const LandingConfig = {
     pricing: [
         {
             name: 'Free',
-            price: '$0',
-            period: 'per month',
+            priceInCents: 0,
             features: [
-                { text: 'Upto 2 manual job applications', included: true },
-                { text: 'Upto 0 automated aplications', included: true },
-                { text: 'Basic CV customization', included: true },
+                { text: '1 manual application per day', included: true },
+                { text: 'Basic job search', included: true },
+                { text: 'CV upload & analysis', included: true },
                 { text: 'Watermarked documents', included: false }
             ],
-            buttonText: 'Get Started',
+            buttonText: 'Get Started Free',
             buttonLink: '/register',
             highlight: false
         },
         {
             name: 'Basic',
-            price: '$19.99',
-            period: 'per month',
+            priceInCents: 1999,
             features: [
-                { text: 'Upto 15 daily manual job applications', included: true },
-                { text: 'Upto 7 daily automated applications', included: true },
+                { text: '10 automated applications daily', included: true },
+                { text: 'Up to 20 manual applications daily', included: true },
                 { text: 'Premium CV templates', included: true },
                 { text: 'No watermarks', included: true },
                 { text: 'Basic auto-fill', included: true }
             ],
-            buttonText: 'Start Trial',
+            buttonText: 'Start Free Trial',
             buttonLink: '/register',
             highlight: true,
             highlightText: 'Most Popular'
         },
         {
             name: 'Premium',
-            price: '$39.99',
-            period: 'per month',
+            priceInCents: 3999,
             features: [
-                { text: 'Upto 25 daily manual applications per month', included: true },
-                { text: 'Upto 15 daily automated applications', included: true },
-                { text: 'Application Monitoring', included: true },
+                { text: '30 automated applications daily', included: true },
+                { text: 'Up to 50 manual applications daily', included: true },
+                { text: 'Priority support', included: true },
                 { text: 'Advanced analytics', included: true },
                 { text: 'Full automation', included: true }
             ],
             buttonText: 'Go Premium',
-            buttonLink: 'register.html',
+            buttonLink: '/register',
             highlight: false
         }
     ]
 };
 
 const Landing = {
-    init() {
+    // Format price based on user's currency
+    formatPrice(amountInCents) {
+        if (window.CVision && window.CVision.Currency) {
+            return CVision.Currency.format(amountInCents);
+        }
+        // Fallback to USD
+        return `$${(amountInCents / 100).toFixed(2)}`;
+    },
+
+    async init() {
+        // Detect currency from geolocation first
+        if (window.CVision && window.CVision.Currency) {
+            await CVision.Currency.initFromGeolocation();
+        }
+
         this.renderStats();
         this.renderFeatures();
         this.renderPricing();
@@ -238,7 +249,10 @@ const Landing = {
         const container = document.getElementById('pricing-container');
         if (!container) return;
 
-        container.innerHTML = LandingConfig.pricing.map(plan => `
+        container.innerHTML = LandingConfig.pricing.map(plan => {
+            const formattedPrice = this.formatPrice(plan.priceInCents);
+
+            return `
             <div class="bg-white rounded-2xl p-8 relative ${plan.highlight ? 'border-2 border-primary-500 shadow-xl scale-105 z-10' : 'border border-gray-200 shadow-md hover:shadow-lg transition-all'}">
                 ${plan.highlight ? `
                 <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-primary-600 to-primary-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-md">
@@ -249,8 +263,8 @@ const Landing = {
                 <div class="text-center mb-8">
                     <h3 class="text-2xl font-bold text-gray-900 mb-4">${plan.name}</h3>
                     <div class="flex justify-center items-baseline mb-2">
-                        <span class="text-4xl font-extrabold text-gray-900">${plan.price}</span>
-                        <span class="text-gray-500 ml-1">/${plan.period.replace('per ', '')}</span>
+                        <span class="text-4xl font-extrabold text-gray-900">${formattedPrice}</span>
+                        <span class="text-gray-500 ml-1">/month</span>
                     </div>
                 </div>
                 
@@ -271,7 +285,7 @@ const Landing = {
                     ${plan.buttonText}
                 </a>
             </div>
-        `).join('');
+        `}).join('');
     },
 
     initMobileMenu() {

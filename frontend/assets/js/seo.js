@@ -16,7 +16,16 @@
         baseUrl: 'https://www.synovae.io',
         siteName: 'Synovae',
         author: 'Synovae',
-        twitterHandle: '@synovae', // Optional: Add your Twitter handle
+        twitterHandle: '@synovae',
+        locale: 'en_US',
+
+        // Social media links for structured data
+        socialLinks: [
+            'https://twitter.com/synovae',
+            'https://linkedin.com/company/synovae',
+            'https://facebook.com/synovae'
+        ],
+        contactEmail: 'support@synovae.io',
 
         // Default fallback values
         defaultImage: 'https://www.synovae.io/assets/images/og-default.jpg',
@@ -141,7 +150,43 @@
         };
     }
 
-    // Create meta tag
+    // Helper: Set or update meta tag by name (prevents duplicates)
+    function setOrUpdateMeta(name, content) {
+        let meta = document.querySelector(`meta[name="${name}"]`);
+        if (!meta) {
+            meta = document.createElement('meta');
+            meta.setAttribute('name', name);
+            document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', content);
+    }
+
+    // Helper: Set or update meta property (for Open Graph)
+    function setOrUpdateMetaProperty(property, content) {
+        let meta = document.querySelector(`meta[property="${property}"]`);
+        if (!meta) {
+            meta = document.createElement('meta');
+            meta.setAttribute('property', property);
+            document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', content);
+    }
+
+    // Helper: Set or update link tag
+    function setOrUpdateLink(rel, href, type = null) {
+        let link = document.querySelector(`link[rel="${rel}"]`);
+        if (!link) {
+            link = document.createElement('link');
+            link.setAttribute('rel', rel);
+            document.head.appendChild(link);
+        }
+        link.setAttribute('href', href);
+        if (type) {
+            link.setAttribute('type', type);
+        }
+    }
+
+    // Legacy create functions for backward compatibility
     function createMeta(name, content, isProperty = false) {
         const meta = document.createElement('meta');
         if (isProperty) {
@@ -153,7 +198,6 @@
         return meta;
     }
 
-    // Create link tag
     function createLink(rel, href, type = null) {
         const link = document.createElement('link');
         link.setAttribute('rel', rel);
@@ -172,64 +216,100 @@
         // Set page title
         document.title = seo.title;
 
-        // Primary Meta Tags
-        head.appendChild(createMeta('title', seo.title));
-        head.appendChild(createMeta('description', seo.description));
+        // Primary Meta Tags (using setOrUpdate to prevent duplicates)
+        setOrUpdateMeta('title', seo.title);
+        setOrUpdateMeta('description', seo.description);
         if (seo.keywords) {
-            head.appendChild(createMeta('keywords', seo.keywords));
+            setOrUpdateMeta('keywords', seo.keywords);
         }
-        head.appendChild(createMeta('author', seoConfig.author));
-        head.appendChild(createMeta('robots', 'index, follow'));
+        setOrUpdateMeta('author', seoConfig.author);
+        // Enhanced robots meta with more directives
+        setOrUpdateMeta('robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
 
         // Canonical URL
-        head.appendChild(createLink('canonical', seo.url));
+        setOrUpdateLink('canonical', seo.url);
 
         // Open Graph / Facebook
-        head.appendChild(createMeta('og:type', seo.type, true));
-        head.appendChild(createMeta('og:url', seo.url, true));
-        head.appendChild(createMeta('og:title', seo.title, true));
-        head.appendChild(createMeta('og:description', seo.description, true));
-        head.appendChild(createMeta('og:image', seo.image, true));
-        head.appendChild(createMeta('og:image:width', '1200', true));
-        head.appendChild(createMeta('og:image:height', '630', true));
-        head.appendChild(createMeta('og:site_name', seoConfig.siteName, true));
+        setOrUpdateMetaProperty('og:type', seo.type);
+        setOrUpdateMetaProperty('og:url', seo.url);
+        setOrUpdateMetaProperty('og:title', seo.title);
+        setOrUpdateMetaProperty('og:description', seo.description);
+        setOrUpdateMetaProperty('og:image', seo.image);
+        setOrUpdateMetaProperty('og:image:width', '1200');
+        setOrUpdateMetaProperty('og:image:height', '630');
+        setOrUpdateMetaProperty('og:site_name', seoConfig.siteName);
+        setOrUpdateMetaProperty('og:locale', seoConfig.locale);
 
         // Twitter Card
-        head.appendChild(createMeta('twitter:card', 'summary_large_image', true));
-        head.appendChild(createMeta('twitter:url', seo.url, true));
-        head.appendChild(createMeta('twitter:title', seo.title, true));
-        head.appendChild(createMeta('twitter:description', seo.description, true));
-        head.appendChild(createMeta('twitter:image', seo.image, true));
+        setOrUpdateMeta('twitter:card', 'summary_large_image');
+        setOrUpdateMeta('twitter:url', seo.url);
+        setOrUpdateMeta('twitter:title', seo.title);
+        setOrUpdateMeta('twitter:description', seo.description);
+        setOrUpdateMeta('twitter:image', seo.image);
         if (seoConfig.twitterHandle) {
-            head.appendChild(createMeta('twitter:site', seoConfig.twitterHandle, true));
+            setOrUpdateMeta('twitter:site', seoConfig.twitterHandle);
         }
 
-        // Favicon
-        head.appendChild(createLink('icon', '/assets/images/favicon.png', 'image/png'));
-        head.appendChild(createLink('apple-touch-icon', '/assets/images/favicon.png'));
+        // Favicon - Modern approach with multiple formats
+        head.appendChild(createLink('icon', '/assets/images/favicon.ico', 'image/x-icon'));
+        head.appendChild(createLink('icon', '/assets/images/favicon/android-chrome-192x192.png', 'image/png'));
+        head.appendChild(createLink('icon', '/assets/images/favicon/android-chrome-512x512.png', 'image/png'));
+        head.appendChild(createLink('apple-touch-icon', '/assets/images/favicon/apple-touch-icon'));
 
         // Structured Data (JSON-LD)
         injectStructuredData(seo);
     }
 
+    // Helper: Insert or update structured data script
+    function insertStructuredData(id, data) {
+        let script = document.getElementById(id);
+        if (!script) {
+            script = document.createElement('script');
+            script.id = id;
+            script.type = 'application/ld+json';
+            document.head.appendChild(script);
+        }
+        script.textContent = JSON.stringify(data, null, 2);
+    }
+
     // Inject Structured Data
     function injectStructuredData(seo) {
         const currentPage = getCurrentPage();
-        let structuredData = {};
 
-        // Base organization data
-        const organization = {
+        // Enhanced Organization schema with social links and contact
+        const organizationSchema = {
             "@context": "https://schema.org",
             "@type": "Organization",
             "name": seoConfig.siteName,
             "url": seoConfig.baseUrl,
-            "logo": `${seoConfig.baseUrl}/assets/images/logo.svg`,
-            "description": seoConfig.defaultDescription
+            "logo": `${seoConfig.baseUrl}/assets/images/my-logo.png`,
+            "description": seoConfig.defaultDescription,
+            "sameAs": seoConfig.socialLinks,
+            "contactPoint": {
+                "@type": "ContactPoint",
+                "contactType": "Customer Support",
+                "email": seoConfig.contactEmail
+            }
+        };
+
+        // Website schema with search action
+        const websiteSchema = {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": seoConfig.siteName,
+            "url": seoConfig.baseUrl,
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": `${seoConfig.baseUrl}/dashboard?search={search_term_string}`,
+                "query-input": "required name=search_term_string"
+            }
         };
 
         // Page-specific structured data
+        let pageSchema = null;
+
         if (currentPage === 'index') {
-            structuredData = {
+            pageSchema = {
                 "@context": "https://schema.org",
                 "@type": "WebApplication",
                 "name": seoConfig.siteName,
@@ -243,21 +323,53 @@
                     "priceCurrency": "USD"
                 }
             };
+        } else if (currentPage === 'how-it-works') {
+            // HowTo schema for how-it-works page
+            pageSchema = {
+                "@context": "https://schema.org",
+                "@type": "HowTo",
+                "name": "How to Use Synovae for Job Applications",
+                "description": seo.description,
+                "step": [
+                    {
+                        "@type": "HowToStep",
+                        "name": "Upload Your CV",
+                        "text": "Upload your resume and our AI analyzes your skills instantly"
+                    },
+                    {
+                        "@type": "HowToStep",
+                        "name": "Find Perfect Jobs",
+                        "text": "Get matched with relevant job opportunities based on your profile"
+                    },
+                    {
+                        "@type": "HowToStep",
+                        "name": "Customize Applications",
+                        "text": "AI generates tailored CVs and cover letters for each application"
+                    },
+                    {
+                        "@type": "HowToStep",
+                        "name": "Apply Instantly",
+                        "text": "One-click application or fully automated submission"
+                    }
+                ]
+            };
         } else {
-            structuredData = {
+            pageSchema = {
                 "@context": "https://schema.org",
                 "@type": "WebPage",
                 "name": seo.title,
                 "url": seo.url,
                 "description": seo.description,
-                "publisher": organization
+                "publisher": organizationSchema
             };
         }
 
-        const script = document.createElement('script');
-        script.type = 'application/ld+json';
-        script.text = JSON.stringify(structuredData);
-        document.head.appendChild(script);
+        // Insert all schemas (using IDs to prevent duplicates)
+        insertStructuredData('organization-schema', organizationSchema);
+        insertStructuredData('website-schema', websiteSchema);
+        if (pageSchema) {
+            insertStructuredData('page-schema', pageSchema);
+        }
     }
 
     // Initialize SEO when DOM is ready

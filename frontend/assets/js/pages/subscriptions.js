@@ -68,7 +68,7 @@ async function handleApiError(response) {
     if (response.status === 401) {
         CVision.Utils.showAlert('Session expired. Please login again.', 'error');
         setTimeout(() => {
-            window.location.href = '../login.html';
+            window.location.href = '/login';
         }, 2000);
         return null;
     }
@@ -86,7 +86,7 @@ async function authenticatedFetch(url, options = {}) {
     const token = CVision.Utils.getToken();
 
     if (!token) {
-        window.location.href = '../login.html';
+        window.location.href = '/login';
         return null;
     }
 
@@ -101,7 +101,7 @@ async function authenticatedFetch(url, options = {}) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     if (!CVision.Utils.isAuthenticated()) {
-        window.location.href = '../login.html';
+        window.location.href = '/login';
         return;
     }
 
@@ -130,8 +130,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Failed to load initial data:', error);
     });
 
-    // Render plans after all data (especially currentSubscription) is loaded
-    displayFilteredPlans();
+    // Initialize PricingPlans component in authenticated mode
+    initPricingComponent();
 });
 
 async function loadCurrentSubscription() {
@@ -270,42 +270,38 @@ async function loadPlans(render = true) {
     }
 }
 
+// Initialize the reusable PricingPlans component
+function initPricingComponent() {
+    if (window.PricingPlans) {
+        PricingPlans.init({
+            mode: 'authenticated',
+            container: '#pricing-plans-container',
+            currentSubscription: currentSubscription,
+            defaultInterval: currentBillingInterval,
+            onSelectPlan: (plan) => {
+                selectPlan(plan.id, plan.name, plan.price, plan.planCode);
+            }
+        });
+    } else {
+        console.error('[Subscriptions] PricingPlans component not loaded');
+        displayFallbackPlans();
+    }
+}
+
 function displayFilteredPlans() {
-    // Filter plans by current billing interval
-    // Free plan is always shown, others filtered by interval
-    const filteredPlans = allPlans.filter(plan => {
-        if (plan.tier === 'free') return true;
-        return plan.billing_interval === currentBillingInterval;
-    });
-    displayPlans(filteredPlans);
+    // Use the PricingPlans component if available
+    if (window.PricingPlans) {
+        PricingPlans.setCurrentSubscription(currentSubscription);
+    }
 }
 
 function setBillingInterval(interval) {
     currentBillingInterval = interval;
 
-    // Update toggle UI
-    const monthlyBtn = document.getElementById('monthlyToggle');
-    const yearlyBtn = document.getElementById('yearlyToggle');
-
-    // Define consistent classes
-    const activeClass = 'bg-white text-gray-900 shadow';
-    const inactiveClass = 'text-gray-600 hover:text-gray-900';
-
-    // Base classes common to both
-    const baseClass = 'px-6 py-2 rounded-full text-sm font-semibold transition-all';
-
-    if (interval === 'monthly') {
-        // Monthly Active
-        monthlyBtn.className = `${baseClass} ${activeClass}`;
-        yearlyBtn.className = `${baseClass} ${inactiveClass}`;
-    } else {
-        // Yearly Active
-        yearlyBtn.className = `${baseClass} ${activeClass}`;
-        monthlyBtn.className = `${baseClass} ${inactiveClass}`;
+    // Delegate to PricingPlans component
+    if (window.PricingPlans) {
+        PricingPlans.setBillingInterval(interval);
     }
-
-    // Re-display plans with new filter
-    displayFilteredPlans();
 }
 
 function displayFallbackPlans() {

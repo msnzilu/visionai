@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subscription Plans - CVision AI</title>
+    <title>Subscription Plans - Synovae</title>
     <script src="/assets/js/auth-guard.js"></script>
     <link rel="stylesheet" href="/assets/css/global.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -37,7 +37,7 @@
                 </div>
             </div>
 
-            <!-- Manage Subscription Buttons - UPDATED WITH IDS -->
+            <!-- Manage Subscription Buttons -->
             <div id="subscriptionButtons" class="mt-6 flex gap-4">
                 <button onclick="openCustomerPortal()" id="manageBillingBtn"
                     class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50" style="display: none;">
@@ -55,129 +55,17 @@
             </div>
         </div>
 
-        <!-- Pricing Plans -->
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-gray-900 mb-4">Choose Your Plan</h2>
-            <p class="text-gray-600 mb-8">Select the perfect plan for your job search journey</p>
-
-            <!-- Billing Toggle -->
-            <div class="inline-flex items-center bg-gray-100 rounded-full p-1">
-                <button id="monthlyToggle" onclick="setBillingInterval('monthly')"
-                    class="px-6 py-2 rounded-full text-sm font-semibold transition-all bg-white text-gray-900 shadow">
-                    Monthly
-                </button>
-                <button id="yearlyToggle" onclick="setBillingInterval('yearly')"
-                    class="px-6 py-2 rounded-full text-sm font-semibold transition-all text-gray-600 hover:text-gray-900">
-                    Annual <span class="text-green-600 text-xs ml-1">Save 17%</span>
-                </button>
+        <!-- Pricing Plans (Reusable Component) -->
+        <div id="pricing-plans-container" class="mb-12">
+            <!-- Skeleton loader -->
+            <div class="text-center mb-12">
+                <div class="h-8 w-48 bg-gray-200 rounded mx-auto mb-4 animate-pulse"></div>
+                <div class="h-4 w-64 bg-gray-200 rounded mx-auto mb-8 animate-pulse"></div>
             </div>
-        </div>
-
-        <div id="pricingPlans" class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <!-- Skeleton Plan Card 1 -->
-            <div class="bg-white rounded-xl shadow-lg border-2 border-gray-100 p-8 animate-pulse">
-                <div class="text-center">
-                    <div class="h-8 w-32 bg-gray-200 rounded mx-auto mb-4"></div>
-                    <div class="h-4 w-48 bg-gray-200 rounded mx-auto mb-8"></div>
-
-                    <div class="mb-8 flex justify-center items-end gap-1">
-                        <div class="h-10 w-24 bg-gray-200 rounded"></div>
-                        <div class="h-6 w-12 bg-gray-200 rounded mb-1"></div>
-                    </div>
-
-                    <div class="space-y-4 mb-8">
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-full bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-5/6 bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-4/6 bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-full bg-gray-200 rounded"></div>
-                        </div>
-                    </div>
-
-                    <div class="h-12 w-full bg-gray-200 rounded-lg"></div>
-                </div>
-            </div>
-
-            <!-- Skeleton Plan Card 2 (Popular) -->
-            <div class="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8 animate-pulse relative">
-                <div class="text-center">
-                    <div class="h-8 w-32 bg-gray-200 rounded mx-auto mb-4"></div>
-                    <div class="h-4 w-48 bg-gray-200 rounded mx-auto mb-8"></div>
-
-                    <div class="mb-8 flex justify-center items-end gap-1">
-                        <div class="h-10 w-24 bg-gray-200 rounded"></div>
-                        <div class="h-6 w-12 bg-gray-200 rounded mb-1"></div>
-                    </div>
-
-                    <div class="space-y-4 mb-8">
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-full bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-5/6 bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-full bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-4/6 bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-5/6 bg-gray-200 rounded"></div>
-                        </div>
-                    </div>
-
-                    <div class="h-12 w-full bg-gray-200 rounded-lg"></div>
-                </div>
-            </div>
-
-            <!-- Skeleton Plan Card 3 -->
-            <div class="bg-white rounded-xl shadow-lg border-2 border-gray-100 p-8 animate-pulse">
-                <div class="text-center">
-                    <div class="h-8 w-32 bg-gray-200 rounded mx-auto mb-4"></div>
-                    <div class="h-4 w-48 bg-gray-200 rounded mx-auto mb-8"></div>
-
-                    <div class="mb-8 flex justify-center items-end gap-1">
-                        <div class="h-10 w-24 bg-gray-200 rounded"></div>
-                        <div class="h-6 w-12 bg-gray-200 rounded mb-1"></div>
-                    </div>
-
-                    <div class="space-y-4 mb-8">
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-full bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-5/6 bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-4/6 bg-gray-200 rounded"></div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-5 h-5 bg-gray-200 rounded-full shrink-0"></div>
-                            <div class="h-4 w-full bg-gray-200 rounded"></div>
-                        </div>
-                    </div>
-
-                    <div class="h-12 w-full bg-gray-200 rounded-lg"></div>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-white rounded-xl shadow-lg border-2 border-gray-100 p-8 animate-pulse h-96"></div>
+                <div class="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8 animate-pulse h-96"></div>
+                <div class="bg-white rounded-xl shadow-lg border-2 border-gray-100 p-8 animate-pulse h-96"></div>
             </div>
         </div>
 
@@ -198,22 +86,19 @@
 
         <!-- Referral Stats -->
         <div id="referralStats" class="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <!-- Skeleton Stat 1 -->
+            <!-- Skeleton Stats -->
             <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100 animate-pulse">
                 <div class="h-8 w-16 bg-gray-200 rounded mb-2"></div>
                 <div class="h-4 w-24 bg-gray-200 rounded"></div>
             </div>
-            <!-- Skeleton Stat 2 -->
             <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100 animate-pulse">
                 <div class="h-8 w-16 bg-gray-200 rounded mb-2"></div>
                 <div class="h-4 w-24 bg-gray-200 rounded"></div>
             </div>
-            <!-- Skeleton Stat 3 -->
             <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100 animate-pulse">
                 <div class="h-8 w-16 bg-gray-200 rounded mb-2"></div>
                 <div class="h-4 w-24 bg-gray-200 rounded"></div>
             </div>
-            <!-- Skeleton Stat 4 -->
             <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100 animate-pulse">
                 <div class="h-8 w-16 bg-gray-200 rounded mb-2"></div>
                 <div class="h-4 w-24 bg-gray-200 rounded"></div>
@@ -236,9 +121,6 @@
 
             <!-- Payment Form -->
             <form id="payment-form">
-                <!-- Paystack Popup triggered on click, no card element needed -->
-                <!-- <div id="card-element"></div> Removed for Paystack -->
-
                 <!-- Referral Code -->
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Referral Code (Optional)</label>
@@ -325,63 +207,54 @@
         </div>
     </div>
 
-    <script src="../assets/js/inline-messages.js"></script>
-    <!-- Currency and Geolocation utilities (load before main.js) -->
+    <!-- Scripts -->
+    <script src="/assets/js/inline-messages.js"></script>
     <script src="/assets/js/utils/geolocation.js"></script>
     <script src="/assets/js/utils/currency.js"></script>
-    <!-- Payment Gateway Abstraction -->
     <script src="/assets/js/utils/payment-gateway.js"></script>
     <script src="/assets/js/adapters/paystack-adapter.js"></script>
     <script src="/assets/js/adapters/stripe-adapter.js"></script>
     <script src="/assets/js/adapters/paypal-adapter.js"></script>
     <script src="/assets/js/adapters/intasend-adapter.js"></script>
     <script src="/assets/js/components/subscription-manager.js"></script>
+    <script src="/assets/js/components/PricingPlans.js"></script>
     <script src="/assets/js/main.js"></script>
-    <script src="../assets/js/pages/subscriptions.js"></script>
+    <script src="/assets/js/pages/subscriptions.js"></script>
     <script src="/assets/js/components/navbar.js"></script>
 
     <script defer>
         // Load navbar component with proper initialization
         document.addEventListener('DOMContentLoaded', () => {
-            fetch('../components/navbar.html')
+            fetch('/components/navbar.html')
                 .then(response => response.text())
                 .then(html => {
                     const container = document.getElementById('navbar-container');
                     container.innerHTML = html;
 
-                    // Use requestAnimationFrame to ensure DOM has updated
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
-                            // Double RAF ensures DOM is fully updated
                             if (window.CVisionNavbar) {
-                                console.log('Subscription: Navbar HTML inserted, calling init()');
                                 CVisionNavbar.init('Subscription');
-                            } else {
-                                console.error('Subscription: CVisionNavbar not available - checking manual load');
-                                // Fallback: try to manually init if available in global scope but missed
-                                if (typeof CVisionNavbar !== 'undefined') {
-                                    CVisionNavbar.init('Subscription');
-                                }
                             }
                         });
                     });
                 })
-                .catch(error => console.error('Subscription: Failed to load navbar:', error));
+                .catch(error => console.error('Failed to load navbar:', error));
         });
 
-        // Your page-specific JavaScript
+        // Auth check
         document.addEventListener('DOMContentLoaded', () => {
             if (!CVision.Utils.isAuthenticated()) {
-                window.location.href = '../login.html';
+                window.location.href = '/login';
                 return;
             }
-
         });
     </script>
 
     <!-- Chatbot -->
     <link rel="stylesheet" href="/assets/css/chatbot.css">
-    <script src="/assets/js/chatbot.js"></script>
+    <script src="/assets/js/chatbot.js">
+    </script>
 </body>
 
 </html>
