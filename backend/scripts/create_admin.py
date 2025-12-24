@@ -21,29 +21,21 @@ async def create_admin():
         users_collection = db.users
         
         email = "admin@synovae.io"
+        password = "password123"  # Plain text password for display
+        
+        # Hash for 'password123' (bcrypt)
+        hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxwKc.6IymVFt7H.8O.7d3x/j1a6."
         
         # Check if user exists
         existing = await users_collection.find_one({"email": email})
         if existing:
-            print(f"User {email} already exists. Updating role to Admin...")
-            await users_collection.update_one(
-                {"email": email},
-                {"$set": {
-                    "role": "admin",
-                    "is_superuser": True,
-                    "is_verified": True,
-                    "subscription_tier": "premium",
-                    "subscription_status": "active"
-                }}
-            )
-            print("User updated successfully.")
-            return
+            print(f"\n⚠️  User {email} already exists!")
+            print("Deleting existing user and creating fresh...")
+            await users_collection.delete_one({"email": email})
+            print("✅ Existing user deleted.")
 
         # Create new user
-        print(f"Creating new admin user: {email}")
-        
-        # Hash for 'password123' (bcrypt)
-        hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxwKc.6IymVFt7H.8O.7d3x/j1a6."
+        print(f"\n🔨 Creating new admin user: {email}")
         
         new_user = {
             "email": email,
@@ -65,12 +57,19 @@ async def create_admin():
         }
         
         await users_collection.insert_one(new_user)
-        print("Admin user created successfully!")
-        print(f"Email: {email}")
-        print("Password: {password}")
+        
+        print("\n" + "=" * 60)
+        print("✅ Admin user created successfully!")
+        print("=" * 60)
+        print(f"📧 Email: {email}")
+        print(f"🔑 Password: {password}")
+        print("=" * 60)
+        print("\n⚠️  IMPORTANT: Change this password after first login!")
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"\n❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         client.close()
 
