@@ -1,86 +1,73 @@
 import asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 import sys
-from pathlib import Path
-
-# Add backend directory to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from app.core.config import settings
-from app.core.security import hash_password, generate_referral_code
 from datetime import datetime
 
+# Connection Settings
+# Trying localhost first since port 27017 is exposed by docker service
+MONGODB_URL = mongodb+srv://jcharles:HxHxHz@#@2030@synovae.wvyba4e.mongodb.net/?appName=synovae
+DB_NAME = "synovae_db"
+
 async def create_admin():
-    from motor.motor_asyncio import AsyncIOMotorClient
-    
-    # Use configuration from settings
-    print(f"Connecting to database: {settings.MONGODB_URL}")
-    client = AsyncIOMotorClient(settings.MONGODB_URL)
-    db = client[settings.DATABASE_NAME]
-    
-    # Check if admin exists
-    existing = await db.users.find_one({"email": "admin@cvision.com"})
-    if existing:
-        print("Admin user already exists")
-        # Update to ensure it has admin role
-        await db.users.update_one(
-            {"email": "admin@cvision.com"},
-            {"$set": {"role": "admin", "password": hash_password("admin123")}}
-        )
-        print("Updated existing user to admin with new password")
-        client.close()
-        return
-    
-    admin_user = {
-        "email": "admin@cvision.com",
-        "password": hash_password("admin123"),
-        "first_name": "Admin",
-        "last_name": "User",
-        "phone": None,
-        "role": "admin",
-        "is_active": True,
-        "is_verified": True,
-        "subscription_tier": "premium",
-        "profile": None,
-        "usage_stats": {
-            "total_searches": 0,
-            "total_applications": 0,
-            "successful_applications": 0,
-            "cv_customizations": 0,
-            "cover_letters_generated": 0,
-            "monthly_searches": 0,
-            "daily_searches": 0,
-            "success_rate": 0.0,
-            "avg_applications_per_search": 0.0
-        },
-        "preferences": {
-            "email_notifications": True,
-            "sms_notifications": False,
-            "push_notifications": True,
-            "marketing_emails": False,
-            "application_reminders": True,
-            "job_alerts": True,
-            "weekly_reports": True,
-            "language": "en",
-            "theme": "light",
-            "dashboard_layout": "default"
-        },
-        "referral_code": generate_referral_code(),
-        "referred_by": None,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
-        "last_login": None,
-        "verified_at": datetime.utcnow(),
-        "cv_uploaded_at": None,
-        "terms_accepted": True,
-        "newsletter_subscription": False
-    }
-    
-    result = await db.users.insert_one(admin_user)
-    print(f"Admin created with ID: {result.inserted_id}")
-    print("Email: admin@cvision.com")
-    print("Password: admin123")
-    
-    client.close()
+    print(f"Connecting to {DB_NAME} at {MONGODB_URL}...")
+    try:
+        client = AsyncIOMotorClient(MONGO_URI)
+        db = client[DB_NAME]
+        users_collection = db.users
+        
+        email = "admin@synovae.io"
+        
+        # Check if user exists
+        existing = await users_collection.find_one({"email": email})
+        if existing:
+            print(f"User {email} already exists. Updating role to Admin...")
+            await users_collection.update_one(
+                {"email": email},
+                {"$set": {
+                    "role": "admin",
+                    "is_superuser": True,
+                    "is_verified": True,
+                    "subscription_tier": "premium",
+                    "subscription_status": "active"
+                }}
+            )
+            print("User updated successfully.")
+            return
+
+        # Create new user
+        print(f"Creating new admin user: {email}")
+        
+        # Hash for 'password123' (bcrypt)
+        hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxwKc.6IymVFt7H.8O.7d3x/j1a6."
+        
+        new_user = {
+            "email": email,
+            "password": hashed_password,  # CORRECT FIELD NAME
+            "first_name": "Admin",
+            "last_name": "User",
+            "role": "admin",
+            "is_active": True,
+            "is_superuser": True,
+            "is_verified": True,
+            "subscription_tier": "premium",
+            "subscription_status": "active",
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+            "usage_stats": {},
+            "preferences": {},
+            "profile": {},
+            "referral_code": "ADMIN123"
+        }
+        
+        await users_collection.insert_one(new_user)
+        print("Admin user created successfully!")
+        print(f"Email: {email}")
+        print("Password: password123")
+
+    except Exception as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(create_admin())
