@@ -12,7 +12,7 @@ services:
       - ENVIRONMENT=production
       
       # Database Configuration (REQUIRED)
-      - MONGODB_URL=mongodb://mongodb:27017/synovae_db
+      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
       - REDIS_URL=redis://redis:6379
       - DATABASE_NAME=synovae_db
       
@@ -54,34 +54,6 @@ services:
         limits:
           memory: 1G
 
-  # MongoDB Service
-  mongodb:
-    image: mongo:7.0
-    networks:
-      - app-network
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/synovae_db
-    deploy:
-      replicas: 1
-      update_config:
-        order: stop-first
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-      resources:
-        reservations:
-          memory: 128M
-        limits:
-          memory: 512M
-    healthcheck:
-      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")' --quiet || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
   # Redis Service
   redis:
     image: redis:7-alpine
@@ -117,7 +89,7 @@ services:
       - app-network
     environment:
       - DEBUG=false
-      - MONGODB_URL=mongodb://mongodb:27017/synovae_db
+      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
       - REDIS_URL=redis://redis:6379
       - DATABASE_NAME=synovae_db
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -162,7 +134,7 @@ services:
       - app-network
     environment:
       - DEBUG=false
-      - MONGODB_URL=mongodb://mongodb:27017/synovae_db
+      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
       - REDIS_URL=redis://redis:6379
       - DATABASE_NAME=synovae_db
       - CELERY_BROKER_URL=redis://redis:6379/0
