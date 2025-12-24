@@ -4,7 +4,7 @@
 
     const API_BASE = window.location.hostname === 'localhost'
         ? 'http://localhost:8000/api/v1'
-        : 'https://visionsai.store/api/v1';
+        : `https://${window.location.hostname}/api/v1`;
 
     let currentPost = null;
 
@@ -227,7 +227,7 @@
                 "name": "VisionAI",
                 "logo": {
                     "@type": "ImageObject",
-                    "url": "https://visionsai.store/logo.png"
+                    "url": `https://${window.location.hostname}/logo.png`
                 }
             },
             "datePublished": post.published_at,

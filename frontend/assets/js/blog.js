@@ -4,7 +4,7 @@
 
     const API_BASE = window.location.hostname === 'localhost'
         ? 'http://localhost:8000/api/v1'
-        : 'https://visionsai.store/api/v1';
+        : `https://${window.location.hostname}/api/v1`;
 
     let currentPage = 1;
     let currentFilters = {

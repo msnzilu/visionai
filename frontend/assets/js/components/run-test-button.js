@@ -41,13 +41,14 @@ class RunTestButton {
 
     render() {
         const container = document.getElementById(this.containerId);
-        if (container) {
-            container.innerHTML = `
-                <button id="${this.generatedBtnId}" class="${this.styleClass}">
-                    ${this.label}
-                </button>
-            `;
-        }
+        if (!container) return;
+
+        // Show button to all users (free users get 1 trial run via checkTierLimit)
+        container.innerHTML = `
+            <button id="${this.generatedBtnId}" class="${this.styleClass}">
+                ${this.label}
+            </button>
+        `;
     }
 
     createModal() {
@@ -55,26 +56,26 @@ class RunTestButton {
 
         const modalHtml = `
             <div id="rt-modal" class="fixed inset-0 z-[60] overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+                <div class="flex items-center justify-center min-h-screen px-2 sm:px-4 pt-4 pb-20 text-center sm:p-0">
                     <div class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm transition-opacity" aria-hidden="true" id="rt-overlay"></div>
                     
-                    <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-100 flex flex-col h-[600px]">
+                    <div class="inline-block align-bottom bg-white rounded-xl sm:rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle w-full max-w-[95vw] sm:max-w-4xl border border-gray-100 flex flex-col h-[85vh] sm:h-[600px]">
                         
                         <!-- Header -->
-                        <div class="bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                            <div class="flex items-center space-x-3">
-                                <div class="flex-shrink-0 h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="bg-white px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div class="flex items-center space-x-2 sm:space-x-3">
+                                <div class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="text-lg font-bold text-gray-900">Auto-Apply Agent</h3>
+                                    <h3 class="text-base sm:text-lg font-bold text-gray-900">Auto-Apply Agent</h3>
                                     <p class="text-xs text-gray-500 font-medium tracking-wide uppercas" id="rt-global-status">Ready to start</p>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2">
-                                <button type="button" id="rt-close-btn" class="rounded-lg p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors">
+                                <button type="button" id="rt-close-btn" class="rounded-lg p-1.5 sm:p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                 </button>
                             </div>
@@ -86,9 +87,9 @@ class RunTestButton {
                         </div>
 
                         <!-- Main Content (Columns) -->
-                        <div class="flex flex-1 overflow-hidden">
+                        <div class="flex flex-col sm:flex-row flex-1 overflow-hidden">
                             <!-- Left: Steps Sidebar -->
-                            <div class="w-1/3 bg-gray-50 border-r border-gray-100 overflow-y-auto p-4 space-y-2">
+                            <div class="w-full sm:w-1/3 bg-gray-50 border-b sm:border-b-0 sm:border-r border-gray-100 overflow-y-auto p-3 sm:p-4 space-y-2 max-h-[30vh] sm:max-h-none">
                                 ${this.renderStepItem('init', 'Setup & Validation', 'Checking prerequisites...')}
                                 ${this.renderStepItem('search', 'Finding Jobs', 'Scanning database for matches')}
                                 ${this.renderStepItem('analyze', 'AI Analysis', 'Scoring jobs against your CV')}
@@ -97,9 +98,9 @@ class RunTestButton {
                             </div>
 
                             <!-- Right: Details Area -->
-                            <div class="w-2/3 bg-white flex flex-col relative">
+                            <div class="w-full sm:w-2/3 bg-white flex flex-col relative flex-1">
                                 <!-- Logs Container -->
-                                <div id="rt-content-area" class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                                <div id="rt-content-area" class="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
                                     <!-- Step Contents (Toggled via JS) -->
                                     <div id="content-init" class="step-content hidden"></div>
                                     <div id="content-search" class="step-content hidden"></div>
