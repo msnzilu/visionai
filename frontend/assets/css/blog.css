@@ -491,3 +491,43 @@
     font-weight: 600;
     box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.4);
 }
+
+/* Related Articles Grid - Responsive Cards */
+#related-posts .blog-card {
+    height: auto;
+    flex-direction: column;
+    max-width: 100%;
+}
+
+#related-posts .blog-card-image {
+    width: 100%;
+    height: 200px;
+}
+
+#related-posts .blog-card-content {
+    width: 100%;
+    padding: 1.5rem;
+}
+
+#related-posts .blog-card-title {
+    font-size: 1.25rem;
+}
+
+/* Mobile optimization for related articles */
+@media (max-width: 640px) {
+    #related-posts .blog-card {
+        height: auto;
+    }
+    
+    #related-posts .blog-card-image {
+        height: 180px;
+    }
+    
+    #related-posts .blog-card-content {
+        padding: 1.25rem;
+    }
+    
+    #related-posts .blog-card-title {
+        font-size: 1.125rem;
+    }
+}

@@ -20,7 +20,7 @@ async def create_admin():
         db = client[DB_NAME]
         users_collection = db.users
         
-        email = "admin@synovae.io"
+        email = "how to deleye and create admin agan by comnnecting to a;as with ,pngposh"
         password = "password123"  # Plain text password for display
         
         # Hash for 'password123' (bcrypt)

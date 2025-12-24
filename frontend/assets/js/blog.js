@@ -27,6 +27,13 @@
 
     // Initialize
     async function init() {
+        // Guard clause: Only run on blog listing page
+        const blogContent = document.getElementById('blog-content');
+        if (!blogContent) {
+            console.log('Not on blog listing page, skipping blog.js initialization');
+            return;
+        }
+
         try {
             await loadCategories();
             await loadTags();
