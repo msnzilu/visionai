@@ -5,13 +5,13 @@ from datetime import datetime
 
 # Connection Settings
 # Trying localhost first since port 27017 is exposed by docker service
-MONGODB_URL = mongodb+srv://jcharles:HxHxHz@#@2030@synovae.wvyba4e.mongodb.net/?appName=synovae
+MONGODB_URL = "mongodb+srv://jcharles:HxHxHz@#@2030@synovae.wvyba4e.mongodb.net/?appName=synovae"
 DB_NAME = "synovae_db"
 
 async def create_admin():
     print(f"Connecting to {DB_NAME} at {MONGODB_URL}...")
     try:
-        client = AsyncIOMotorClient(MONGO_URI)
+        client = AsyncIOMotorClient(MONGODB_URL)
         db = client[DB_NAME]
         users_collection = db.users
         

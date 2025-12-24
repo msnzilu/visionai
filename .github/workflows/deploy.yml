@@ -268,9 +268,37 @@ jobs:
           IMAGE_TAG: ${{ steps.set-tag.outputs.IMAGE_TAG }}
         run: |
           # Copy files to manager
+          # Copy configuration files
           scp -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
             docker-compose.swarm.yml .env.production \
             ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }}:/tmp/
+
+          # Copy frontend files
+          scp -r -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
+            frontend \
+            ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }}:/tmp/
+
+          # Move frontend files to /var/www/visionai
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
+            ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }} << 'ENDSSH'
+            
+            echo "Deploying frontend files..."
+            sudo mkdir -p /var/www/visionai
+            # Create backup if exists
+            # sudo cp -r /var/www/visionai /var/www/visionai_backup_$(date +%s) || true
+            
+            # Copy new files
+            sudo cp -r /tmp/frontend/* /var/www/visionai/
+            
+            # Set permissions (nginx needs read access)
+            sudo chown -R www-data:www-data /var/www/visionai
+            sudo chmod -R 755 /var/www/visionai
+            
+            # Cleanup tmp
+            rm -rf /tmp/frontend
+            
+            echo "Frontend deployed successfully."
+          ENDSSH
 
           # Deploy stack
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
