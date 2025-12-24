@@ -6,23 +6,25 @@
 (function () {
     // Pages that DON'T require authentication
     const publicPages = [
-        'index.html',
+        '/', // root
         'login.html',
         'register.html',
         'auth-callback.html',
-        '/', // root
-        '',   // empty (root)
         'unsubscribe',
         'preferences'
     ];
 
     // Get current page
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    let currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    if (window.location.pathname === '/') currentPage = '/';
 
     // Check if current page is public
-    const isPublicPage = publicPages.some(page =>
-        currentPage === page || currentPage === '' || currentPage === '/'
-    );
+    const isPublicPage = publicPages.some(page => {
+        if (page === '/' || page === '') {
+            return window.location.pathname === '/' || window.location.pathname === '';
+        }
+        return currentPage === page;
+    });
 
     // If not a public page, require authentication
     if (!isPublicPage) {

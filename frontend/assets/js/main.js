@@ -375,8 +375,8 @@ function logout() {
 // Redirect authenticated users away from public pages
 function redirectIfAuthenticated() {
     const publicPages = ['login', 'register'];
-    const path = window.location.pathname.replace(/^\/+|\/+$/g, '');
-    const currentPage = path.split('/').pop().replace(/\.html$/, '') || 'index';
+    const path = window.location.pathname;
+    const currentPage = path === '/' ? '/' : path.replace(/^\/+|\/+$/g, '').split('/').pop().replace(/\.html$/, '');
 
     if (publicPages.includes(currentPage) && Utils.isAuthenticated()) {
         window.location.href = '/dashboard';

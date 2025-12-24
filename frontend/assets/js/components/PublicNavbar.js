@@ -46,8 +46,8 @@ const PublicNavbar = (function () {
             }
 
             if (comparedHref === currentPage ||
-                (currentPage === '' && comparedHref === '/index') ||
-                (currentPage === '/' && comparedHref === '/index')) {
+                (currentPage === '' && comparedHref === '/') ||
+                (currentPage === '/' && comparedHref === '/')) {
                 link.classList.remove('text-gray-600');
                 link.classList.add('text-primary-600', 'font-semibold');
             }
