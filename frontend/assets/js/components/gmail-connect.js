@@ -27,7 +27,12 @@ class GmailConnect {
                 }
             }
 
-            if (user && user.gmail_connected) {
+            // Verify Premium Access + Connection Status
+            const hasPremiumAccess = (typeof PremiumGuard !== 'undefined')
+                ? PremiumGuard.hasAccess('GMAIL_CONNECT')
+                : true;
+
+            if (user && user.gmail_connected && hasPremiumAccess) {
                 this.renderConnected(user);
             } else {
                 this.renderConnect();
@@ -60,68 +65,74 @@ class GmailConnect {
 
     renderConnect() {
         this.container.innerHTML = `
-            <div id="connectGmailAlert" class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-r shadow-sm">
-                <div class="flex items-start justify-between">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            <div id="connectGmailAlert" class="bg-white border border-gray-200 p-4 sm:p-6 mb-6 rounded-xl shadow-sm">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <svg class="h-6 w-6 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                             </svg>
                         </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-medium text-blue-800">Connect your Gmail account</h3>
-                            <div class="mt-2 text-sm text-blue-700">
-                                <p>Enable the Email Agent to automatically track applications and apply via email.</p>
-                            </div>
-                            <div class="mt-4">
-                                <button id="btnConnectGmail" class="text-sm font-medium text-blue-600 hover:text-blue-500 bg-white px-3 py-1.5 rounded border border-blue-200 shadow-sm transition-colors">
-                                    Connect Gmail
-                                </button>
-                            </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-900">Connect Gmail for Auto-Apply</h3>
+                            <p class="text-sm text-gray-500 mt-1">Enable the Email Agent to automatically submit applications via your email.</p>
                         </div>
                     </div>
-                    <button id="btnDismissGmail" class="text-blue-400 hover:text-blue-500">
-                        <span class="sr-only">Dismiss</span>
-                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
+                    <div class="flex-shrink-0">
+                        <button id="btnConnectGmail" class="btn-gradient text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:shadow transition-all flex items-center gap-2">
+                             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+                            </svg>
+                            Connect Gmail
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
 
         // Bind events
         this.container.querySelector('#btnConnectGmail').addEventListener('click', () => this.connect());
-        this.container.querySelector('#btnDismissGmail').addEventListener('click', () => {
-            this.container.innerHTML = ''; // Or hide class
-        });
     }
 
     renderConnected(user) {
         this.container.innerHTML = `
-            <div id="gmailConnectedAlert" class="bg-green-50 border-l-4 border-green-500 p-4 mb-4 rounded-r shadow-sm">
-                <div class="flex flex-col sm:flex-row items-center gap-4">
-                    <div class="flex items-center w-full sm:flex-1">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+            <div id="gmailConnectedAlert" class="bg-white border border-gray-200 p-4 sm:p-6 mb-6 rounded-xl shadow-sm">
+                <div class="flex flex-col xl:flex-row items-center justify-between gap-6">
+                    <div class="flex items-center gap-4 w-full xl:w-auto">
+                        <div class="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center relative">
+                            <svg class="h-6 w-6 text-green-600" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                             </svg>
+                            <span class="absolute -top-1 -right-1 flex h-3 w-3">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                            </span>
                         </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-medium text-green-800">Gmail Connected - Email Agent Active</h3>
-                            <div class="text-sm text-green-700">
-                                <p>Tracking: <strong>${user.email || 'your Gmail account'}</strong></p>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-base font-semibold text-gray-900">Email Agent Active</h3>
+                                <span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wide">Live</span>
                             </div>
+                            <p class="text-sm text-gray-500 mt-1">Tracking applications for <span class="font-medium text-gray-900">${user.email}</span></p>
                         </div>
                     </div>
-                    <div class="flex flex-wrap items-center justify-end gap-3 w-full sm:w-auto mt-3 sm:mt-0">
-                        <button id="quickRunTestBtn" class="text-sm font-medium text-green-700 hover:text-green-800 bg-white/50 hover:bg-white/80 border border-green-200 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 whitespace-nowrap">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                            </svg>
-                            Run Test
-                        </button>
-                        <div id="dashboardAutoApplyContainer" class="flex items-center justify-end w-[160px]" style="min-height: 30px;">
+                    
+                    <div class="flex flex-wrap items-center justify-end gap-4 w-full xl:w-auto">
+                        <div class="h-8 w-px bg-gray-200 hidden xl:block"></div>
+                        
+                        <div class="flex items-center gap-3">
+                            <button id="quickRunTestBtn" class="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg border border-gray-200 transition-colors font-medium text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Simulate
+                            </button>
+                            
+                            <div id="dashboardAutoApplyContainer" class="flex items-center justify-end" style="min-height: 40px;">
+                                <!-- Button injected here -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -165,6 +176,16 @@ class GmailConnect {
     }
 
     async connect() {
+        // Enforce Premium Access
+        if (typeof PremiumGuard !== 'undefined') {
+            const allowed = PremiumGuard.enforce(
+                'GMAIL_CONNECT',
+                'Premium Feature: Email Agent',
+                'Connecting your Gmail requires a Premium subscription. Upgrade to automate your email applications!'
+            );
+            if (!allowed) return;
+        }
+
         try {
             const response = await fetch(`${this.apiUrl}/api/v1/auth/gmail/connect`, {
                 headers: {
@@ -172,7 +193,10 @@ class GmailConnect {
                 }
             });
 
-            if (!response.ok) throw new Error('Failed to initiate connection');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || errorData.message || 'Failed to initiate connection');
+            }
 
             const data = await response.json();
             if (data.success && data.data.auth_url) {
@@ -180,7 +204,7 @@ class GmailConnect {
             }
         } catch (error) {
             console.error('Gmail connect error:', error);
-            CVision.Utils.showAlert('Failed to connect Gmail', 'error');
+            CVision.Utils.showAlert(error.message || 'Failed to connect Gmail', 'error');
         }
     }
 }

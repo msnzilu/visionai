@@ -10,7 +10,8 @@ const PremiumGuard = {
         UNLIMITED_MSGS: 'premium',  // Premium only
         CV_CUSTOMIZATION: 'basic',  // Basic or Premium
         ADVANCED_ANALYTICS: 'premium',
-        RUN_TEST: 'basic'           // Basic or Premium (with 1 free trial)
+        RUN_TEST: 'basic',          // Basic or Premium (with 1 free trial)
+        GMAIL_CONNECT: 'premium'    // Premium only
     },
 
     /**

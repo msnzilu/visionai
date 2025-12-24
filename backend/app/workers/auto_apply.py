@@ -529,6 +529,7 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                     "status": "submitted",
                     "source": "auto_apply",
                     "auto_applied": True,
+                    "email_monitoring_enabled": True,  # UI Toggle State
                     "priority": "medium",
                     "match_score": match_score,
                     "cv_document_id": custom_cv_id,
@@ -694,6 +695,7 @@ def enable_auto_apply_for_user(user_id: str, max_daily_applications: int = 5, mi
                 {"_id": ObjectId(user_id)},
                 {"$set": {
                     "preferences.auto_apply_enabled": True,
+                    "preferences.auto_monitor_enabled": True,  # Coupled with Auto-Apply
                     "preferences.max_daily_applications": max_daily_applications,
                     "preferences.min_match_score": min_match_score,
                     "preferences.auto_apply_enabled_at": datetime.utcnow()
@@ -708,3 +710,56 @@ def enable_auto_apply_for_user(user_id: str, max_daily_applications: int = 5, mi
             return {"success": False, "error": str(e)}
     
     return run_async(_enable())
+
+@celery_app.task(name="app.workers.auto_apply.monitor_portal_applications")
+def monitor_portal_applications():
+    """
+    Periodically check status of browser-applied jobs.
+    Runs every 6 hours (distinct from email monitoring).
+    """
+    async def _monitor():
+        try:
+            db = await get_database()
+            from app.services.automation_service import AutomationService
+            
+            # Find applications that were auto-applied via browser but haven't been checked recently
+            # Limit to avoid overwhelming the browser service
+            check_date = datetime.utcnow() - timedelta(hours=24)
+            
+            apps_to_check = await db.applications.find({
+                "source": "auto_apply",
+                "email_sent_via": {"$exists": False}, # Not email-based (implies browser/portal)
+                "status": {"$in": ["applied", "submitted", "processing"]},
+                "$or": [
+                    {"last_response_check": {"$exists": False}},
+                    {"last_response_check": {"$lt": check_date}}
+                ]
+            }).limit(5).to_list(length=5) # Conservative limit for browser resource
+            
+            results = []
+            for app in apps_to_check:
+                # Resolve URL
+                job = await db.jobs.find_one({"_id": app.get("job_id")})
+                if not job: 
+                    continue
+                    
+                url = job.get("external_url") or job.get("apply_url")
+                if not url:
+                    continue
+                    
+                logger.info(f"Hybrid Monitoring: Checking app {app['_id']} at {url}")
+                
+                status_result = await AutomationService.check_application_status(
+                    application_id=str(app["_id"]),
+                    user_id=str(app["user_id"]),
+                    job_url=url
+                )
+                results.append(status_result)
+                
+            return {"success": True, "checked": len(results), "details": results}
+
+        except Exception as e:
+            logger.error(f"Error in monitor_portal_applications: {e}")
+            return {"success": False, "error": str(e)}
+
+    return run_async(_monitor())

@@ -123,12 +123,12 @@ class OAuthService:
         state = OAuthService.generate_state_token()
         
         params = {
-            "response_type": "code",
-            "client_id": settings.LINKEDIN_CLIENT_ID,
-            "redirect_uri": settings.LINKEDIN_REDIRECT_URI,
-            "state": state,
-            "scope": "openid profile email"
-        }
+        "response_type": "code",
+        "client_id": settings.LINKEDIN_CLIENT_ID,
+        "redirect_uri": settings.LINKEDIN_REDIRECT_URI,
+        "scope": "openid profile email",  
+        "state": state
+    }
         
         from urllib.parse import urlencode
         auth_url = f"https://www.linkedin.com/oauth/v2/authorization?{urlencode(params)}"

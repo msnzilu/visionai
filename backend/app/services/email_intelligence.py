@@ -132,3 +132,72 @@ class EmailIntelligenceService:
 
         except Exception as e:
             logger.error(f"Error checking thread {thread_id}: {e}")
+
+    async def scan_for_application_domain(self, user_id: str, domain: str, application_id: str, days_back: int = 30) -> List[Dict[str, Any]]:
+        """
+        Scan user's inbox for any emails from a specific domain.
+        Part of Hybrid Monitoring.
+        """
+        try:
+            users_collection = self.db["users"]
+            user = await users_collection.find_one({"_id": ObjectId(user_id)})
+            
+            if not user or not user.get("gmail_auth"):
+                logger.warning(f"User {user_id} has no Gmail connected")
+                return []
+
+            gmail_auth = GmailAuth(**user["gmail_auth"])
+            
+            # Calculate search start date
+            cutoff_date = (datetime.utcnow() - timedelta(days=days_back)).strftime('%Y/%m/%d')
+            
+            # Search query: from the domain, after the date
+            query = f"from:({domain}) after:{cutoff_date}"
+            logger.info(f"Hybrid Monitor: Searching emails for app {application_id} with query: {query}")
+            
+            messages = gmail_service.list_messages(gmail_auth, query=query, max_results=5)
+            
+            detected_updates = []
+            
+            for msg_summary in messages:
+                try:
+                    # Fetch full message
+                    message_detail = gmail_service.get_message(gmail_auth, msg_summary["id"])
+                    
+                    # Extract content
+                    headers = {h["name"]: h["value"] for h in message_detail["payload"]["headers"]}
+                    sender = headers.get("From", "")
+                    subject = headers.get("Subject", "")
+                    snippet = message_detail.get("snippet", "")
+                    
+                    # Skip if sent by me (shouldn't happen with from:domain but safe check)
+                    if gmail_auth.email_address and gmail_auth.email_address in sender:
+                        continue
+
+                    # Analyze
+                    analysis = await email_response_analyzer.analyze_email_response(
+                        email_content=snippet,
+                        email_subject=subject,
+                        sender_email=sender,
+                        application_id=application_id,
+                        use_ai=True
+                    )
+                    
+                    if analysis.requires_action or analysis.category != "unknown":
+                        detected_updates.append({
+                            "message_id": msg_summary["id"],
+                            "subject": subject,
+                            "sender": sender,
+                            "analysis": analysis,
+                            "timestamp": datetime.fromtimestamp(int(message_detail["internalDate"]) / 1000)
+                        })
+                        
+                except Exception as msg_error:
+                    logger.error(f"Error analyzing specific message {msg_summary.get('id')}: {msg_error}")
+                    continue
+                    
+            return detected_updates
+            
+        except Exception as e:
+            logger.error(f"Error scanning domain {domain} for user {user_id}: {e}")
+            return []

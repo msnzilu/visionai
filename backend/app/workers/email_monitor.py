@@ -60,6 +60,12 @@ def scan_all_inboxes():
                 try:
                     user_id = str(user["_id"])
                     
+                    # Check preferences (Default to True for backward compatibility)
+                    preferences = user.get("preferences", {})
+                    if not preferences.get("auto_monitor_enabled", True):
+                        logger.debug(f"User {user_id} has monitoring disabled")
+                        continue
+
                     # Check if user has active applications
                     active_apps_count = await db.applications.count_documents({
                         "user_id": user_id,

@@ -24,6 +24,25 @@
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
 </head>
 
 <body class="bg-gray-50">
@@ -173,6 +192,9 @@
             </div>
         </section>
     </article>
+
+    <div id="footer-container"></div>
+
 
     <!-- Footer -->
     <script src="/assets/js/components/PublicNavbar.js"></script>

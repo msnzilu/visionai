@@ -15,6 +15,25 @@
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
 </head>
 
 <body class="bg-gray-50">
@@ -81,7 +100,7 @@
         </div>
     </section>
 
-    <!-- Blog Posts Grid -->
+    <!-- Blog Main Content -->
     <section class="py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Loading State -->
@@ -99,24 +118,40 @@
                 <p class="text-gray-600">Try adjusting your search or filters</p>
             </div>
 
-            <!-- Blog Posts -->
-            <div id="blog-posts-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 hidden">
-                <!-- Posts will be dynamically inserted here -->
-            </div>
-
-            <!-- Pagination -->
-            <div id="pagination" class="hidden mt-12 flex justify-center items-center gap-2">
-                <button id="prev-page"
-                    class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Previous
-                </button>
-                <div id="page-numbers" class="flex gap-2">
-                    <!-- Page numbers will be inserted here -->
+            <!-- Content Area -->
+            <div id="blog-content" class="hidden">
+                <!-- Featured Post -->
+                <div id="featured-post-container" class="mb-16">
+                    <!-- Featured post will be inserted here -->
                 </div>
-                <button id="next-page"
-                    class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Next
-                </button>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                    <!-- Main Column: Recent Posts -->
+                    <div class="lg:col-span-2">
+                        <div class="flex items-center justify-between mb-8">
+                            <h2 class="text-2xl font-bold text-gray-900">Recent Articles</h2>
+                        </div>
+                        <div id="recent-posts-container" class="space-y-8">
+                            <!-- Recent posts list -->
+                        </div>
+                        <!-- Pagination -->
+                        <div id="pagination" class="hidden pagination-container">
+                            <button id="prev-page" class="pagination-btn">Previous</button>
+                            <div id="page-numbers" class="flex gap-2"></div>
+                            <button id="next-page" class="pagination-btn">Next</button>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar: Top Posts -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-24">
+                            <h3 class="text-lg font-bold text-gray-900 mb-6">Top Posts</h3>
+                            <div id="top-posts-container" class="space-y-6">
+                                <!-- Top posts list -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>

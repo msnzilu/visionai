@@ -23,6 +23,11 @@ class SecurityService:
             return True
             
         users_collection = await get_users_collection()
+        
+        # Increase limit for local development / Docker gateway
+        if ip_address in ["127.0.0.1", "::1", "172.18.0.1"] or ip_address.startswith("172."):
+            limit = 50
+            
         count = await users_collection.count_documents({"registration_ip": ip_address})
         
         if count >= limit:

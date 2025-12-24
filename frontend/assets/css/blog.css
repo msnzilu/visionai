@@ -6,7 +6,12 @@
     line-height: 1.75;
 }
 
-.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
     color: #111827;
     font-weight: 700;
     margin-top: 2em;
@@ -14,10 +19,21 @@
     line-height: 1.3;
 }
 
-.prose h1 { font-size: 2.25em; }
-.prose h2 { font-size: 1.875em; }
-.prose h3 { font-size: 1.5em; }
-.prose h4 { font-size: 1.25em; }
+.prose h1 {
+    font-size: 2.25em;
+}
+
+.prose h2 {
+    font-size: 1.875em;
+}
+
+.prose h3 {
+    font-size: 1.5em;
+}
+
+.prose h4 {
+    font-size: 1.25em;
+}
 
 .prose p {
     margin-bottom: 1.25em;
@@ -42,7 +58,8 @@
     font-style: italic;
 }
 
-.prose ul, .prose ol {
+.prose ul,
+.prose ol {
     margin-top: 1.25em;
     margin-bottom: 1.25em;
     padding-left: 1.625em;
@@ -129,54 +146,89 @@
     border: 1px solid #e5e7eb;
 }
 
-/* Blog Card Styles */
+/* Modern Blog List Layout */
+.blog-grid-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 4rem;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Blog Card Styles - List View */
 .blog-card {
     background: white;
-    border-radius: 1rem;
+    border-radius: 1.25rem;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    height: 100%;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 300px;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    border: 1px solid rgba(229, 231, 235, 0.5);
 }
 
 .blog-card:hover {
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     transform: translateY(-4px);
+    border-color: rgba(99, 102, 241, 0.2);
 }
 
 .blog-card-image {
-    width: 100%;
-    height: 200px;
+    width: 40%;
+    height: 100%;
     object-fit: cover;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    transition: transform 0.6s ease;
+}
+
+.blog-card:hover .blog-card-image {
+    transform: scale(1.05);
+    /* Zoom effect on hover */
 }
 
 .blog-card-content {
-    padding: 1.5rem;
+    width: 60%;
+    padding: 2.5rem;
     flex: 1;
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    background: white;
 }
 
 .blog-card-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 0.75rem;
-    line-height: 1.4;
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1a202c;
+    margin-bottom: 1rem;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition: color 0.2s;
 }
 
 .blog-card-title:hover {
-    color: #667eea;
+    color: #4f46e5;
+    text-decoration: none;
 }
 
 .blog-card-excerpt {
-    color: #6b7280;
-    margin-bottom: 1rem;
+    color: #4b5563;
+    margin-bottom: 1.5rem;
     flex: 1;
     line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .blog-card-meta {
@@ -184,49 +236,87 @@
     align-items: center;
     justify-content: space-between;
     font-size: 0.875rem;
-    color: #9ca3af;
-    padding-top: 1rem;
-    border-top: 1px solid #e5e7eb;
+    color: #94a3b8;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f1f5f9;
+    font-weight: 500;
 }
 
 /* Category & Tag Badges */
 .category-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    background: #ede9fe;
-    color: #5b21b6;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 1rem;
+    background: #e0e7ff;
+    color: #4338ca;
     border-radius: 9999px;
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    transition: background 0.2s;
+}
+
+.category-badge:hover {
+    background: #c7d2fe;
 }
 
 .tag-badge {
-    display: inline-block;
-    padding: 0.5rem 1rem;
+    display: inline-flex;
+    padding: 0.4rem 0.85rem;
     background: #f3f4f6;
     color: #4b5563;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 500;
     transition: all 0.2s;
 }
 
 .tag-badge:hover {
     background: #e5e7eb;
-    color: #111827;
+    color: #1f2937;
 }
 
 /* Responsive */
+@media (max-width: 900px) {
+    .blog-card {
+        height: auto;
+        flex-direction: column;
+    }
+
+    .blog-card-image {
+        width: 100%;
+        height: 240px;
+    }
+
+    .blog-card-content {
+        width: 100%;
+        padding: 2rem;
+    }
+
+    .blog-card-title {
+        font-size: 1.5rem;
+    }
+}
+
 @media (max-width: 768px) {
+
+    /* Inherit from 900px breakpoint */
     .prose {
         font-size: 1rem;
     }
-    
-    .prose h1 { font-size: 1.875em; }
-    .prose h2 { font-size: 1.5em; }
-    .prose h3 { font-size: 1.25em; }
+
+    .prose h1 {
+        font-size: 1.875em;
+    }
+
+    .prose h2 {
+        font-size: 1.5em;
+    }
+
+    .prose h3 {
+        font-size: 1.25em;
+    }
 }
 
 /* Print Styles */
@@ -235,13 +325,169 @@
         box-shadow: none;
         border: 1px solid #e5e7eb;
     }
-    
-    nav, footer, button {
+
+    nav,
+    footer,
+    button {
         display: none !important;
     }
-    
+
     .prose {
         font-size: 12pt;
         line-height: 1.5;
     }
+}
+
+/* Featured Post Hero */
+.featured-hero {
+    position: relative;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    height: 500px;
+    display: flex;
+    align-items: flex-end;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transition: transform 0.4s ease;
+}
+
+.featured-hero:hover {
+    transform: translateY(-4px);
+}
+
+.featured-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0.1) 100%);
+    z-index: 1;
+}
+
+.featured-hero-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.8s ease;
+}
+
+.featured-hero:hover .featured-hero-image {
+    transform: scale(1.05);
+}
+
+.featured-hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 3rem;
+    width: 100%;
+    max-width: 800px;
+}
+
+/* Sidebar Top Posts */
+.top-post-card {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    transition: transform 0.2s;
+}
+
+.top-post-card:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.top-post-card:hover {
+    transform: translateX(4px);
+}
+
+.top-post-number {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #e5e7eb;
+    line-height: 1;
+}
+
+.top-post-image {
+    width: 80px;
+    height: 60px;
+    border-radius: 0.5rem;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+/* Modern Blog List Layout Updates */
+.blog-grid-container {
+    display: block;
+    /* Reset grid for custom layout */
+}
+
+/* Blog Card Styles - Refined for List View */
+.blog-card {
+    /* Keep existing styles but refine height */
+    height: 260px;
+    /* Slightly more compact */
+}
+
+@media (max-width: 1024px) {
+    .featured-hero {
+        height: 400px;
+    }
+
+    .blog-card {
+        height: auto;
+        flex-direction: column;
+    }
+
+    .blog-card-image {
+        width: 100%;
+        height: 220px;
+    }
+
+    .blog-card-content {
+        width: 100%;
+        padding: 1.5rem;
+    }
+}
+
+/* Pagination Styles */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 4rem;
+}
+
+.pagination-btn {
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    color: #4b5563;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    border-color: #6366f1;
+    color: #6366f1;
+    background: #f5f3ff;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f9fafb;
+}
+
+.pagination-btn-active {
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.4);
 }

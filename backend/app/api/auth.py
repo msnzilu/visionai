@@ -596,6 +596,7 @@ async def linkedin_login():
     """Initiate LinkedIn OAuth flow"""
     try:
         auth_url, state = OAuthService.get_linkedin_auth_url()
+        logger.info(f"LinkedIn login URL: {auth_url}")
         return {
             "success": True,
             "auth_url": auth_url,

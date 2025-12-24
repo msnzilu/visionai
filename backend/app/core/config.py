@@ -152,9 +152,9 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = Field(default_factory=lambda: get_secret("GOOGLE_CLIENT_SECRET", ""))
     GOOGLE_REDIRECT_URI: str = Field(default="https://synovae.io/api/v1/auth/google/callback", env="GOOGLE_REDIRECT_URI")
     
-    LINKEDIN_CLIENT_ID: Optional[str] = Field(default=None, env="LINKEDIN_CLIENT_ID")
-    LINKEDIN_CLIENT_SECRET: Optional[str] = Field(default=None, env="LINKEDIN_CLIENT_SECRET")
-    LINKEDIN_REDIRECT_URI: str = Field(default="https://synovae.io/api/auth/linkedin/callback", env="LINKEDIN_REDIRECT_URI")
+    LINKEDIN_CLIENT_ID: Optional[str] = Field(default_factory=lambda: get_secret("LINKEDIN_CLIENT_ID", ""))
+    LINKEDIN_CLIENT_SECRET: Optional[str] = Field(default_factory=lambda: get_secret("LINKEDIN_CLIENT_SECRET", ""))
+    LINKEDIN_REDIRECT_URI: str = Field(default=None, env="LINKEDIN_REDIRECT_URI")
     
     # Frontend URL
     FRONTEND_URL: str = Field(default="https://synovae.io", env="FRONTEND_URL")

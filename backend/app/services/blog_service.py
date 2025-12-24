@@ -32,6 +32,7 @@ class BlogService:
         await self.collection.create_index("categories")
         await self.collection.create_index("tags")
         await self.collection.create_index([("title", "text"), ("content", "text"), ("excerpt", "text")])
+        await self.collection.create_index([("views", -1)]) # Improved sorting performance
     
     def _generate_unique_slug(self, base_slug: str, existing_slugs: List[str]) -> str:
         """Generate a unique slug by appending numbers if needed"""
@@ -167,7 +168,8 @@ class BlogService:
         status: Optional[BlogStatus] = None,
         categories: Optional[List[str]] = None,
         tags: Optional[List[str]] = None,
-        search_query: Optional[str] = None
+        search_query: Optional[str] = None,
+        sort_by: str = "published_at" 
     ) -> BlogPostListResponse:
         """List blog posts with filtering and pagination"""
         query = {}
@@ -195,8 +197,15 @@ class BlogService:
         skip = (page - 1) * size
         pages = (total + size - 1) // size
         
+        # Determine sort field
+        sort_field = "published_at"
+        if sort_by == "views":
+            sort_field = "views"
+        elif sort_by == "created_at":
+             sort_field = "created_at"
+             
         # Fetch posts
-        cursor = self.collection.find(query).sort("published_at", -1).skip(skip).limit(size)
+        cursor = self.collection.find(query).sort(sort_field, -1).skip(skip).limit(size)
         
         posts = []
         async for post in cursor:

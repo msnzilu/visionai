@@ -35,9 +35,20 @@ async def lifespan(app: FastAPI):
     
     # Initialize database connection
     try:
-        from app.database import init_database
+        from app.database import init_database, get_database
         await init_database()
         logger.info("Database connection established")
+        
+        # Initialize indexes for services
+        try:
+            from app.services.blog_service import BlogService
+            db = await get_database()
+            blog_service = BlogService(db)
+            await blog_service.ensure_indexes()
+            logger.info("Blog indexes ensured")
+        except Exception as e:
+            logger.warning(f"Failed to ensure blog indexes: {e}")
+            
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
     

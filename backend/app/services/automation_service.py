@@ -296,6 +296,134 @@ class AutomationService:
     
     
     @staticmethod
+    async def check_application_status(
+        application_id: str,
+        user_id: str, 
+        job_url: str
+    ) -> Dict[str, Any]:
+        """
+        Hyper-Monitoring: Check application status via Browser + Email Domain Scan
+        """
+        try:
+            db = await get_database()
+            result_summary = {
+                "portal_status": "unknown",
+                "email_status": "unknown",
+                "final_status": "unknown",
+                "signals": []
+            }
+
+            # 1. BROWSER CHECK
+            # If we have a URL, check it visually
+            if job_url:
+                try:
+                    # Prepare request for Node.js service
+                    payload = {"url": job_url}
+                    headers = {"Authorization": f"Bearer {settings.AUTOMATION_SERVICE_TOKEN}"}
+                    
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        response = await client.post(
+                            f"{BROWSER_AUTOMATION_URL}/api/automation/check-status",
+                            json=payload,
+                            headers=headers
+                        )
+                        
+                        if response.status_code == 200:
+                            browser_data = response.json()
+                            if browser_data.get("success"):
+                                result_summary["portal_status"] = browser_data.get("status", "unknown")
+                                result_summary["signals"].append({
+                                    "source": "browser", 
+                                    "status": result_summary["portal_status"],
+                                    "detail": browser_data.get("matched_keyword"),
+                                    "screenshot": browser_data.get("screenshot_base64")
+                                })
+                except Exception as browser_error:
+                    logger.warning(f"Browser check failed: {browser_error}")
+
+            # 2. EMAIL DOMAIN CHECK
+            # Extract domain from URL to find "hidden" emails
+            domain = ""
+            try:
+                from urllib.parse import urlparse
+                domain = urlparse(job_url).netloc
+                if domain.startswith("www."):
+                    domain = domain[4:]
+                # Clean up known job board domains if needed, but for now strict search is safer
+            except:
+                pass
+
+            if domain:
+                try:
+                    from app.services.email_intelligence import EmailIntelligenceService
+                    email_service = EmailIntelligenceService(db)
+                    
+                    email_updates = await email_service.scan_for_application_domain(
+                        user_id=user_id,
+                        domain=domain,
+                        application_id=application_id
+                    )
+                    
+                    if email_updates:
+                        # Take the most recent/significant update
+                        latest_update = email_updates[0] # List is likely sorted or we sort
+                        result_summary["email_status"] = latest_update["analysis"].category.value
+                        result_summary["signals"].append({
+                            "source": "email_domain",
+                            "status": result_summary["email_status"],
+                            "detail": latest_update["subject"],
+                            "timestamp": latest_update["timestamp"].isoformat()
+                        })
+                except Exception as email_error:
+                    logger.warning(f"Email domain check failed: {email_error}")
+
+            # 3. SYNTHESIS
+            # Logic: Rejected/Offer > Interview > In Review > Applied > Unknown
+            statuses = [s["status"] for s in result_summary["signals"]]
+            
+            if "rejected" in statuses:
+                result_summary["final_status"] = "rejected"
+            elif "offer" in statuses:
+                result_summary["final_status"] = "offer"
+            elif "interview" in statuses:
+                result_summary["final_status"] = "interview"
+            elif "in_review" in statuses:
+                result_summary["final_status"] = "in_review"
+            elif "applied" in statuses:
+                result_summary["final_status"] = "applied"
+            
+            # Update Application if new info found
+            if result_summary["final_status"] != "unknown":
+                update_fields = {
+                    "last_response_check": datetime.utcnow(),
+                    "response_check_result": result_summary["final_status"]
+                }
+                
+                # Map internal status to DB status
+                status_mapping = {
+                    "rejected": "rejected",
+                    "offer": "offer_received", 
+                    "interview": "interview_scheduled",
+                    "in_review": "under_review",
+                    "applied": "applied"
+                }
+                
+                db_status = status_mapping.get(result_summary["final_status"])
+                if db_status:
+                    update_fields["status"] = db_status
+
+                await db.applications.update_one(
+                    {"_id": ObjectId(application_id)},
+                    {"$set": update_fields}
+                )
+
+            return result_summary
+
+        except Exception as e:
+            logger.error(f"Error in hybrid status check: {e}")
+            return {"error": str(e)}
+
+    @staticmethod
     async def get_automation_status(application_id: str) -> Dict[str, Any]:
         """
         Get current automation status for an application

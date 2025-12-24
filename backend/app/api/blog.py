@@ -32,7 +32,7 @@ router = APIRouter()
 async def get_blog_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> BlogService:
     """Dependency to get blog service"""
     service = BlogService(db)
-    await service.ensure_indexes()
+    # await service.ensure_indexes() # REMOVED: Performance bottleneck to run on every request
     return service
 
 
@@ -76,6 +76,7 @@ async def list_blog_posts(
     categories: Optional[str] = Query(None, description="Comma-separated categories"),
     tags: Optional[str] = Query(None, description="Comma-separated tags"),
     search: Optional[str] = None,
+    sort_by: Optional[str] = Query("published_at", regex="^(published_at|views|created_at)$"),
     current_user: Optional[dict] = Depends(get_current_user),
     blog_service: BlogService = Depends(get_blog_service)
 ):
@@ -132,7 +133,8 @@ async def list_blog_posts(
         status=final_status,
         categories=category_list,
         tags=tag_list,
-        search_query=search
+        search_query=search,
+        sort_by=sort_by
     )
     
     return posts

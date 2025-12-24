@@ -266,9 +266,39 @@ setInterval(() => {
     }
 }, 5 * 60 * 1000); // Check every 5 minutes
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Browser Automation Service (Playwright) running on port ${PORT}`);
-    console.log(`Active sessions will be cleaned up after 30 minutes of inactivity`);
+// Check Application Status Endpoint
+app.post('/api/automation/check-status', async (req, res) => {
+    try {
+        const { url, options } = req.body;
+
+        if (!url) {
+            return res.status(400).json({ error: 'URL is required' });
+        }
+
+        console.log(`[${new Date().toISOString()}] Status check requested for: ${url}`);
+
+        const { checkStatus } = require('./automation/status-checker');
+        const result = await checkStatus(url, options || {});
+
+        res.json(result);
+
+    } catch (error) {
+        console.error('Status check endpoint error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.listen(PORT, () => {
+    console.log(`Browser automation service running on port ${PORT}`);
+    console.log(`Authentication token configured: ${AUTH_TOKEN ? 'Yes' : 'No'}`);
 });
 
 process.on('SIGTERM', async () => {

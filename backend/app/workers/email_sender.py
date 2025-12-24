@@ -88,7 +88,15 @@ def send_application_email(
             )
             
             # Update application status to "sent"
-            # Application status is updated inside send_application_via_gmail
+            await db.applications.update_one(
+                {"_id": ObjectId(application_id)},
+                {
+                    "$set": {
+                        "email_status": "sent",
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
             
             logger.info(f"Application email sent successfully for job {job_id}")
             
