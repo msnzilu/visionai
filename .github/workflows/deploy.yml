@@ -151,7 +151,7 @@ jobs:
           AWS_ACCESS_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
 
           # Database
-          MONGODB_URL=mongodb://mongodb:27017
+          MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
           DATABASE_NAME=synovae_db
 
           # Redis
