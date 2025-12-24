@@ -2,14 +2,18 @@ import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 import sys
 from datetime import datetime
+from urllib.parse import quote_plus
 
 # Connection Settings
-# Trying localhost first since port 27017 is exposed by docker service
-MONGODB_URL = "mongodb+srv://jcharles:HxHxHz@#@2030@synovae.wvyba4e.mongodb.net/?appName=synovae"
+# URL-encode the username and password to handle special characters
+username = quote_plus("jcharles")
+password = quote_plus("HxHxHz@#@2030")
+
+MONGODB_URL = f"mongodb+srv://{username}:{password}@synovae.wvyba4e.mongodb.net/?appName=synovae"
 DB_NAME = "synovae_db"
 
 async def create_admin():
-    print(f"Connecting to {DB_NAME} at {MONGODB_URL}...")
+    print(f"Connecting to {DB_NAME}...")
     try:
         client = AsyncIOMotorClient(MONGODB_URL)
         db = client[DB_NAME]
@@ -42,7 +46,7 @@ async def create_admin():
         
         new_user = {
             "email": email,
-            "password": hashed_password,  # CORRECT FIELD NAME
+            "password": hashed_password,
             "first_name": "Admin",
             "last_name": "User",
             "role": "admin",
@@ -66,6 +70,8 @@ async def create_admin():
 
     except Exception as e:
         print(f"Error: {e}")
+    finally:
+        client.close()
 
 if __name__ == "__main__":
     if sys.platform == 'win32':
