@@ -210,7 +210,12 @@ class BlogService:
         posts = []
         async for post in cursor:
             post["id"] = str(post["_id"])
-            posts.append(BlogPostSummary(**{k: v for k, v in post.items() if k != "_id"}))
+            try:
+                posts.append(BlogPostSummary(**{k: v for k, v in post.items() if k != "_id"}))
+            except Exception as e:
+                # Log error but skip valid post to prevent 400/500 for entire list
+                print(f"Skipping malformed post {post.get('_id')}: {e}")
+                continue
         
         return BlogPostListResponse(
             posts=posts,

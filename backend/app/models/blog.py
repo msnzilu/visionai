@@ -38,7 +38,7 @@ class BlogPost(BaseModel):
     content: str = Field(..., min_length=1)  # Full blog content (HTML or Markdown)
     excerpt: Optional[str] = Field(None, max_length=500)  # Short summary
     
-    author: BlogAuthor
+    author: Optional[BlogAuthor] = None  # Made optional to handle legacy/malformed data
     featured_image: Optional[str] = None  # URL to header image
     
     categories: List[str] = []  # ["AI", "Career Tips", "Job Search"]
