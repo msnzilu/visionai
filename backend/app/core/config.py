@@ -96,7 +96,7 @@ class Settings(BaseSettings):
     
     # Database - REQUIRED
     MONGODB_URL: str = Field(env="MONGODB_URL")
-    DATABASE_NAME: str = Field(default="job_platform", env="DATABASE_NAME")
+    DATABASE_NAME: str = Field(default="synovae_db", env="DATABASE_NAME")
     
     # Redis - REQUIRED
     REDIS_URL: str = Field(env="REDIS_URL")

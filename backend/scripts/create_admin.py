@@ -2,15 +2,16 @@ import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 import sys
 from datetime import datetime
-from urllib.parse import quote_plus
+import os
 
-# Connection Settings
-# URL-encode the username and password to handle special characters
-username = quote_plus("jcharles")
-password = quote_plus("HxHxHz@#@2030")
+# Add parent directory to path to import app modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-MONGODB_URL = f"mongodb+srv://{username}:{password}@synovae.wvyba4e.mongodb.net/?appName=synovae"
-DB_NAME = "synovae_db"
+from app.core.config import settings
+
+# Use settings from environment
+MONGODB_URL = settings.MONGODB_URL
+DB_NAME = settings.DATABASE_NAME
 
 async def create_admin():
     print(f"Connecting to {DB_NAME}...")
@@ -66,7 +67,7 @@ async def create_admin():
         await users_collection.insert_one(new_user)
         print("Admin user created successfully!")
         print(f"Email: {email}")
-        print("Password: password123")
+        print("Password: {password}")
 
     except Exception as e:
         print(f"Error: {e}")
