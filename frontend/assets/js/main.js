@@ -192,17 +192,29 @@ const API = {
                 return;
             }
 
+            // Handle 204 No Content (successful DELETE, etc.) - no body to parse
+            if (response.status === 204) {
+                return null; // Success, no content
+            }
+
             // Try to parse JSON response
             let data;
             try {
-                data = await response.json();
+                const text = await response.text();
+                // Only parse if there's actual content
+                if (text) {
+                    data = JSON.parse(text);
+                } else {
+                    data = null;
+                }
             } catch (jsonError) {
-                // If JSON parse fails, backend is likely returning HTML (error page)
-                console.error('Backend returned invalid JSON, likely down. Redirecting to login...');
-                Utils.removeToken();
-                Utils.removeToken();
-                window.location.href = Utils.getLoginUrl();
-                return;
+                // If JSON parse fails AND it's an error status, backend might be returning HTML
+                if (!response.ok) {
+                    console.error('Backend returned invalid JSON for error response');
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+                // For successful responses with no/invalid JSON, just return null
+                data = null;
             }
 
             // If unauthorized and we have a refresh token, try to refresh
@@ -212,7 +224,14 @@ const API = {
                     // Retry the original request with new token
                     config.headers.Authorization = `Bearer ${Utils.getToken()}`;
                     const retryResponse = await fetch(url, config);
-                    return await retryResponse.json();
+
+                    // Handle 204 No Content in retry as well
+                    if (retryResponse.status === 204) {
+                        return null;
+                    }
+
+                    const retryText = await retryResponse.text();
+                    return retryText ? JSON.parse(retryText) : null;
                 } else {
                     // Refresh failed, redirect to login
                     console.error('Token refresh failed, redirecting to login...');
@@ -240,15 +259,16 @@ const API = {
         } catch (error) {
             console.error('API Error:', error);
 
-            // If it's a network error, backend is likely down
-            if (error.message.includes('fetch') || error.name === 'TypeError') {
+            // Only redirect to login if it's a genuine network error (backend down)
+            // NOT for application errors like 404, 500, etc.
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
                 console.error('Network error, backend may be down. Redirecting to login...');
-                Utils.removeToken();
                 Utils.removeToken();
                 window.location.href = Utils.getLoginUrl();
                 return;
             }
 
+            // For all other errors, just throw them so the calling code can handle them
             throw error;
         }
     },

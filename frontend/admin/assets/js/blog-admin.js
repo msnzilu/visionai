@@ -218,21 +218,98 @@
 
     // Delete post
     async function deletePost(postId) {
-        if (!confirm('Are you sure you want to delete this post?')) {
+        // Create custom confirmation modal
+        const confirmed = await showDeleteConfirmation();
+        if (!confirmed) {
             return;
         }
 
         try {
-            await CVision.API.request(`/blog/posts/${postId}`, {
+            console.log('Attempting to delete post:', postId);
+            const result = await CVision.API.request(`/blog/posts/${postId}`, {
                 method: 'DELETE'
             });
+            console.log('Delete result:', result);
+
+            // Show success message
+            if (window.Toast) {
+                window.Toast.show('Blog post deleted successfully', 'success');
+            }
 
             await loadPosts();
             loadStats();
         } catch (error) {
             console.error('Error deleting post:', error);
-            alert('Failed to delete post');
+            console.error('Error name:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+
+            // Show error message
+            if (window.Toast) {
+                window.Toast.show(`Failed to delete post: ${error.message}`, 'error');
+            } else {
+                alert(`Failed to delete post: ${error.message}`);
+            }
         }
+    }
+
+    // Show delete confirmation modal
+    function showDeleteConfirmation() {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">Delete Blog Post</h3>
+                            <p class="text-sm text-gray-600">This action cannot be undone</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-6">Are you sure you want to delete this blog post? All data will be permanently removed.</p>
+                    <div class="flex gap-3 justify-end">
+                        <button id="cancel-delete" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                            Cancel
+                        </button>
+                        <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                            Delete Post
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const confirmBtn = modal.querySelector('#confirm-delete');
+            const cancelBtn = modal.querySelector('#cancel-delete');
+
+            const cleanup = () => {
+                modal.remove();
+            };
+
+            confirmBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(true);
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(false);
+            });
+
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    cleanup();
+                    resolve(false);
+                }
+            });
+        });
     }
 
     // Save post
