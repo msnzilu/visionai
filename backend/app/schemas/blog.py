@@ -54,17 +54,17 @@ class BlogPostUpdate(BaseModel):
 class BlogPostSummary(BaseModel):
     """Lightweight summary for listings"""
     id: str
-    title: str
-    slug: str
-    excerpt: Optional[str]
-    featured_image: Optional[str]
+    title: str = "Untitled"
+    slug: str = ""
+    excerpt: Optional[str] = None
+    featured_image: Optional[str] = None
     author: Optional[BlogAuthor] = None
-    categories: List[str]
-    tags: List[str]
-    status: BlogStatus
-    published_at: Optional[datetime]
-    views: int
-    reading_time: int
+    categories: List[str] = []
+    tags: List[str] = []
+    status: BlogStatus = BlogStatus.DRAFT
+    published_at: Optional[datetime] = None
+    views: int = 0
+    reading_time: int = 1
     
     class Config:
         json_encoders = {
@@ -75,26 +75,26 @@ class BlogPostSummary(BaseModel):
 class BlogPostResponse(BaseModel):
     """Full blog post response"""
     id: str
-    title: str
-    slug: str
-    content: str
-    excerpt: Optional[str]
+    title: str = "Untitled"
+    slug: str = ""
+    content: str = ""
+    excerpt: Optional[str] = None
     
     author: Optional[BlogAuthor] = None
-    featured_image: Optional[str]
+    featured_image: Optional[str] = None
     
-    categories: List[str]
-    tags: List[str]
+    categories: List[str] = []
+    tags: List[str] = []
     
-    seo: BlogSEO
-    status: BlogStatus
+    seo: BlogSEO = Field(default_factory=BlogSEO)
+    status: BlogStatus = BlogStatus.DRAFT
     
-    published_at: Optional[datetime]
-    created_at: datetime
-    updated_at: datetime
+    published_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    views: int
-    reading_time: int
+    views: int = 0
+    reading_time: int = 1
     
     class Config:
         json_encoders = {

@@ -67,14 +67,22 @@
     // Load Featured Post (Latest 1)
     async function loadFeaturedPost() {
         try {
+            console.log('Loading featured post...');
             const response = await fetch(`${API_BASE}/blog/posts?size=1&page=1&status=published`);
-            if (!response.ok) return;
+            if (!response.ok) {
+                console.error('Featured post fetch failed:', response.status);
+                return;
+            }
             const data = await response.json();
+            console.log('Featured post data:', data);
 
             if (data.posts && data.posts.length > 0) {
+                console.log('Rendering featured post:', data.posts[0].title);
                 renderFeaturedPost(data.posts[0]);
+                // Ensure container is visible
+                document.getElementById('featured-post-container').classList.remove('hidden');
             } else {
-                // If no featured post, hide container
+                console.warn('No featured posts found');
                 document.getElementById('featured-post-container').classList.add('hidden');
             }
         } catch (error) {
@@ -88,8 +96,16 @@
         const container = document.getElementById('featured-post-container');
         if (!container) return;
 
-        const imageUrl = post.featured_image || '/assets/images/blog/default-hero.jpg';
-        const date = new Date(post.published_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        // Use reliable Unsplash placeholder if no image
+        const imageUrl = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
+
+        const authorName = post.author ? post.author.name : 'Synovae Team';
+        const authorInitial = authorName.charAt(0);
+
+        let dateStr = 'Recently';
+        if (post.published_at) {
+            dateStr = new Date(post.published_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        }
 
         container.innerHTML = `
             <div class="featured-hero relative rounded-2xl overflow-hidden group cursor-pointer" onclick="window.location.href='/info/blog-post?slug=${post.slug}'">
@@ -104,12 +120,12 @@
                     <div class="flex items-center gap-4 text-white/80 text-sm">
                         <div class="flex items-center gap-2">
                              <div class="w-8 h-8 rounded-full bg-primary-500/30 flex items-center justify-center text-white font-bold text-xs border border-white/20">
-                                ${post.author.name.charAt(0)}
+                                ${authorInitial}
                             </div>
-                            <span>${post.author.name}</span>
+                            <span>${authorName}</span>
                         </div>
                         <span>•</span>
-                        <span>${date}</span>
+                        <span>${dateStr}</span>
                         <span>•</span>
                         <span>${post.reading_time} min read</span>
                     </div>
@@ -181,7 +197,7 @@
             }
 
             data.posts.forEach((post, index) => {
-                const imageUrl = post.featured_image || '/assets/images/blog/default-thumb.jpg';
+                const imageUrl = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
                 const el = document.createElement('a');
                 el.href = `/info/blog-post?slug=${post.slug}`;
                 el.className = 'top-post-card group block hover:bg-gray-50 transition p-2 rounded-lg';
@@ -249,13 +265,16 @@
         card.className = 'blog-card group cursor-pointer';
         card.onclick = () => window.location.href = `/info/blog-post?slug=${post.slug}`;
 
-        const imageUrl = post.featured_image || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Cdefs%3E%3ClinearGradient id="grad" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" style="stop-color:%23667eea;stop-opacity:1" /%3E%3Cstop offset="100%25" style="stop-color:%23764ba2;stop-opacity:1" /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="400" height="200" fill="url(%23grad)" /%3E%3C/svg%3E';
+        const imageUrl = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
 
-        const publishDate = post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        }) : 'Draft';
+        let publishDate = 'Draft';
+        if (post.status === 'published') {
+            publishDate = post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }) : 'Recently';
+        }
 
         card.innerHTML = `
             <img src="${imageUrl}" alt="${post.title}" class="blog-card-image" loading="lazy">

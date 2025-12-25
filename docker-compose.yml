@@ -1,20 +1,20 @@
 services:
-  mongo:
-    image: mongo:7.0
-    container_name: synovae_db_mongo
-    environment:
-      MONGO_INITDB_DATABASE: synovae_db
-    volumes:
-      - mongo_data:/data/db
-    ports:
-      - "27017:27017"
-    networks:
-      - vision_ai_network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/synovae_db
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # mongo:
+  #   image: mongo:7.0
+  #   container_name: synovae_db_mongo
+  #   environment:
+  #     MONGO_INITDB_DATABASE: synovae_db
+  #   volumes:
+  #     - mongo_data:/data/db
+  #   ports:
+  #     - "27017:27017"
+  #   networks:
+  #     - vision_ai_network
+  #   healthcheck:
+  #     test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/synovae_db
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
   redis:
     image: redis:7-alpine
@@ -42,6 +42,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - BROWSER_AUTOMATION_URL=http://host.docker.internal:3000
       - AUTOMATION_SERVICE_TOKEN=${AUTOMATION_SERVICE_TOKEN:-dev-automation-token}
+      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
+      - DATABASE_NAME=synovae_db
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
@@ -52,7 +54,6 @@ services:
     networks:
       - vision_ai_network
     depends_on:
-      - mongo
       - redis
 
   celery_worker:
@@ -72,8 +73,9 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - BROWSER_AUTOMATION_URL=http://host.docker.internal:3000
       - AUTOMATION_SERVICE_TOKEN=${AUTOMATION_SERVICE_TOKEN:-dev-automation-token}
+      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
+      - DATABASE_NAME=synovae_db
     depends_on:
-      - mongo
       - redis
       - backend
     networks:
@@ -92,8 +94,9 @@ services:
     environment:
       - DATABASE_URL=mongodb://mongo:27017/synovae_db
       - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
+      - DATABASE_NAME=synovae_db
     depends_on:
-      - mongo
       - redis
     networks:
       - vision_ai_network

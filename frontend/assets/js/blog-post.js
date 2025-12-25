@@ -60,9 +60,8 @@
         document.getElementById('og-title').setAttribute('content', post.seo.og_title || post.title);
         document.getElementById('og-description').setAttribute('content', post.seo.og_description || post.excerpt || '');
         document.getElementById('og-url').setAttribute('content', window.location.href);
-        if (post.featured_image) {
-            document.getElementById('og-image').setAttribute('content', post.featured_image);
-        }
+        const ogImage = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
+        document.getElementById('og-image').setAttribute('content', ogImage);
 
         // Breadcrumb
         document.getElementById('breadcrumb-title').textContent = post.title;
@@ -104,13 +103,11 @@
         document.getElementById('view-count').textContent = post.views;
 
         // Featured image
-        if (post.featured_image) {
-            const featuredImageContainer = document.getElementById('featured-image-container');
-            const featuredImage = document.getElementById('featured-image');
-            featuredImage.src = post.featured_image;
-            featuredImage.alt = post.title;
-            featuredImageContainer.classList.remove('hidden');
-        }
+        const featuredImageContainer = document.getElementById('featured-image-container');
+        const featuredImage = document.getElementById('featured-image');
+        featuredImage.src = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
+        featuredImage.alt = post.title;
+        featuredImageContainer.classList.remove('hidden');
 
         // Article body
         document.getElementById('article-body').innerHTML = post.content;
@@ -155,7 +152,7 @@
         const section = document.getElementById('related-posts-section');
 
         container.innerHTML = posts.map(post => {
-            const imageUrl = post.featured_image || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Cdefs%3E%3ClinearGradient id="grad" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" style="stop-color:%23667eea;stop-opacity:1" /%3E%3Cstop offset="100%25" style="stop-color:%23764ba2;stop-opacity:1" /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="400" height="200" fill="url(%23grad)" /%3E%3C/svg%3E';
+            const imageUrl = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
 
             return `
                 <div class="blog-card">
@@ -217,7 +214,7 @@
             "@type": "BlogPosting",
             "headline": post.title,
             "description": post.excerpt || '',
-            "image": post.featured_image || '',
+            "image": post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80',
             "author": {
                 "@type": "Person",
                 "name": post.author && post.author.name ? post.author.name : 'VisionAI Team'

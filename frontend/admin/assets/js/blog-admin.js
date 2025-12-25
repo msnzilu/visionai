@@ -191,28 +191,51 @@
     // Edit post
     async function editPost(postId) {
         try {
+            console.log('Fetching post for edit:', postId);
             const post = await CVision.API.request(`/blog/posts/${postId}`);
+            console.log('Post data received:', post);
+
+            if (!post) {
+                throw new Error('Received empty data from server');
+            }
+
             currentEditingPost = post;
 
             document.getElementById('modal-title').textContent = 'Edit Blog Post';
-            document.getElementById('post-title').value = post.title;
-            document.getElementById('post-slug').value = post.slug;
+            document.getElementById('post-title').value = post.title || '';
+            document.getElementById('post-slug').value = post.slug || '';
             document.getElementById('post-excerpt').value = post.excerpt || '';
+
             if (editor) {
-                setEditorContent(post.content);
+                setEditorContent(post.content || '');
             }
+
             document.getElementById('post-image').value = post.featured_image || '';
-            document.getElementById('post-categories').value = post.categories.join(', ');
-            document.getElementById('post-tags').value = post.tags.join(', ');
-            document.getElementById('seo-title').value = post.seo.meta_title || '';
-            document.getElementById('seo-description').value = post.seo.meta_description || '';
-            document.getElementById('seo-keywords').value = post.seo.keywords.join(', ');
-            document.getElementById('post-status').value = post.status;
+            document.getElementById('post-categories').value = (post.categories || []).join(', ');
+            document.getElementById('post-tags').value = (post.tags || []).join(', ');
+
+            // Safe access for SEO fields
+            const seo = post.seo || {};
+            document.getElementById('seo-title').value = seo.meta_title || '';
+            document.getElementById('seo-description').value = seo.meta_description || '';
+            document.getElementById('seo-keywords').value = (seo.keywords || []).join(', ');
+
+            document.getElementById('post-status').value = post.status || 'draft';
 
             editorModal.classList.remove('hidden');
         } catch (error) {
             console.error('Error loading post:', error);
-            alert('Failed to load post');
+
+            if (window.Toast) {
+                window.Toast.show(`Failed to load post: ${error.message}`, 'error');
+            } else {
+                // Fallback custom alert if Toast not available
+                const msg = document.createElement('div');
+                msg.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50';
+                msg.innerHTML = `<strong class="font-bold">Error!</strong> <span class="block sm:inline">${error.message}</span>`;
+                document.body.appendChild(msg);
+                setTimeout(() => msg.remove(), 5000);
+            }
         }
     }
 
