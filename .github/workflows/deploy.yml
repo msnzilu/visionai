@@ -134,7 +134,7 @@ jobs:
           PORT=8000
           DEBUG=false
           ENVIRONMENT=production
-          BROWSER_AUTOMATION_URL=http://host.docker.internal:3000
+          BROWSER_AUTOMATION_URL=http://host.docker.internal:3001
           BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN}
           HEADLESS=true
 
