@@ -34,7 +34,8 @@ class BrowserAutomationManager {
             if (!token) throw new Error('Authentication required.');
 
             // Notify user
-            CVision.Utils.showAlert('Initiating automated application...', 'info');
+            window.AutomationUI?.show();
+            window.AutomationUI?.updateStatus('Active', 'Initiating automated application...', 5);
 
             const url = `${this.API_BASE_URL}/browser-automation/autofill/start`;
             const payload = {
@@ -61,10 +62,7 @@ class BrowserAutomationManager {
 
             console.log('✅ Automation started. Session ID:', data.session_id);
 
-            CVision.Utils.showAlert(
-                'Automation engine warmed up! Check the dashboard for progress.',
-                'success'
-            );
+            window.AutomationUI?.updateStatus('Active', 'Automation engine warmed up! Connecting...', 15);
 
             // Start polling if we have a session ID
             if (data.session_id) {
@@ -121,17 +119,34 @@ class BrowserAutomationManager {
         const { status, filled_fields, error } = data;
         console.log(`📊 [Automation Status] ${sessionId}: ${status}`, data);
 
+        // Map status to progress for the UI
+        const statusMap = {
+            'initializing': 10,
+            'navigating': 30,
+            'detecting_forms': 50,
+            'filling_forms': 75,
+            'completed': 100,
+            'failed': 100,
+            'error': 100
+        };
+
+        const progress = statusMap[status] || 0;
+
         // Update UI or provide feedback based on status
         if (status === 'navigating') {
-            CVision.Utils.showAlert('Browser: Navigating to job page...', 'info');
+            window.AutomationUI?.updateStatus('Active', 'Navigating to job page...', progress);
         } else if (status === 'filling_forms') {
-            CVision.Utils.showAlert(`Browser: Filling forms (${filled_fields?.length || 0} fields)...`, 'info');
+            window.AutomationUI?.updateStatus('Active', `Filling forms (${filled_fields?.length || 0} fields)...`, progress);
         } else if (status === 'completed') {
-            CVision.Utils.showAlert('Automated application ready! Please review and submit.', 'success');
+            window.AutomationUI?.updateStatus('Success', 'Application ready! Please review and submit.', 100);
             this.stopPolling(sessionId);
-        } else if (status === 'failed') {
-            CVision.Utils.showAlert(`Automation Error: ${error || 'Unknown error'}`, 'error');
+            window.AutomationUI?.hide(5000);
+        } else if (status === 'failed' || status === 'error') {
+            window.AutomationUI?.updateStatus('Error', `Automation Error: ${error || 'Unknown error'}`, 100);
             this.stopPolling(sessionId);
+        } else {
+            // Default update for other states
+            window.AutomationUI?.updateStatus('Active', `System: ${status.replace('_', ' ')}...`, progress);
         }
     }
 

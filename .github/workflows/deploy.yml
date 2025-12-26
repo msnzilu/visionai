@@ -301,6 +301,13 @@ jobs:
             sudo chown -R www-data:www-data /var/www/visionai
             sudo chmod -R 755 /var/www/visionai
             
+            # Set permissions (nginx needs read access)
+            sudo chown -R www-data:www-data /var/www/visionai
+            sudo chmod -R 755 /var/www/visionai
+            
+            # Allow port 3001 for automation service
+            sudo ufw allow 3001/tcp || true
+            
             # Cleanup tmp
             rm -rf /tmp/frontend
             
@@ -308,14 +315,15 @@ jobs:
             
             # --- Deploy Browser Automation ---
             echo "Deploying browser automation..."
-            sudo mkdir -p /var/www/visionai/automation
+            # Using home directory instead of var/www to separate from frontend
+            TARGET_DIR="/home/ubuntu/visionai-automation"
+            mkdir -p $TARGET_DIR
             
             # Copy new files
-            sudo cp -r /tmp/browser-automation/* /var/www/visionai/automation/
-            sudo chown -R ubuntu:ubuntu /var/www/visionai/automation
+            cp -r /tmp/browser-automation/* $TARGET_DIR/
             
             # Install dependencies and start with PM2
-            cd /var/www/visionai/automation
+            cd $TARGET_DIR
             
             # Ensure PM2 is installed
             if ! command -v pm2 &> /dev/null; then
@@ -327,10 +335,18 @@ jobs:
             npm install --production
             
             echo "Starting/Restarting service..."
-            # Using --update-env to pick up any new env vars if we were passing them, 
-            # though here we rely on defaults or .env file if present. 
-            # We explicitly set PORT to 3001.
-            PORT=3001 pm2 start src/index.js --name "visionai-automation" --update-env || pm2 restart "visionai-automation" --update-env
+            # Using --update-env to pick up the token from the environment variable
+            # We explicitly set PORT and BROWSER_AUTOMATION_TOKEN.
+            PORT=3001 BROWSER_AUTOMATION_TOKEN="${{ secrets.BROWSER_AUTOMATION_TOKEN }}" pm2 start src/index.js --name "visionai-automation" --update-env || PORT=3001 BROWSER_AUTOMATION_TOKEN="${{ secrets.BROWSER_AUTOMATION_TOKEN }}" pm2 restart "visionai-automation" --update-env
+            
+            pm2 save
+            
+            # Wait for service to start
+            sleep 5
+            
+            # Health Check
+            echo "Checking automation service health..."
+            curl -v http://localhost:3001/health || echo "⚠️ Warning: Automation service check failed locally"
             
             pm2 save
             
