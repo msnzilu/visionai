@@ -10,7 +10,7 @@ services:
       # Core Settings
       - DEBUG=false
       - ENVIRONMENT=production
-      - BROWSER_AUTOMATION_URL=http://host.docker.internal:3001
+      - BROWSER_AUTOMATION_URL=${BROWSER_AUTOMATION_URL}
       - BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN}
       
       # Database Configuration (REQUIRED)

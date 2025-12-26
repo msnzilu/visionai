@@ -140,7 +140,6 @@ class BrowserAutomationManager {
         } else if (status === 'completed') {
             window.AutomationUI?.updateStatus('Success', 'Application ready! Please review and submit.', 100);
             this.stopPolling(sessionId);
-            window.AutomationUI?.hide(5000);
         } else if (status === 'failed' || status === 'error') {
             window.AutomationUI?.updateStatus('Error', `Automation Error: ${error || 'Unknown error'}`, 100);
             this.stopPolling(sessionId);

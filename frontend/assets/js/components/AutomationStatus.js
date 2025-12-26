@@ -63,9 +63,11 @@ class AutomationStatus {
     }
 
     hide(delay = 3000) {
-        setTimeout(() => {
+        if (this.hideTimer) clearTimeout(this.hideTimer);
+        this.hideTimer = setTimeout(() => {
             this.container.classList.remove('active');
             this.isVisible = false;
+            this.hideTimer = null;
         }, delay);
     }
 
@@ -88,12 +90,18 @@ class AutomationStatus {
         if (status === 'error' || status === 'failed') {
             this.container.classList.add('error');
             this.statusBadge.classList.add('status-error');
+            this.hide(8000); // Hide after 8 seconds on error
         } else if (status === 'completed' || status === 'success') {
             this.container.classList.add('completed');
             this.statusBadge.classList.add('status-completed');
             this.setProgress(100);
+            this.hide(5000); // Hide after 5 seconds on success
         } else {
             this.statusBadge.classList.add('status-active');
+            if (this.hideTimer) {
+                clearTimeout(this.hideTimer);
+                this.hideTimer = null;
+            }
         }
 
         if (progress !== null) {
@@ -108,6 +116,11 @@ class AutomationStatus {
     }
 
     addLog(message, type = 'info') {
+        // Skip technical or redundant logs to keep the UI clean
+        if (message.includes('host.docker.internal') || message.includes('warmed up')) {
+            return;
+        }
+
         const entry = document.createElement('div');
         entry.className = `log-entry ${type}`;
         entry.textContent = `[${new Date().toLocaleTimeString([], { hour12: false })}] ${message}`;
