@@ -134,6 +134,9 @@ jobs:
           PORT=8000
           DEBUG=false
           ENVIRONMENT=production
+          BROWSER_AUTOMATION_URL=http://host.docker.internal:3000
+          BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN}
+          HEADLESS=true
 
           # Security
           SECRET_KEY=${{ secrets.SECRET_KEY }}
@@ -149,10 +152,6 @@ jobs:
           # AWS
           AWS_ACESS_KEY_SECRET=${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-
-          # Database
-          MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
-          DATABASE_NAME=synovae_db
 
           # Redis
           REDIS_URL=redis://redis:6379/0
@@ -218,6 +217,9 @@ jobs:
           LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
           LINKEDIN_REDIRECT_URI=${{ secrets.LINKEDIN_REDIRECT_URI }}
 
+          MONGODB_URL=${{ secrets.MONGODB_URL }}
+          DATABASE_NAME=${{ secrets.DATABASE_NAME }}
+
           # Subscription Limits - Free
           FREE_TIER_MONTHLY_ATTEMPTS=3
           FREE_TIER_JOBS_PER_ATTEMPT=10
@@ -277,6 +279,11 @@ jobs:
           scp -r -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
             frontend \
             ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }}:/tmp/
+            
+          # Copy automation files
+          scp -r -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
+            browser-automation \
+            ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }}:/tmp/
 
           # Move frontend files to /var/www/visionai
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
@@ -298,6 +305,39 @@ jobs:
             rm -rf /tmp/frontend
             
             echo "Frontend deployed successfully."
+            
+            # --- Deploy Browser Automation ---
+            echo "Deploying browser automation..."
+            sudo mkdir -p /var/www/visionai/automation
+            
+            # Copy new files
+            sudo cp -r /tmp/browser-automation/* /var/www/visionai/automation/
+            sudo chown -R ubuntu:ubuntu /var/www/visionai/automation
+            
+            # Install dependencies and start with PM2
+            cd /var/www/visionai/automation
+            
+            # Ensure PM2 is installed
+            if ! command -v pm2 &> /dev/null; then
+                echo "Installing pm2..."
+                sudo npm install -g pm2
+            fi
+            
+            echo "Installing dependencies..."
+            npm install --production
+            
+            echo "Starting/Restarting service..."
+            # Using --update-env to pick up any new env vars if we were passing them, 
+            # though here we rely on defaults or .env file if present. 
+            # We explicitly set PORT to 3001.
+            PORT=3001 pm2 start src/index.js --name "visionai-automation" --update-env || pm2 restart "visionai-automation" --update-env
+            
+            pm2 save
+            
+            # Cleanup tmp
+            rm -rf /tmp/browser-automation
+            
+            echo "Browser automation deployed successfully."
           ENDSSH
 
           # Deploy stack
@@ -358,6 +398,10 @@ jobs:
             create_secret_from_env "LINKEDIN_CLIENT_ID" "${LINKEDIN_CLIENT_ID}"
             create_secret_from_env "LINKEDIN_CLIENT_SECRET" "${LINKEDIN_CLIENT_SECRET}"
             create_secret_from_env "LINKEDIN_REDIRECT_URI" "${LINKEDIN_REDIRECT_URI}"
+            create_secret_from_env "MONGODB_URL" "${MONGODB_URL}"
+            create_secret_from_env "DATABASE_NAME" "${DATABASE_NAME}"
+            create_secret_from_env "BROWSER_AUTOMATION_TOKEN" "${BROWSER_AUTOMATION_TOKEN}"
+            create_secret_from_env "BROWSER_AUTOMATION_URL" "${BROWSER_AUTOMATION_URL}"
             
             # Check disk space before deploy
             echo "=== Disk Space ==="

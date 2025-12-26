@@ -13,6 +13,7 @@ from .common import TimeStampedModel, SoftDeleteModel, FileInfo, Priority
 
 class ApplicationStatus(str, Enum):
     DRAFT = "draft"
+    PENDING = "pending"  # Used by automation service
     SUBMITTED = "submitted"
     APPLIED = "applied"
     UNDER_REVIEW = "under_review"
@@ -33,6 +34,7 @@ class ApplicationSource(str, Enum):
     MANUAL = "manual"
     PLATFORM = "platform"
     AUTO_APPLY = "auto_apply"
+    BROWSER_AUTOMATION = "browser_automation"  # Used by automation service
     REFERRAL = "referral"
     DIRECT = "direct"
     RECRUITER = "recruiter"

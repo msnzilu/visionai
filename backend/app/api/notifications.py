@@ -7,8 +7,8 @@ from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Optional
 from datetime import datetime
 import logging
-from app.api.deps import get_current_user, get_database
-from app.services.notification_service import NotificationService
+from app.api.deps import get_current_user, get_current_active_user, get_database
+from app.services.core.notification_service import NotificationService
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ async def get_notifications(
     unread_only: bool = Query(False, description="Get only unread notifications"),
     limit: int = Query(50, ge=1, le=100),
     skip: int = Query(0, ge=0),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_active_user),
     db = Depends(get_database)
 ):
     """
@@ -86,7 +86,7 @@ async def get_notifications(
 
 @router.get("/unread-count", response_model=UnreadCountResponse)
 async def get_unread_count(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_active_user),
     db = Depends(get_database)
 ):
     """Get count of unread notifications"""
@@ -110,7 +110,7 @@ async def get_unread_count(
 @router.put("/{notification_id}/read")
 async def mark_notification_as_read(
     notification_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_active_user),
     db = Depends(get_database)
 ):
     """Mark a notification as read"""
@@ -139,7 +139,7 @@ async def mark_notification_as_read(
 
 @router.put("/mark-all-read")
 async def mark_all_notifications_as_read(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_active_user),
     db = Depends(get_database)
 ):
     """Mark all notifications as read for the current user"""
@@ -167,7 +167,7 @@ async def mark_all_notifications_as_read(
 @router.delete("/{notification_id}")
 async def delete_notification(
     notification_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_active_user),
     db = Depends(get_database)
 ):
     """Delete a notification"""
@@ -196,7 +196,7 @@ async def delete_notification(
 
 @router.post("/test")
 async def create_test_notification(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_active_user),
     db = Depends(get_database)
 ):
     """

@@ -4,7 +4,7 @@ Complete implementation with all endpoints
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
-from fastapi import status
+from fastapi import status as fastapi_status
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
@@ -19,20 +19,20 @@ from app.models.application import (
     ApplicationListResponse, ApplicationStats, ApplicationStatus, EmailReplyRequest,
     ApplicationCommunication, CommunicationType
 )
-from app.services.gmail_service import gmail_service
+from app.services.emails.gmail_service import gmail_service
 from app.models.user import GmailAuth
 from app.models.common import SuccessResponse
-from app.services.application_tracking_service import ApplicationTrackingService
-from app.services.subscription_service import SubscriptionService
+from app.services.jobs.application_tracking_service import ApplicationTrackingService
+from app.services.core.subscription_service import SubscriptionService
 
 # Import Phase 5 services if available
 try:
-    from app.services.analytics_service import AnalyticsService
+    from app.services.core.analytics_service import AnalyticsService
 except ImportError:
     AnalyticsService = None
     
 try:
-    from app.services.notification_service import NotificationService
+    from app.services.core.notification_service import NotificationService
 except ImportError:
     NotificationService = None
 
@@ -163,7 +163,7 @@ async def create_application(
     except Exception as e:
         logger.error(f"Error creating application: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=fastapi_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create application"
         )
 
@@ -171,7 +171,7 @@ async def create_application(
 @router.get("/", response_model=ApplicationListResponse)
 async def list_applications(
     page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1, le=100),
+    size: int = Query(50, ge=1, le=1000),
     status: Optional[str] = None,
     company: Optional[str] = None,
     priority: Optional[str] = None,
@@ -206,7 +206,7 @@ async def list_applications(
                     date_filter["$gte"] = datetime.fromisoformat(applied_after)
                 except ValueError:
                     raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
+                        status_code=fastapi_status.HTTP_400_BAD_REQUEST,
                         detail="Invalid applied_after date format. Use YYYY-MM-DD"
                     )
             if applied_before:
@@ -214,7 +214,7 @@ async def list_applications(
                     date_filter["$lte"] = datetime.fromisoformat(applied_before)
                 except ValueError:
                     raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
+                        status_code=fastapi_status.HTTP_400_BAD_REQUEST,
                         detail="Invalid applied_before date format. Use YYYY-MM-DD"
                     )
             filters["applied_date"] = date_filter
@@ -298,7 +298,7 @@ async def list_applications(
     except Exception as e:
         logger.error(f"Error listing applications: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=fastapi_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve applications"
         )
 
@@ -1553,7 +1553,7 @@ async def update_application_priority(
             detail="Failed to update priority"
         )
 
-    # ==================== EMAIL MONITORING ENDPOINTS ====================
+# ==================== EMAIL MONITORING ENDPOINTS ====================
 @router.post("/{application_id}/enable-monitoring", response_model=SuccessResponse)
 async def enable_email_monitoring(
     application_id: str,
@@ -1562,7 +1562,7 @@ async def enable_email_monitoring(
 ):
     """Enable email monitoring for an application"""
     try:
-        from app.services.email_agent_service import email_agent_service
+        from app.services.emails.email_agent_service import email_agent_service
         
         try:
             ObjectId(application_id)
@@ -1628,7 +1628,7 @@ async def check_application_responses(
 ):
     """Manually check for email responses"""
     try:
-        from app.services.email_agent_service import email_agent_service
+        from app.services.emails.email_agent_service import email_agent_service
         
         try:
             ObjectId(application_id)

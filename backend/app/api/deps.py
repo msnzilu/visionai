@@ -18,7 +18,7 @@ from app.core.security import verify_access_token
 from app.database import get_database
 from app.models.user import User, SubscriptionTier
 from app.models.subscription import Subscription
-from app.services.auth_service import AuthService
+from app.services.auth.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer()

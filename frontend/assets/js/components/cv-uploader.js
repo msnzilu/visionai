@@ -250,8 +250,8 @@ class CvUploader {
                 body: formData
             });
 
-            // Step 2: Parsing
-            this.updateProgress(2, 'Parsing document content...');
+            // Transition to parsing immediately as backend starts processing
+            this.updateProgress(2, 'Analysing CV content with AI...');
 
             if (!response.ok) {
                 let errorMessage = `Upload failed (${response.status})`;
@@ -271,7 +271,7 @@ class CvUploader {
             // Step 3: Done
             this.updateProgress(3, 'Analysis complete!');
 
-            // Show analysis results
+            // Success results
             setTimeout(() => {
                 this.showAnalysisResults(result);
             }, 500);

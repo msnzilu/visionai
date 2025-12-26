@@ -13,6 +13,18 @@
         tag: ''
     };
 
+    // Helper to get valid image URL or fallback to default
+    const DEFAULT_BLOG_IMAGE = '/assets/images/defaults/blog-default.png';
+    function getValidImageUrl(url) {
+        if (!url) return DEFAULT_BLOG_IMAGE;
+        // Detect placeholder URLs
+        const invalidPatterns = ['example.com', 'placeholder', 'via.placeholder', 'picsum.photos'];
+        if (invalidPatterns.some(pattern => url.toLowerCase().includes(pattern))) {
+            return DEFAULT_BLOG_IMAGE;
+        }
+        return url;
+    }
+
     // DOM Elements
     const searchInput = document.getElementById('search-input');
     const categoryFilter = document.getElementById('category-filter');
@@ -96,8 +108,9 @@
         const container = document.getElementById('featured-post-container');
         if (!container) return;
 
-        // Use reliable Unsplash placeholder if no image
-        const imageUrl = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
+        // Use reliable local placeholder if no image or placeholder URL
+        const imageUrl = getValidImageUrl(post.featured_image);
+        console.log(`Featured Post [${post.title}] image:`, imageUrl);
 
         const authorName = post.author ? post.author.name : 'Synovae Team';
         const authorInitial = authorName.charAt(0);
@@ -197,7 +210,8 @@
             }
 
             data.posts.forEach((post, index) => {
-                const imageUrl = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
+                const imageUrl = getValidImageUrl(post.featured_image);
+                console.log(`Top Post [${post.title}] image:`, imageUrl);
                 const el = document.createElement('a');
                 el.href = `/info/blog-post?slug=${post.slug}`;
                 el.className = 'top-post-card group block hover:bg-gray-50 transition p-2 rounded-lg';
@@ -265,7 +279,7 @@
         card.className = 'blog-card group cursor-pointer';
         card.onclick = () => window.location.href = `/info/blog-post?slug=${post.slug}`;
 
-        const imageUrl = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
+        const imageUrl = getValidImageUrl(post.featured_image);
 
         let publishDate = 'Draft';
         if (post.status === 'published') {

@@ -11,8 +11,8 @@ import secrets
 
 from app.database import get_database
 from app.api.deps import get_current_user, get_current_active_user
-from app.services.subscription_service import SubscriptionService
-from app.services.referral_service import ReferralService
+from app.services.core.subscription_service import SubscriptionService
+from app.services.core.referral_service import ReferralService
 from app.models.subscription import (
     Subscription, SubscriptionCreate, SubscriptionUpdate,
     SubscriptionResponse, SubscriptionPlan, Referral

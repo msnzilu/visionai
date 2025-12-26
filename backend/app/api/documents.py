@@ -8,7 +8,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 # Simplified imports - only what we need
-from app.services.document_service import document_service
+from app.services.documents.document_service import document_service
 from app.dependencies import get_current_active_user
 from app.models.user import User
 
@@ -192,7 +192,7 @@ async def reparse_document(
                 detail="Document text content not available for re-parsing"
             )
         
-        from app.services.ai_service import ai_service
+        from app.services.intelligence.ai_service import ai_service
         from app.database import get_database
         
         # Re-parse with AI

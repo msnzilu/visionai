@@ -23,8 +23,8 @@ from app.models.user import (
     UserRole, SubscriptionTier, UserCreate
 )
 from app.models.common import SuccessResponse, PaginatedResponse
-from app.services.auth_service import AuthService
-from app.services.email_service import EmailService
+from app.services.auth.auth_service import AuthService
+from app.services.emails.email_service import EmailService
 from app.database import get_users_collection
 from bson import ObjectId
 

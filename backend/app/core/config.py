@@ -107,7 +107,7 @@ class Settings(BaseSettings):
     
     # OpenAI API - REQUIRED
     OPENAI_API_KEY: str = Field(default_factory=lambda: get_secret("OPENAI_API_KEY", ""))
-    OPENAI_MODEL: str = Field(default="gpt-4", env="OPENAI_MODEL")
+    OPENAI_MODEL: str = Field(default="gpt-4o-mini", env="OPENAI_MODEL")
     OPENAI_MAX_TOKENS: int = Field(default=2000, env="OPENAI_MAX_TOKENS")
     OPENAI_TEMPERATURE: float = Field(default=0.7, env="OPENAI_TEMPERATURE")
     
@@ -195,7 +195,7 @@ class Settings(BaseSettings):
     
     # Browser automation service - Optional
     BROWSER_AUTOMATION_URL: Optional[str] = Field(default=None, env="BROWSER_AUTOMATION_URL")
-    AUTOMATION_SERVICE_TOKEN: str = Field(default="your-secret-token-here", env="AUTOMATION_SERVICE_TOKEN")
+    BROWSER_AUTOMATION_TOKEN: str = Field(default="dev-automation-token", env="BROWSER_AUTOMATION_TOKEN")
     
     # Machine Learning
     ML_MODEL_PATH: str = Field(default="/app/models/classifier.pkl", env="ML_MODEL_PATH")

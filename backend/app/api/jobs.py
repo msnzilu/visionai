@@ -15,8 +15,8 @@ from app.models.job import (
     SavedJobResponse
 )
 from app.models.user import User
-from app.services.job_service import get_job_service
-from app.services.matching_service import matching_service
+from app.services.jobs.job_service import get_job_service
+from app.services.intelligence.matching_service import matching_service
 from app.api.deps import get_current_user, get_current_active_user, get_db_session as get_db
 from app.workers.job_scraper import scrape_jobs_task
 import logging

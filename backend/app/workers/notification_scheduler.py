@@ -9,9 +9,9 @@ import asyncio
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
-from app.services.notification_service import NotificationService
-from app.services.application_tracking_service import ApplicationTrackingService
-from app.services.analytics_service import AnalyticsService
+from app.services.core.notification_service import NotificationService
+from app.services.jobs.application_tracking_service import ApplicationTrackingService
+from app.services.core.analytics_service import AnalyticsService
 
 logger = logging.getLogger(__name__)
 

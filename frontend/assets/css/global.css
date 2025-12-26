@@ -321,6 +321,44 @@ body {
 }
 
 /* Social Login Buttons */
+.social-btn {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.social-btn .btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  width: 100%;
+}
+
+.social-btn.loading .btn-content {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+
+.social-btn .btn-loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.social-btn.loading .btn-loader {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
 button[type="button"]:hover,
 button[id*="google"]:hover,
 button[id*="linkedin"]:hover {
@@ -329,8 +367,8 @@ button[id*="linkedin"]:hover {
 
 /* Checkbox Styles */
 input[type="checkbox"]:focus {
-  ring-color: var(--primary-500);
-  ring-width: 2px;
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
 }
 
 /* Link Styles */

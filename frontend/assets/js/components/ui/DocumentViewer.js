@@ -18,7 +18,6 @@ class DocumentViewerComponent {
         if (this.initialized) return;
         this.injectModal();
         this.initialized = true;
-        console.log('DocumentViewer initialized');
     }
 
     injectModal() {
@@ -58,7 +57,6 @@ class DocumentViewerComponent {
                 const urlObj = new URL(path);
                 path = urlObj.pathname + urlObj.search;
             } catch (e) {
-                console.warn('Failed to parse localhost URL, using as is', e);
             }
         }
 

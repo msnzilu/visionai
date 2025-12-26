@@ -142,12 +142,12 @@ class DocumentManager {
                 return;
             }
 
-            this.showUploadProgress();
+            this.showLoading('Uploading and analyzing CV...');
             await this.uploadFile(file);
 
+            this.hideLoading();
             this.showAlert('CV uploaded and processed successfully!', 'success');
             await this.loadDocuments();
-            this.hideUploadProgress();
 
             // Clear file input
             const fileInput = document.getElementById('cvFileInput');

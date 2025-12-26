@@ -59,12 +59,10 @@
             // Validate adapter implements required methods
             for (const method of PaymentGatewayInterface.requiredMethods) {
                 if (typeof adapter[method] !== 'function') {
-                    console.error(`[Payment] Adapter '${name}' missing required method: ${method}`);
                     return false;
                 }
             }
             adapters[name] = adapter;
-            console.log(`[Payment] Registered adapter: ${name}`);
             return true;
         },
 
@@ -86,10 +84,8 @@
                 await adapter.init(config);
                 activeProvider = adapter;
                 providerConfig = config;
-                console.log(`[Payment] Initialized provider: ${providerName}`);
                 return true;
             } catch (error) {
-                console.error(`[Payment] Failed to initialize ${providerName}:`, error);
                 return false;
             }
         },

@@ -39,7 +39,6 @@ class JobCardComponent {
         window.toggleJobSelection = (jobId, checkbox) => this.toggleJobSelection(jobId, checkbox);
 
         this.initialized = true;
-        console.log('JobCard Component initialized');
     }
 
     /**
@@ -175,18 +174,28 @@ class JobCardComponent {
                     ${job.description ? this.decodeHtmlEntities(job.description).replace(/<[^>]*>?/gm, '') : 'No description available'}
                 </p>
 
-                ${job.skills_required && job.skills_required.length > 0 ? `
+                ${(() => {
+                // Handle skills_required as either array or comma-separated string
+                let skills = job.skills_required;
+                if (typeof skills === 'string') {
+                    skills = skills.split(',').map(s => s.trim()).filter(s => s);
+                }
+                if (skills && skills.length > 0) {
+                    return `
                     <div class="mt-auto pt-4 border-t border-gray-50 ${this.batchModeActive ? 'ml-8' : ''}">
                         <div class="flex flex-wrap gap-2">
-                            ${job.skills_required.slice(0, 3).map(skill =>
-            `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">${this.decodeHtmlEntities(skill)}</span>`
-        ).join('')}
-                            ${job.skills_required.length > 3 ? `
-                                <span class="px-2 py-1 text-gray-400 text-xs">+${job.skills_required.length - 3}</span>
+                            ${skills.slice(0, 3).map(skill =>
+                        `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">${this.decodeHtmlEntities(skill)}</span>`
+                    ).join('')}
+                            ${skills.length > 3 ? `
+                                <span class="px-2 py-1 text-gray-400 text-xs">+${skills.length - 3}</span>
                             ` : ''}
                         </div>
                     </div>
-                ` : ''}
+                        `;
+                }
+                return '';
+            })()}
             </div>
 
             <div class="mt-4">
@@ -263,35 +272,48 @@ class JobCardComponent {
                 </div>
             ` : ''}
 
-            ${(job.requirements && job.requirements.length > 0) || (job.skills_required && job.skills_required.length > 0) ? `
+            ${(() => {
+                // Handle skills_required as either array or comma-separated string
+                let skills = job.skills_required;
+                if (typeof skills === 'string') {
+                    skills = skills.split(',').map(s => s.trim()).filter(s => s);
+                }
+                const hasRequirements = job.requirements && job.requirements.length > 0;
+                const hasSkills = skills && skills.length > 0;
+
+                if (hasRequirements || hasSkills) {
+                    return `
                 <div class="mt-6">
                     <h4 class="font-semibold mb-3">Requirements & Skills</h4>
                     
-                    ${job.requirements && job.requirements.length > 0 ? `
+                    ${hasRequirements ? `
                         <ul class="list-disc list-inside text-gray-700 mb-4 space-y-1">
                             ${job.requirements.map(req =>
-                    `<li class="text-sm">${this.decodeHtmlEntities(req.requirement || req)}</li>`
-                ).join('')}
+                        `<li class="text-sm">${this.decodeHtmlEntities(req.requirement || req)}</li>`
+                    ).join('')}
                         </ul>
                     ` : ''}
 
                     <div class="flex flex-wrap gap-2">
-                        ${job.skills_required ? job.skills_required.map(skill =>
-                    `<span class="px-3 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg text-sm font-medium hover:bg-white hover:shadow-sm transition-all">${this.decodeHtmlEntities(skill)}</span>`
-                ).join('') : ''}
+                        ${hasSkills ? skills.map(skill =>
+                        `<span class="px-3 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg text-sm font-medium hover:bg-white hover:shadow-sm transition-all">${this.decodeHtmlEntities(skill)}</span>`
+                    ).join('') : ''}
                     </div>
                 </div>
-            ` : ''}
+                    `;
+                }
+                return '';
+            })()}
 
             ${job.benefits && job.benefits.length > 0 ? `
                 <div class="mt-6 pb-2">
                     <h4 class="font-semibold mb-3">Benefits</h4>
                     <div class="flex flex-wrap gap-2">
                         ${job.benefits.map(benefit =>
-                    `<span class="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-lg text-sm font-medium">
+                `<span class="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-lg text-sm font-medium">
                                 ${this.decodeHtmlEntities(benefit.name || benefit)}
                              </span>`
-                ).join('')}
+            ).join('')}
                     </div>
                 </div>
             ` : ''}

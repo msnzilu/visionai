@@ -8,6 +8,18 @@
 
     let currentPost = null;
 
+    // Helper to get valid image URL or fallback to default
+    const DEFAULT_BLOG_IMAGE = '/assets/images/defaults/blog-default.png';
+    function getValidImageUrl(url) {
+        if (!url) return DEFAULT_BLOG_IMAGE;
+        // Detect placeholder URLs
+        const invalidPatterns = ['example.com', 'placeholder', 'via.placeholder', 'picsum.photos'];
+        if (invalidPatterns.some(pattern => url.toLowerCase().includes(pattern))) {
+            return DEFAULT_BLOG_IMAGE;
+        }
+        return url;
+    }
+
     // DOM Elements
     const loadingState = document.getElementById('loading-state');
     const errorState = document.getElementById('error-state');
@@ -41,6 +53,7 @@
             }
 
             currentPost = await response.json();
+            console.log('Post data loaded:', currentPost);
             displayPost(currentPost);
             await loadRelatedPosts(currentPost.id);
         } catch (error) {
@@ -51,17 +64,45 @@
 
     // Display post
     function displayPost(post) {
+        // Default seo object if null
+        const seo = post.seo || { meta_description: '', keywords: [], og_title: '', og_description: '' };
+
         // Update page title and meta tags
         document.getElementById('page-title').textContent = `${post.title} - VisionAI Blog`;
-        document.getElementById('meta-description').setAttribute('content', post.seo.meta_description || post.excerpt || '');
-        document.getElementById('meta-keywords').setAttribute('content', post.seo.keywords.join(', '));
+        document.getElementById('meta-description').setAttribute('content', seo.meta_description || post.excerpt || '');
+        document.getElementById('meta-keywords').setAttribute('content', (seo.keywords || []).join(', '));
 
         // Open Graph
-        document.getElementById('og-title').setAttribute('content', post.seo.og_title || post.title);
-        document.getElementById('og-description').setAttribute('content', post.seo.og_description || post.excerpt || '');
+        document.getElementById('og-title').setAttribute('content', seo.og_title || post.title);
+        document.getElementById('og-description').setAttribute('content', seo.og_description || post.excerpt || '');
         document.getElementById('og-url').setAttribute('content', window.location.href);
-        const ogImage = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
-        document.getElementById('og-image').setAttribute('content', ogImage);
+        const ogImage = getValidImageUrl(post.featured_image);
+        const absoluteImageUrl = ogImage.startsWith('/')
+            ? `${window.location.origin}${ogImage}`
+            : ogImage;
+        document.getElementById('og-image').setAttribute('content', absoluteImageUrl);
+
+        // Article times (with null checks for elements)
+        const articlePublished = document.getElementById('article-published');
+        const articleModified = document.getElementById('article-modified');
+        if (post.published_at && articlePublished) {
+            articlePublished.setAttribute('content', post.published_at);
+        }
+        if (post.updated_at && articleModified) {
+            articleModified.setAttribute('content', post.updated_at);
+        }
+
+        // Twitter Card (with null checks for elements)
+        const twitterTitle = document.getElementById('twitter-title');
+        const twitterDesc = document.getElementById('twitter-description');
+        const twitterImage = document.getElementById('twitter-image');
+        if (twitterTitle) twitterTitle.setAttribute('content', seo.og_title || post.title);
+        if (twitterDesc) twitterDesc.setAttribute('content', seo.og_description || post.excerpt || '');
+        if (twitterImage) twitterImage.setAttribute('content', absoluteImageUrl);
+
+        // Canonical URL (with null check)
+        const canonicalUrl = document.getElementById('canonical-url');
+        if (canonicalUrl) canonicalUrl.setAttribute('href', window.location.href);
 
         // Breadcrumb
         document.getElementById('breadcrumb-title').textContent = post.title;
@@ -76,7 +117,7 @@
         document.getElementById('article-title').textContent = post.title;
 
         // Author (Handle missing author data safely)
-        const authorName = post.author && post.author.name ? post.author.name : 'VisionAI Team';
+        const authorName = post.author && post.author.name ? post.author.name : 'Synovae Team';
         const authorAvatarUrl = post.author ? post.author.avatar_url : null;
 
         const authorAvatar = document.getElementById('author-avatar');
@@ -105,7 +146,8 @@
         // Featured image
         const featuredImageContainer = document.getElementById('featured-image-container');
         const featuredImage = document.getElementById('featured-image');
-        featuredImage.src = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
+        const imageUrl = getValidImageUrl(post.featured_image);
+        featuredImage.src = imageUrl;
         featuredImage.alt = post.title;
         featuredImageContainer.classList.remove('hidden');
 
@@ -152,7 +194,7 @@
         const section = document.getElementById('related-posts-section');
 
         container.innerHTML = posts.map(post => {
-            const imageUrl = post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80';
+            const imageUrl = getValidImageUrl(post.featured_image);
 
             return `
                 <div class="blog-card">
@@ -189,6 +231,21 @@
             window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank', 'width=600,height=400');
         });
 
+        // Facebook
+        document.getElementById('share-facebook').addEventListener('click', () => {
+            window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
+        });
+
+        // Instagram (copy link since Instagram doesn't have direct share URL)
+        document.getElementById('share-instagram').addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                alert('Link copied! Paste it on Instagram.');
+            } catch (error) {
+                console.error('Failed to copy link:', error);
+            }
+        });
+
         // Copy link
         document.getElementById('copy-link').addEventListener('click', async () => {
             try {
@@ -214,7 +271,7 @@
             "@type": "BlogPosting",
             "headline": post.title,
             "description": post.excerpt || '',
-            "image": post.featured_image || 'https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80',
+            "image": getValidImageUrl(post.featured_image),
             "author": {
                 "@type": "Person",
                 "name": post.author && post.author.name ? post.author.name : 'VisionAI Team'

@@ -5,7 +5,7 @@ Handles background email sending with retry logic
 """
 
 from app.workers.celery_app import celery_app
-from app.services.email_agent_service import email_agent_service
+from app.services.emails.email_agent_service import email_agent_service
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
 import asyncio

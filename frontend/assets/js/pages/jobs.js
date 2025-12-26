@@ -25,18 +25,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load existing jobs from database on page load
     await loadJobsFromDB();
 
-    // Fetch applied jobs to update UI state
+    // Fetch applied jobs to update UI state and filter out applied jobs
     try {
-        const appRes = await fetch(`${API_BASE_URL}/api/v1/applications/?page=1&size=100`, {
+        const appRes = await fetch(`${API_BASE_URL}/api/v1/applications/?page=1&size=1000`, {
             headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
         });
         if (appRes.ok) {
             const appData = await appRes.json();
+            const appliedJobs = appData.applications || [];
+
             if (window.JobActions) {
-                window.JobActions.setAppliedJobs(appData.applications || []);
-                // Re-render job list to reflect status
-                displayJobs(currentJobs);
+                window.JobActions.setAppliedJobs(appliedJobs);
             }
+
+            // Filter out jobs user has already applied to
+            const appliedJobIds = new Set(appliedJobs.map(app => app.job_id));
+            currentJobs = currentJobs.filter(job => !appliedJobIds.has(job._id || job.id));
+
+            // Re-render filtered job list
+            displayJobs(currentJobs);
         }
     } catch (e) {
         console.error('Failed to load application status', e);
@@ -478,14 +485,20 @@ function clearFilters() {
     }
 }
 
-function displayJobs(jobs) {
+function displayJobs(jobs, retryCount = 0) {
     const container = document.getElementById('jobsContainer');
     container.innerHTML = '';
     document.getElementById('emptyState').classList.add('hidden');
     document.getElementById('loadingState').classList.add('hidden');
 
     if (!window.JobCard) {
-        console.error('JobCard component not found');
+        // Retry a few times if JobCard isn't initialized yet
+        if (retryCount < 5) {
+            console.warn(`JobCard not ready, retrying in 100ms (attempt ${retryCount + 1})`);
+            setTimeout(() => displayJobs(jobs, retryCount + 1), 100);
+            return;
+        }
+        console.error('JobCard component not found after retries');
         return;
     }
 

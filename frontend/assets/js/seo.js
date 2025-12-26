@@ -21,14 +21,14 @@
 
         // Social media links for structured data
         socialLinks: [
-            'https://twitter.com/synovae',
+            'https://x.com/synovaeio',
             'https://linkedin.com/company/synovae',
             'https://facebook.com/synovae'
         ],
         contactEmail: 'support@synovae.io',
 
         // Default fallback values
-        defaultImage: 'https://www.synovae.io/assets/images/og-default.jpg',
+        defaultImage: 'https://www.synovae.io/assets/images/og/og-default.png',
         defaultTitle: 'Synovae - AI-Powered Job Application Platform',
         defaultDescription: 'Land your dream job faster with Synovae. Our AI-powered platform automates job applications, creates tailored CVs, and matches you with perfect opportunities.',
 
@@ -38,56 +38,56 @@
                 title: 'Synovae - AI-Powered Job Application Platform | Automate Your Job Search',
                 description: 'Land your dream job faster with Synovae. Our AI-powered platform automates job applications, creates tailored CVs, and matches you with perfect opportunities. Start free today!',
                 keywords: 'job search, AI job application, automated job search, CV builder, cover letter generator, job matching, career platform, resume optimization',
-                image: 'https://www.synovae.io/assets/images/og-home.jpg',
+                image: 'https://www.synovae.io/assets/images/og/og-home.png',
                 type: 'website'
             },
             'how-it-works': {
                 title: 'How It Works - Synovae | AI Job Application in 4 Simple Steps',
                 description: 'Discover how Synovae streamlines your job search in 4 simple steps. Upload your CV, find perfect matches, customize applications, and apply instantly with AI.',
                 keywords: 'how it works, job application process, automated job search, AI job matching, career automation',
-                image: 'https://www.synovae.io/assets/images/og-how-it-works.jpg',
+                image: 'https://www.synovae.io/assets/images/og/og-how-it-works.png',
                 type: 'article'
             },
             'features': {
                 title: 'Features - Synovae | AI-Powered Job Search Tools',
                 description: 'Explore powerful features including AI-powered job matching, automated applications, custom CV generation, cover letter writing, and comprehensive application tracking.',
                 keywords: 'job search features, AI matching, automated applications, CV builder, cover letter generator, application tracking',
-                image: 'https://www.synovae.io/assets/images/og-features.jpg',
+                image: 'https://www.synovae.io/assets/images/og/og-features.png',
                 type: 'website'
             },
             'pricing': {
                 title: 'Pricing - Synovae | Affordable Job Search Plans',
                 description: 'Choose the perfect plan for your job search. From free basic access to unlimited applications with our premium plans. No hidden fees, cancel anytime.',
                 keywords: 'pricing, job search plans, subscription, free trial, job application pricing',
-                image: 'https://www.synovae.io/assets/images/og-pricing.jpg',
+                image: 'https://www.synovae.io/assets/images/og/og-pricing.png',
                 type: 'website'
             },
             'info/contact': {
                 title: 'Contact Us - Synovae | Get Support for Your Job Search',
                 description: 'Get in touch with our team. We\'re here to help you succeed in your job search journey. Fast response times and dedicated support.',
                 keywords: 'contact, support, help, customer service, job search help',
-                image: 'https://www.synovae.io/assets/images/og-contact.jpg',
+                image: 'https://www.synovae.io/assets/images/og/og-contact.png',
                 type: 'website'
             },
             'register': {
                 title: 'Sign Up - Synovae | Start Your Free Trial Today',
                 description: 'Create your free Synovae account and start landing more interviews. No credit card required. Get started in under 2 minutes.',
                 keywords: 'sign up, register, create account, free trial, job search registration',
-                image: 'https://www.synovae.io/assets/images/og-register.jpg',
+                image: 'https://www.synovae.io/assets/images/og/og-default.png',
                 type: 'website'
             },
             'login': {
                 title: 'Login - Synovae | Access Your Job Search Dashboard',
                 description: 'Login to your Synovae account to manage your job applications, track interviews, and continue your job search journey.',
                 keywords: 'login, sign in, account access, job search dashboard',
-                image: 'https://www.synovae.io/assets/images/og-login.jpg',
+                image: 'https://www.synovae.io/assets/images/og/og-default.png',
                 type: 'website'
             },
             'info/blog': {
                 title: 'Blog - Synovae | Job Search Tips, Career Advice & AI Insights',
                 description: 'Discover expert job search strategies, career development tips, and insights on AI-powered recruitment. Stay updated with the latest trends in job hunting and career growth.',
                 keywords: 'job search tips, career advice, resume tips, interview preparation, AI recruitment, career development, job hunting strategies, professional growth',
-                image: 'https://www.synovae.io/assets/images/og-blog.jpg',
+                image: 'https://www.synovae.io/assets/images/og/og-default.png',
                 type: 'website',
                 canonical: 'https://www.synovae.io/info/blog'
             },
@@ -96,7 +96,7 @@
                 title: 'Help Center - Synovae | FAQs, Guides & Support',
                 description: 'Get answers to your questions about Synovae. Browse our comprehensive help center for tutorials, FAQs, troubleshooting guides, and customer support resources.',
                 keywords: 'help center, customer support, FAQ, tutorials, troubleshooting, user guide, how to use, support docs',
-                image: 'https://www.synovae.io/assets/images/og-help.jpg',
+                image: 'https://www.synovae.io/assets/images/og/og-default.png',
                 type: 'website',
                 canonical: 'https://www.synovae.io/info/help'
             },
@@ -119,7 +119,56 @@
                 description: 'Need help? Contact Synovae\'s support team. Get answers about our AI job search platform, technical support, or partnership opportunities. We\'re here to help.',
                 keywords: 'contact synovae, customer support, job search help, technical support',
                 canonical: 'https://www.synovae.io/info/contact',
-                image: 'https://www.synovae.io/assets/images/og-contact.jpg'
+                image: 'https://www.synovae.io/assets/images/og/og-contact.png'
+            },
+            'dashboard': {
+                title: 'Dashboard - Synovae | Your Job Search Command Center',
+                description: 'Manage your job applications, track interviews, and monitor your job search progress all in one place.',
+                keywords: 'job dashboard, application tracking, job search management',
+                type: 'website',
+                noindex: true
+            },
+            'pages/applications': {
+                title: 'Applications - Synovae | Track Your Job Applications',
+                description: 'View and manage all your job applications. Track status, responses, and follow-ups.',
+                keywords: 'job applications, application tracking, job status',
+                type: 'website',
+                noindex: true
+            },
+            'pages/documents': {
+                title: 'Documents - Synovae | Manage Your CVs & Cover Letters',
+                description: 'Upload, manage, and optimize your resume and cover letters with AI-powered insights.',
+                keywords: 'CV management, resume builder, cover letter generator',
+                type: 'website',
+                noindex: true
+            },
+            'pages/jobs': {
+                title: 'Job Search - Synovae | Find Your Perfect Role',
+                description: 'Browse and search through thousands of job opportunities matched to your skills and preferences.',
+                keywords: 'job search, job listings, career opportunities',
+                type: 'website',
+                noindex: true
+            },
+            'pages/auto-apply': {
+                title: 'Auto Apply - Synovae | Automate Your Job Applications',
+                description: 'Let our AI automatically apply to jobs that match your profile while you focus on what matters.',
+                keywords: 'auto apply, automated job application, AI job search',
+                type: 'website',
+                noindex: true
+            },
+            'pages/profile': {
+                title: 'Profile - Synovae | Manage Your Account',
+                description: 'Update your profile, preferences, and account settings.',
+                keywords: 'profile settings, account management',
+                type: 'website',
+                noindex: true
+            },
+            'pages/subscription': {
+                title: 'Subscription - Synovae | Manage Your Plan',
+                description: 'View and manage your Synovae subscription, upgrade or change your plan.',
+                keywords: 'subscription management, billing, plans',
+                type: 'website',
+                noindex: true
             },
         }
     };
@@ -224,7 +273,14 @@
         }
         setOrUpdateMeta('author', seoConfig.author);
         // Enhanced robots meta with more directives
-        setOrUpdateMeta('robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
+        // Check if page should be noindexed (authenticated pages)
+        const currentPage = getCurrentPage();
+        const pageConfig = seoConfig.pages[currentPage] || {};
+        if (pageConfig.noindex) {
+            setOrUpdateMeta('robots', 'noindex, nofollow');
+        } else {
+            setOrUpdateMeta('robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
+        }
 
         // Canonical URL
         setOrUpdateLink('canonical', seo.url);
@@ -255,6 +311,14 @@
         head.appendChild(createLink('icon', '/assets/images/favicon/android-chrome-192x192.png', 'image/png'));
         head.appendChild(createLink('icon', '/assets/images/favicon/android-chrome-512x512.png', 'image/png'));
         head.appendChild(createLink('apple-touch-icon', '/assets/images/favicon/apple-touch-icon'));
+
+        // RSS Feed and Sitemap discovery
+        setOrUpdateLink('alternate', `${seoConfig.baseUrl}/api/v1/blog/feed.xml`, 'application/rss+xml');
+        const sitemapLink = document.createElement('link');
+        sitemapLink.rel = 'sitemap';
+        sitemapLink.type = 'application/xml';
+        sitemapLink.href = `${seoConfig.baseUrl}/api/v1/blog/sitemap.xml`;
+        head.appendChild(sitemapLink);
 
         // Structured Data (JSON-LD)
         injectStructuredData(seo);

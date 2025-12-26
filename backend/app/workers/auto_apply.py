@@ -7,9 +7,9 @@ Fully automated job application without user intervention
 from app.workers.celery_app import celery_app
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
-from app.services.cv_customization_service import cv_customization_service
-from app.services.email_agent_service import email_agent_service
-from app.services.pdf_service import pdf_service
+from app.services.documents.cv_customization_service import cv_customization_service
+from app.services.emails.email_agent_service import email_agent_service
+from app.services.documents.pdf_service import pdf_service
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -113,7 +113,7 @@ async def generate_custom_cv(user_cv: Dict, job: Dict) -> str:
     Returns document ID of generated CV
     """
     try:
-        from app.services.cv_customization_service import cv_customization_service
+        from app.services.documents.cv_customization_service import cv_customization_service
         
         # Prepare job data in expected format
         job_data = {
@@ -188,7 +188,7 @@ async def generate_cover_letter(user_cv: Dict, job: Dict) -> str:
     Returns document ID of generated cover letter
     """
     try:
-        from app.services.cover_letter_service import cover_letter_service
+        from app.services.documents.cover_letter_service import cover_letter_service
         
         # Prepare job data
         job_data = {
@@ -337,7 +337,7 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
         exclude_ids = [ObjectId(jid) for jid in applied_job_ids]
         
         # Get recommended roles using Matching Service (Dynamic)
-        from app.services.matching_service import matching_service
+        from app.services.intelligence.matching_service import matching_service
         suggested_roles_data = await matching_service.get_suggested_roles(user_cv, limit=5)
         recommended_roles = [r["title"] for r in suggested_roles_data]
         

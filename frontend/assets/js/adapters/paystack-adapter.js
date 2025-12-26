@@ -52,7 +52,6 @@
                 throw new Error('Paystack script not loaded. Include https://js.paystack.co/v1/inline.js');
             }
 
-            console.log('[Paystack] Initialized successfully');
         },
 
         /**
@@ -69,7 +68,6 @@
                 script.src = 'https://js.paystack.co/v1/inline.js';
                 script.async = true;
                 script.onload = () => {
-                    console.log('[Paystack] Script loaded dynamically');
                     resolve();
                 };
                 script.onerror = () => reject(new Error('Failed to load Paystack script'));
@@ -119,7 +117,6 @@
                         ]
                     },
                     callback: function (response) {
-                        console.log('[Paystack] Payment successful:', response);
                         const result = {
                             success: true,
                             reference: response.reference,
@@ -133,7 +130,6 @@
                         resolve(result);
                     },
                     onClose: function () {
-                        console.log('[Paystack] Payment cancelled');
                         const result = {
                             success: false,
                             cancelled: true,
@@ -149,17 +145,14 @@
                 // Add plan for subscriptions, or amount for one-time payments
                 if (planCode && planCode.trim() !== '') {
                     paystackConfig.plan = planCode.trim();
-                    console.log('[Paystack] Using subscription plan:', planCode);
                 } else {
                     paystackConfig.amount = Math.ceil(amount);
-                    console.log('[Paystack] One-time payment amount:', amount);
                 }
 
                 try {
                     const handler = PaystackPop.setup(paystackConfig);
                     handler.openIframe();
                 } catch (error) {
-                    console.error('[Paystack] Error opening checkout:', error);
                     if (onError) onError(error);
                     reject(error);
                 }

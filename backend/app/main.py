@@ -11,7 +11,7 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from app.services.cache_service import init_cache, close_cache
+from app.services.core.cache_service import init_cache, close_cache
 from app.core.config import settings
 
 
@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
         
         # Initialize indexes for services
         try:
-            from app.services.blog_service import BlogService
+            from app.services.core.blog_service import BlogService
             db = await get_database()
             blog_service = BlogService(db)
             await blog_service.ensure_indexes()
@@ -98,8 +98,19 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Mount uploads directory (create if it doesn't exist)
-# Mount uploads directory (create if it doesn't exist)
+# Mount static files
+frontend_assets_path = Path("/app/frontend/assets")
+if not frontend_assets_path.exists():
+    # Fallback to local path for development
+    frontend_assets_path = Path("frontend/assets")
+
+if frontend_assets_path.exists():
+    app.mount("/assets", StaticFiles(directory=str(frontend_assets_path)), name="assets")
+    logger.info(f"Mounted frontend assets directory from: {frontend_assets_path}")
+else:
+    logger.warning(f"Frontend assets directory not found at {frontend_assets_path}, skipping mount")
+
+# Mount uploads directory
 uploads_path = Path(settings.UPLOAD_DIR)
 try:
     uploads_path.mkdir(parents=True, exist_ok=True)

@@ -5,8 +5,8 @@ Celery tasks for job scraping and maintenance
 
 from app.workers.celery_app import celery_app
 from app.database import get_database
-from app.services.job_service import get_job_service
-from app.services.cache_service import cache_service
+from app.services.jobs.job_service import get_job_service
+from app.services.core.cache_service import cache_service
 import logging
 import asyncio
 

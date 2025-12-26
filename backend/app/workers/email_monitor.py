@@ -5,7 +5,7 @@ Automatically scans user inboxes for application responses
 """
 
 from app.workers.celery_app import celery_app
-from app.services.email_intelligence import EmailIntelligenceService
+from app.services.emails.email_intelligence import EmailIntelligenceService
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
 import asyncio

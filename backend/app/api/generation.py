@@ -14,9 +14,9 @@ import logging
 from app.models.user import User
 from app.api.deps import get_current_active_user
 from app.database import get_database
-from app.services.cv_customization_service import cv_customization_service
-from app.services.cover_letter_service import cover_letter_service
-from app.services.pdf_service import pdf_service
+from app.services.documents.cv_customization_service import cv_customization_service
+from app.services.documents.cover_letter_service import cover_letter_service
+from app.services.documents.pdf_service import pdf_service
 from bson import ObjectId
 
 logger = logging.getLogger(__name__)

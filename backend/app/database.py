@@ -45,6 +45,11 @@ async def init_database():
         await db.client.admin.command('ping')
         logger.info(f"Successfully connected to CVision database: {settings.DATABASE_NAME}")
         
+        # DEBUG: Check jobs count at startup
+        jobs_count = await db.database.jobs.count_documents({})
+        active_jobs_count = await db.database.jobs.count_documents({"status": "active"})
+        logger.info(f"[DEBUG] Database startup - Total jobs: {jobs_count}, Active jobs: {active_jobs_count}")
+        
         # Create indexes for CVision collections
         await create_cvision_indexes()
         

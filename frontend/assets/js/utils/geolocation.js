@@ -108,11 +108,9 @@
                         ip: data.ip || null
                     };
 
-                    console.log(`[Geolocation] Detected: ${locationData.countryName} (${locationData.currency})`);
                     return locationData;
                 }
             } catch (error) {
-                console.warn('[Geolocation] Detection failed, using defaults:', error.message);
             }
 
             return locationData;

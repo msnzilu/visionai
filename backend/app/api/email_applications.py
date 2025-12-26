@@ -9,10 +9,10 @@ from app.database import get_applications_collection, get_jobs_collection, get_u
 from app.models.application import Application, ApplicationStatus, ApplicationSource
 from app.models.common import SuccessResponse
 from app.models.user import User
-from app.services.gmail_service import gmail_service
-from app.api.auth import get_current_user
+from app.services.emails.gmail_service import gmail_service
+from app.dependencies import get_current_active_user
 from app.models.email_log import EmailLog, EmailDirection, EmailStatus
-from app.services.subscription_service import SubscriptionService
+from app.services.core.subscription_service import SubscriptionService
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class EmailApplicationResponse(BaseModel):
 async def apply_via_email(
     request: EmailApplicationRequest,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Apply for a job via email using the user's connected Gmail account.
@@ -46,8 +46,7 @@ async def apply_via_email(
         logger.info(f"Current user type: {type(current_user)}, value: {current_user is not None}")
         
         # 1. Validate User has Gmail Connected
-        if current_user is None:
-            logger.error("current_user is None!")
+        if not current_user:
             raise HTTPException(
                 status_code=401,
                 detail="Authentication required"
@@ -134,7 +133,7 @@ async def apply_via_email(
         
         
         # 6. Send via Email Agent Service
-        from app.services.email_agent_service import email_agent_service
+        from app.services.emails.email_agent_service import email_agent_service
         
         try:
             logger.info(f"Sending application via email agent for user {current_user['_id']} to job {request.job_id}")
@@ -214,7 +213,7 @@ class ManualTrackRequest(BaseModel):
 @router.post("/track", response_model=EmailApplicationResponse)
 async def track_external_application(
     request: ManualTrackRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Manually track a job application submitted externally.
@@ -292,14 +291,14 @@ async def track_external_application(
 @router.get("/sync", response_model=SuccessResponse)
 async def sync_inbox(
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_active_user),
     db = Depends(get_database)
 ):
     """
     Trigger a background scan of the user's inbox for application updates.
     """
     try:
-        from app.services.email_intelligence import EmailIntelligenceService
+        from app.services.emails.email_intelligence import EmailIntelligenceService
         service = EmailIntelligenceService(db)
         
         # Run in background to avoid timeout

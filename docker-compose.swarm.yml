@@ -10,11 +10,13 @@ services:
       # Core Settings
       - DEBUG=false
       - ENVIRONMENT=production
+      - BROWSER_AUTOMATION_URL=http://host.docker.internal:3000
+      - BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN}
       
       # Database Configuration (REQUIRED)
-      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
+      - MONGODB_URL=${MONGODB_URL}
       - REDIS_URL=redis://redis:6379
-      - DATABASE_NAME=synovae_db
+      - DATABASE_NAME=${DATABASE_NAME}
       
       # Celery Configuration (REQUIRED)
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -22,6 +24,8 @@ services:
       
       # Application URLs
       - FRONTEND_URL=https://synovae.io
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     secrets:
       - OPENAI_API_KEY
       - STRIPE_SECRET_KEY
@@ -30,6 +34,8 @@ services:
       - GOOGLE_CLIENT_SECRET
       - PAYSTACK_PUBLIC_KEY
       - PAYSTACK_SECRET_KEY
+      - MONGODB_URL
+      - DATABASE_NAME
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs
@@ -89,17 +95,21 @@ services:
       - app-network
     environment:
       - DEBUG=false
-      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
+      - MONGODB_URL=${MONGODB_URL}
       - REDIS_URL=redis://redis:6379
-      - DATABASE_NAME=synovae_db
+      - DATABASE_NAME=${DATABASE_NAME}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - FRONTEND_URL=https://synovae.io
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     secrets:
       - OPENAI_API_KEY
       - STRIPE_SECRET_KEY
       - PAYSTACK_PUBLIC_KEY
       - PAYSTACK_SECRET_KEY
+      - MONGODB_URL
+      - DATABASE_NAME
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs
@@ -134,9 +144,9 @@ services:
       - app-network
     environment:
       - DEBUG=false
-      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
+      - MONGODB_URL=${MONGODB_URL}
       - REDIS_URL=redis://redis:6379
-      - DATABASE_NAME=synovae_db
+      - DATABASE_NAME=${DATABASE_NAME}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - FRONTEND_URL=synovae.io
@@ -151,6 +161,8 @@ services:
       - GOOGLE_CLIENT_SECRET
       - PAYSTACK_PUBLIC_KEY
       - PAYSTACK_SECRET_KEY
+      - MONGODB_URL
+      - DATABASE_NAME
     deploy:
       replicas: 1
       restart_policy:
@@ -198,4 +210,8 @@ secrets:
   PAYSTACK_PUBLIC_KEY:      
     external: true
   PAYSTACK_SECRET_KEY:     
+    external: true
+  MONGODB_URL:
+    external: true
+  DATABASE_NAME:
     external: true

@@ -5,20 +5,28 @@ Handles intelligent form prefilling and email-based application submission
 """
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from typing import Dict, Any
+from pydantic import BaseModel
+from typing import Dict, Any, Optional
 import logging
 from datetime import datetime
 from bson import ObjectId
 
 from app.database import get_database
-from app.api.deps import get_current_user
-from app.services.email_agent_service import email_agent_service
+from app.api.deps import get_current_user, get_current_active_user
+from app.services.emails.email_agent_service import email_agent_service
 from app.schemas.quick_apply import (
     QuickApplyPrefillResponse,
     QuickApplySubmission,
     QuickApplySubmissionResponse,
-    QuickApplyStatusResponse
+    QuickApplyStatusResponse,
+    AutofillStartResponse,
+    AutofillStatusResponse
 )
+
+class BrowserAutomationStart(BaseModel):
+    job_id: str
+    cv_id: Optional[str] = None
+    cover_letter_id: Optional[str] = None
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -32,7 +40,7 @@ def get_user_id(user: dict) -> str:
 @router.post("/quick-apply/prefill", response_model=QuickApplyPrefillResponse)
 async def prefill_quick_apply_form(
     job_id: str,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Prefill quick apply form with user's CV data
@@ -124,7 +132,7 @@ async def prefill_quick_apply_form(
 async def submit_quick_apply(
     submission: QuickApplySubmission,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Submit job application via email agent
@@ -247,7 +255,7 @@ async def submit_quick_apply(
 @router.get("/quick-apply/status/{application_id}", response_model=QuickApplyStatusResponse)
 async def get_application_status(
     application_id: str,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Get application submission and tracking status
@@ -291,14 +299,129 @@ async def get_application_status(
         )
 
 
-# Legacy endpoint compatibility (redirects to prefill)
-@router.post("/autofill/start")
+# Browser Automation Endpoints
+@router.post("/autofill/start", response_model=AutofillStartResponse)
 async def legacy_autofill_start(
-    job_id: str,
-    current_user: dict = Depends(get_current_user)
+    request: BrowserAutomationStart,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
-    Legacy endpoint - redirects to quick apply prefill
+    Start browser automation for a job application
+    Handles JSON body with job_id, cv_id, and cover_letter_id
     """
-    logger.warning("Legacy /autofill/start endpoint called, redirecting to /quick-apply/prefill")
-    return await prefill_quick_apply_form(job_id, current_user)
+    try:
+        user_id = get_user_id(current_user)
+        
+        logger.info(f"Starting browser automation for user {user_id}, job {request.job_id}")
+        
+        db = await get_database()
+        
+        # Get job details
+        job = await db.jobs.find_one({"_id": ObjectId(request.job_id)})
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Job not found: {request.job_id}"
+            )
+        
+        # Check if application already exists
+        application = await db.applications.find_one({
+            "user_id": user_id,
+            "job_id": request.job_id
+        })
+        
+        if not application:
+            # Create application record
+            application_doc = {
+                "user_id": user_id,
+                "job_id": request.job_id,
+                "status": "pending",
+                "source": "browser_automation",
+                "job_title": job.get("title"),
+                "company_name": job.get("company_name"),
+                "location": job.get("location"),
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            result = await db.applications.insert_one(application_doc)
+            application_id = str(result.inserted_id)
+            logger.info(f"Created application record for automation: {application_id}")
+        else:
+            application_id = str(application["_id"])
+            logger.info(f"Using existing application record for automation: {application_id}")
+
+        # Trigger automation in background via AutomationService
+        from app.services.automation.automation_service import AutomationService
+        background_tasks.add_task(
+            AutomationService.auto_apply_to_job,
+            user_id=user_id,
+            application_id=application_id,
+            job_id=request.job_id,
+            cv_id=request.cv_id
+        )
+        
+        return AutofillStartResponse(
+            success=True,
+            session_id=application_id,
+            message="Browser automation started successfully"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting browser automation: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to start browser automation: {str(e)}"
+        )
+
+
+@router.get("/autofill/status/{session_id}", response_model=AutofillStatusResponse)
+async def get_autofill_status(
+    session_id: str,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Get browser automation status
+    """
+    try:
+        user_id = get_user_id(current_user)
+        
+        db = await get_database()
+        
+        # Get application
+        application = await db.applications.find_one({
+            "_id": ObjectId(session_id),
+            "user_id": user_id
+        })
+        
+        if not application:
+            raise HTTPException(
+                status_code=404,
+                detail="Automation session not found"
+            )
+        
+        # Determine status
+        # Priority: automation_status -> status
+        status = application.get("automation_status") or application.get("status", "unknown")
+        
+        # Extract filled fields from automation details if available
+        details = application.get("automation_details", {})
+        filled_fields = details.get("filled_fields", [])
+        
+        return AutofillStatusResponse(
+            status=status,
+            filled_fields=filled_fields,
+            error=application.get("automation_error"),
+            message=application.get("message")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting automation status: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

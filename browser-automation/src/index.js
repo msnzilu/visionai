@@ -9,7 +9,7 @@ const { SiteHandlerFactory } = require('./automation/site-handlers/factory');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const AUTH_TOKEN = process.env.AUTH_TOKEN || 'dev-automation-token';
+const AUTH_TOKEN = process.env.BROWSER_AUTOMATION_TOKEN || 'dev-automation-token';
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -18,13 +18,29 @@ app.use(express.json({ limit: '10mb' }));
 const activeSessions = new Map();
 
 // Authentication middleware
+// const authenticate = (req, res, next) => {
+//     const authHeader = req.headers.authorization;
+//     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+//         return res.status(401).json({ error: 'Unauthorized' });
+//     }
+
+//     const token = authHeader.substring(7);
+//     if (token !== AUTH_TOKEN) {
+//         return res.status(401).json({ error: 'Invalid token' });
+//     }
+
+//     next();
+// };
+// Authentication middleware
 const authenticate = (req, res, next) => {
+
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const token = authHeader.substring(7);
+
     if (token !== AUTH_TOKEN) {
         return res.status(401).json({ error: 'Invalid token' });
     }
@@ -59,7 +75,7 @@ app.post('/api/automation/start', authenticate, async (req, res) => {
 
         // Launch browser with Playwright
         const browser = await chromium.launch({
-            headless: false,
+            headless: process.env.HEADLESS === 'true',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',

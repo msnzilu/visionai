@@ -40,7 +40,24 @@
         <!-- Alert Container -->
         <div id="alerts" class="mb-4 sm:mb-6">
             <!-- Gmail Connect Component Container -->
-            <div id="gmail-connect-container"></div>
+            <div id="gmail-connect-container">
+                <!-- Skeleton loader shown until GmailConnect JS initializes -->
+                <div class="bg-white border border-gray-200 p-4 sm:p-6 mb-6 rounded-xl shadow-sm animate-pulse">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg"></div>
+                            <div>
+                                <div class="h-4 w-48 bg-gray-200 rounded mb-2"></div>
+                                <div class="h-3 w-64 bg-gray-200 rounded"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-24 bg-gray-200 rounded-lg"></div>
+                            <div class="h-10 w-32 bg-gray-200 rounded-lg"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Automation Settings Panel (Modal) -->
@@ -429,8 +446,8 @@
     <script src="/assets/js/components/cv-uploader.js?v=1"></script>
     <script src="/assets/js/pages/dashboard.js?v=1.1"></script>
     <script src="/assets/js/components/auto-apply-button.js"></script>
-    <script src="/assets/js/components/gmail-connect.js"></script>
     <script src="/assets/js/components/run-test-button.js"></script>
+    <script src="/assets/js/components/gmail-connect.js"></script>
     <script src="/assets/js/components/ui/DocumentViewer.js"></script>
     <script src="/assets/js/components/navbar.js" defer></script>
     <script defer>

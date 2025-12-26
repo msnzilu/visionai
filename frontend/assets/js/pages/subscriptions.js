@@ -53,13 +53,10 @@ async function loadPaymentConfig() {
                 // Other providers (Stripe, IntaSend, PayPal) are disabled to enforce Paystack
 
 
-                console.log('[Subscriptions] Payment gateways initialized');
             }
         } else {
-            console.error('Failed to load payment config');
         }
     } catch (error) {
-        console.error('Failed to load payment config:', error);
     }
 }
 
@@ -118,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const user = CVision.Utils.getUser();
             if (user) USER_EMAIL = user.email;
-        } catch (e) { console.warn("Could not load user email from local storage"); }
+        } catch (e) { }
     }
 
     // Load data
@@ -127,7 +124,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadPlans(false),
         loadReferralStats()
     ]).catch(error => {
-        console.error('Failed to load initial data:', error);
     });
 
     // Initialize PricingPlans component in authenticated mode
@@ -137,7 +133,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadCurrentSubscription() {
     try {
         const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/subscriptions/me`);
-        console.log(response);
 
         if (!response) return;
 
@@ -154,13 +149,11 @@ async function loadCurrentSubscription() {
     } catch (error) {
         if (error.message.includes('No subscription found') || error.message.includes('404')) {
             // User has no subscription yet, treat as Free Plan
-            console.log('No active subscription found, defaulting to Free Plan');
             document.getElementById('currentTierName').textContent = 'Free Plan';
             document.getElementById('currentTierStatus').textContent = 'Status: Active';
             document.getElementById('currentUsage').textContent = '0 searches used';
             return;
         }
-        console.error('Failed to load subscription:', error);
         CVision.Utils.showAlert('Failed to load subscription information', 'warning');
     }
 }
@@ -261,7 +254,6 @@ async function loadPlans(render = true) {
         if (!response.ok) throw new Error('Failed to load plans');
 
         allPlans = await response.json();
-        console.log('[Subscriptions] Loaded plans:', allPlans);
         if (render) displayFilteredPlans();
     } catch (error) {
         console.error('Failed to load plans:', error);

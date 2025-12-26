@@ -379,7 +379,7 @@ async def verify_api_key(
     
     # In production, validate against database of valid API keys
     # For now, check against a simple setting
-    valid_keys = [settings.AUTOMATION_SERVICE_TOKEN, settings.WEBHOOK_SECRET]
+    valid_keys = [settings.BROWSER_AUTOMATION_TOKEN, settings.WEBHOOK_SECRET]
     
     if api_key not in valid_keys:
         raise HTTPException(

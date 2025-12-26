@@ -74,3 +74,18 @@ class QuickApplyStatusResponse(BaseModel):
     response_received: Optional[bool] = False
     response_at: Optional[datetime] = None
     error_message: Optional[str] = None
+
+
+class AutofillStartResponse(BaseModel):
+    """Response for browser automation start"""
+    success: bool
+    session_id: str
+    message: Optional[str] = None
+
+
+class AutofillStatusResponse(BaseModel):
+    """Response for browser automation status"""
+    status: str
+    filled_fields: Optional[List[str]] = []
+    error: Optional[str] = None
+    message: Optional[str] = None

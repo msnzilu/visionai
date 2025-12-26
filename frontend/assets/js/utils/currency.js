@@ -95,7 +95,6 @@
         setUserCurrency(currency) {
             if (EXCHANGE_RATES[currency] !== undefined) {
                 userCurrency = currency;
-                console.log(`[Currency] User currency set to: ${currency}`);
             }
         },
 
@@ -214,7 +213,6 @@
          */
         updateRates(rates) {
             Object.assign(EXCHANGE_RATES, rates);
-            console.log('[Currency] Exchange rates updated');
         },
 
         /**
@@ -237,7 +235,6 @@
                     const data = await response.json();
                     if (data.result === 'success') {
                         this.updateRates(data.rates);
-                        console.log(`[Currency] Fetched live rates for base ${base}`);
                     }
                 }
             } catch (error) {

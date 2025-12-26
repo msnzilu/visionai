@@ -41,14 +41,15 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - BROWSER_AUTOMATION_URL=http://host.docker.internal:3000
-      - AUTOMATION_SERVICE_TOKEN=${AUTOMATION_SERVICE_TOKEN:-dev-automation-token}
-      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
-      - DATABASE_NAME=synovae_db
+      - MONGODB_URL=${MONGODB_URL}
+      - BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN}
+      - DATABASE_NAME=${DATABASE_NAME}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      - ./frontend:/app/frontend
     ports:
       - 8000:8000
     networks:
@@ -73,8 +74,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - BROWSER_AUTOMATION_URL=http://host.docker.internal:3000
       - AUTOMATION_SERVICE_TOKEN=${AUTOMATION_SERVICE_TOKEN:-dev-automation-token}
-      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
-      - DATABASE_NAME=synovae_db
+      - MONGODB_URL=${MONGODB_URL}
+      - DATABASE_NAME=${DATABASE_NAME}
     depends_on:
       - redis
       - backend
@@ -94,8 +95,8 @@ services:
     environment:
       - DATABASE_URL=mongodb://mongo:27017/synovae_db
       - REDIS_URL=redis://redis:6379/0
-      - MONGODB_URL=mongodb+srv://jcharles:HxHxHz%40%23%402030@synovae.wvyba4e.mongodb.net/?appName=synovae
-      - DATABASE_NAME=synovae_db
+      - MONGODB_URL=${MONGODB_URL}
+      - DATABASE_NAME=${DATABASE_NAME}
     depends_on:
       - redis
     networks:

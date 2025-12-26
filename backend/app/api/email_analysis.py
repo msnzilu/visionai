@@ -17,8 +17,8 @@ from app.models.email_analysis import (
 )
 from app.models.user import User
 from app.api.deps import get_current_user
-from app.services.email_response_analyzer import email_response_analyzer
-from app.services.gmail_service import gmail_service
+from app.services.emails.email_response_analyzer import email_response_analyzer
+from app.services.emails.gmail_service import gmail_service
 from app.database import get_database
 
 logger = logging.getLogger(__name__)

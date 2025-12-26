@@ -25,7 +25,6 @@ class JobActionComponent {
         this.injectModals();
         this.attachGlobalListeners();
         this.initialized = true;
-        console.log('JobActions initialized');
     }
 
     attachGlobalListeners() {
@@ -448,7 +447,7 @@ class JobActionComponent {
                 ` : `
                     <button onclick="window.JobApply.openApplyModal('${jobId}')" 
                         class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 text-sm font-semibold hover:shadow-lg transition-all shadow-md flex items-center justify-center gap-2">
-                         ${(job.application_email || job.contact_email || job.application_url || job.external_url || job.apply_url) ? 'Auto-Apply' : 'Apply'}
+                         ${(job.application_email || job.contact_email || job.application_url || job.external_url || job.apply_url) ? 'Apply' : 'Apply'}
                     </button>
                 `}
             </div>`;

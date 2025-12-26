@@ -287,7 +287,7 @@
     <!-- Scripts -->
     <script src="../assets/js/inline-messages.js" defer></script>
     <script src="../assets/js/main.js" defer></script>
-    <script src="../assets/js/browser-automation.js" defer></script>
+    <script src="../assets/js/components/browser-automation.js" defer></script>
     <script src="../assets/js/quick-apply.js" defer></script>
     <script src="../assets/js/progress-tracker.js" defer></script>
     <script src="../assets/js/components/ui/DocumentViewer.js" defer></script>
@@ -312,7 +312,6 @@
                     requestAnimationFrame(() => {
                         // Double RAF ensures DOM is fully updated
                         if (window.CVisionNavbar) {
-                            console.log('Jobs: Navbar HTML inserted, calling init()');
                             CVisionNavbar.init('Jobs');
                         } else {
                             console.error('Jobs: CVisionNavbar not available');
@@ -330,15 +329,14 @@
             })
             .catch(error => console.error('Error loading quick apply form:', error));
 
-        // Initialize page
+        // Initialize page - auth check only
+        // Note: loadJobsFromDB() is called from jobs.js after JobCard component is ready
         document.addEventListener('DOMContentLoaded', () => {
             if (!CVision.Utils.isAuthenticated()) {
                 window.location.href = '../login.html';
                 return;
             }
-
-            // Load jobs from database
-            loadJobsFromDB();
+            // jobs.js handles loading jobs after DOMContentLoaded with proper component checks
         });
     </script>
 

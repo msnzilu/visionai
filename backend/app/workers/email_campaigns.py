@@ -7,7 +7,7 @@ Handles all automated email communications throughout the job search journey
 from app.workers.celery_app import celery_app
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
-from app.services.gmail_service import gmail_service
+from app.services.emails.gmail_service import gmail_service
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -69,7 +69,7 @@ async def process_daily_job_digest():
     """
     try:
         db = await get_database()
-        from app.services.matching_service import matching_service
+        from app.services.intelligence.matching_service import matching_service
         matching_service.db = db
         
         # Get active users (logged in within last 30 days)
@@ -147,7 +147,7 @@ async def process_daily_job_digest():
                 is_premium = subscription_tier in ["basic", "premium"]
                 
                 # 4. Prepare Email Data
-                from app.services.email_service import EmailService
+                from app.services.emails.email_service import EmailService
                 
                 template_body = {
                     "full_name": user.get("full_name", "there"),

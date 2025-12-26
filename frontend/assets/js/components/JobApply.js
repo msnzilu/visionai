@@ -8,6 +8,7 @@
 class JobApplyComponent {
     constructor() {
         this.currentJobId = null;
+        this.currentJob = null;
         this.apiBaseUrl = '/api/v1'; // Adjust as needed based on config
 
         // Bind methods
@@ -83,7 +84,6 @@ class JobApplyComponent {
         `;
 
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-        console.log('JobApply: Modal injected into DOM');
     }
 
     /**
@@ -94,6 +94,7 @@ class JobApplyComponent {
     async openApplyModal(jobId, jobObject = null) {
         console.log('JobApply: Opening Apply Modal', { jobId, jobObject });
         this.currentJobId = jobId;
+        this.currentJob = jobObject;
 
         // Use passed object if available, otherwise try to find it
         let job = jobObject;
@@ -113,6 +114,7 @@ class JobApplyComponent {
         }
 
         console.log('JobApply: Resolved job object:', job);
+        this.currentJob = job;
 
         const modal = document.getElementById('applyModal');
         const titleEl = document.getElementById('applyModalJobTitle');
@@ -336,14 +338,39 @@ class JobApplyComponent {
 
         this.closeApplyModal();
 
-        // Call the global openQuickApplyForm function if it exists (legacy/current implementation)
-        // Or if we move that logic here, we call the internal method.
-        // For now, based on instructions, we are bridging to the existing form logic which seems complex.
-        if (typeof window.openQuickApplyForm === 'function') {
-            window.openQuickApplyForm(this.currentJobId, cvId, coverLetterId);
+        const job = this.currentJob || {};
+        const hasEmail = !!(
+            job.application_email ||
+            job.contact_email ||
+            job.email ||
+            (job.company_info?.contact?.email)
+        );
+
+        const hasUrl = !!(
+            job.application_url ||
+            job.external_url ||
+            job.apply_url
+        );
+
+        if (hasEmail) {
+            console.log('JobApply: Priority 1 - Email Apply (Quick Apply)');
+            if (typeof window.openQuickApplyForm === 'function') {
+                window.openQuickApplyForm(this.currentJobId, cvId, coverLetterId);
+            } else {
+                console.error('openQuickApplyForm function not found');
+                alert('Navigation failed: Quick Apply form missing.');
+            }
+        } else if (hasUrl) {
+            console.log('JobApply: Priority 2 - Browser Automation');
+            if (window.BrowserAutomation && typeof window.BrowserAutomation.startAutofill === 'function') {
+                window.BrowserAutomation.startAutofill(this.currentJobId, cvId, coverLetterId);
+            } else {
+                console.error('BrowserAutomation.startAutofill not found');
+                alert('Browser automation service is not loaded.');
+            }
         } else {
-            console.error('openQuickApplyForm function not found');
-            alert('Navigation failed: Quick Apply form missing.');
+            console.warn('JobApply: No automated application method found for this job');
+            alert('This job requires manual application. Please follow the instructions on the job board.');
         }
     }
 }

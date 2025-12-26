@@ -20,13 +20,13 @@ from app.core.security import (
     verify_password_reset_token,
     get_client_ip
 )
-from app.dependencies import get_current_user
-from app.services.oauth_service import OAuthService
+from app.dependencies import get_current_user, get_current_active_user
+from app.services.auth.oauth_service import OAuthService
 from app.core.config import settings
 from app.database import get_users_collection
-from app.services.email_service import EmailService
-from app.services.gmail_service import gmail_service
-from app.services.password_service import PasswordService
+from app.services.emails.email_service import EmailService
+from app.services.emails.gmail_service import gmail_service
+from app.services.auth.password_service import PasswordService
 from app.models.user import GmailAuth
 
 import logging
@@ -106,7 +106,7 @@ async def register(user_data: UserRegister, request: Request):
             )
             
         # Check IP Registration Limit using reusable service
-        from app.services.security_service import SecurityService
+        from app.services.auth.security_service import SecurityService
         client_ip = get_client_ip(request)
         
         if not await SecurityService.check_registration_ip_limit(client_ip):
@@ -159,7 +159,7 @@ async def register(user_data: UserRegister, request: Request):
         # detailed user creation for auth service hook? No, keep it simple here or use AuthService
         
         # Create verification token and send email
-        from app.services.auth_service import AuthService
+        from app.services.auth.auth_service import AuthService
         verification_token = AuthService.create_verification_token(user_data.email)
         
         # Send verification email
@@ -374,7 +374,7 @@ async def logout(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/me", response_model=APIResponse)
-async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+async def get_current_user_info(current_user: dict = Depends(get_current_active_user)):
     """Get current user info"""
     try:
         # Create full_name for frontend compatibility
@@ -415,7 +415,7 @@ class ChangePasswordRequest(BaseModel):
 @router.post("/change-password", response_model=APIResponse)
 async def change_password(
     request: ChangePasswordRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_active_user)
 ):
     """Change user password"""
     result = await PasswordService.change_password(
@@ -463,7 +463,7 @@ async def reset_password(request: ResetPasswordRequest):
 @router.post("/verify-email", response_model=APIResponse)
 async def verify_email(request: VerifyEmailRequest):
     """Verify user email with token"""
-    from app.services.auth_service import AuthService
+    from app.services.auth.auth_service import AuthService
     
     # Verify token
     email = AuthService.verify_verification_token(request.token)
@@ -507,7 +507,7 @@ async def resend_verification(request: ResendVerificationRequest):
         )
         
     # Generate new token and send email
-    from app.services.auth_service import AuthService
+    from app.services.auth.auth_service import AuthService
     verification_token = AuthService.create_verification_token(request.email)
     
     full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
@@ -644,7 +644,7 @@ async def linkedin_callback(code: str, state: str):
 # ============ GMAIL INTEGRATION ROUTES ============
 
 @router.get("/gmail/connect")
-async def connect_gmail(current_user: dict = Depends(get_current_user)):
+async def connect_gmail(current_user: dict = Depends(get_current_active_user)):
     """Initiate Gmail connection flow"""
     try:
         # Pass user ID in state to verify on callback

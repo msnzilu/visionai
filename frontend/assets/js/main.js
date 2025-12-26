@@ -5,7 +5,7 @@ const getApiBaseUrl = () => {
     // and not on the backend port (assuming 8000), point to backend directly
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         if (window.location.port !== '8000') {
-            return 'http://localhost:8000';
+            return `http://${window.location.hostname}:8000`;
         }
     }
     return window.location.origin;
@@ -157,6 +157,13 @@ const Utils = {
     // Get appropriate login URL based on current context
     getLoginUrl() {
         return window.location.pathname.includes('/admin/') ? '/admin/login' : '/login';
+    },
+
+    // Clean URL by removing .html extension
+    cleanUrl(url) {
+        if (!url) return url;
+        // Remove .html extension
+        return url.replace(/\.html$/, '');
     }
 };
 
@@ -425,7 +432,6 @@ async function loadPublicNavbar() {
     if (window.PublicNavbar) {
         await PublicNavbar.load('public-navbar-container');
     } else {
-        console.warn('PublicNavbar component not loaded');
     }
 }
 

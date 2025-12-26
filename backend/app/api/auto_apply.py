@@ -16,7 +16,7 @@ from app.workers.auto_apply import (
     enable_auto_apply_for_user,
     trigger_single_user_test
 )
-from app.services.matching_service import matching_service
+from app.services.intelligence.matching_service import matching_service
 
 from celery.result import AsyncResult
 import logging

@@ -79,7 +79,10 @@ class GmailConnect {
                             <p class="text-sm text-gray-500 mt-1">Enable the Email Agent to automatically submit applications via your email.</p>
                         </div>
                     </div>
-                    <div class="flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div id="freeSimulateContainer">
+                            <div class="h-10 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+                        </div>
                         <button id="btnConnectGmail" class="btn-gradient text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:shadow transition-all flex items-center gap-2">
                              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
@@ -91,8 +94,24 @@ class GmailConnect {
             </div>
         `;
 
-        // Bind events
+        // Bind Connect Gmail button
         this.container.querySelector('#btnConnectGmail').addEventListener('click', () => this.connect());
+
+        // Initialize RunTestButton for free users (component handles tier limits)
+        if (typeof RunTestButton !== 'undefined') {
+            const freeTestBtn = new RunTestButton({
+                containerId: 'freeSimulateContainer',
+                apiUrl: `${this.apiUrl}/api/v1/auto-apply`,
+                label: `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>Simulate</span>`,
+                styleClass: 'flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg border border-gray-200 transition-colors font-medium text-sm',
+                onComplete: (data) => {
+                    if (data.applications_sent > 0) {
+                        CVision.Utils.showAlert(`Simulation complete! ${data.applications_sent} applications would be sent.`, 'success');
+                    }
+                }
+            });
+            freeTestBtn.init();
+        }
     }
 
     renderConnected(user) {
