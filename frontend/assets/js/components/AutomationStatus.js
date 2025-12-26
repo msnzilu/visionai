@@ -72,7 +72,13 @@ class AutomationStatus {
     updateStatus(status, message, progress = null) {
         if (!this.isVisible) this.show();
 
-        this.messageEl.textContent = message;
+        // Sanitize technical messages for the user
+        let displayMessage = message;
+        if (message.includes('host.docker.internal')) {
+            displayMessage = 'Cannot connect to the automation service. Please try again in a few moments.';
+        }
+
+        this.messageEl.textContent = displayMessage;
         this.statusBadge.textContent = status.toUpperCase();
 
         // Update styling based on status
