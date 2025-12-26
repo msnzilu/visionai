@@ -1,4 +1,5 @@
 // browser-automation/src/index.js
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
 const express = require('express');
 const { chromium } = require('playwright');
@@ -8,7 +9,7 @@ const { FormDetector } = require('./automation/form-detector');
 const { SiteHandlerFactory } = require('./automation/site-handlers/factory');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 const AUTH_TOKEN = process.env.BROWSER_AUTOMATION_TOKEN || 'dev-automation-token';
 
 app.use(cors());
@@ -75,7 +76,7 @@ app.post('/api/automation/start', authenticate, async (req, res) => {
 
         // Launch browser with Playwright
         const browser = await chromium.launch({
-            headless: process.env.HEADLESS === 'true',
+            headless: process.env.HEADLESS !== 'false',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',

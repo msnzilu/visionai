@@ -74,7 +74,7 @@ class BrowserAutomationManager {
 
         } catch (error) {
             console.error('💥 [Browser Automation] Error:', error);
-            CVision.Utils.showAlert(error.message, 'error');
+            window.AutomationUI?.updateStatus('Error', error.message, 100);
             console.groupEnd();
             throw error;
         }
@@ -105,6 +105,7 @@ class BrowserAutomationManager {
 
             } catch (error) {
                 console.error(`📡 Polling error for ${sessionId}:`, error);
+                window.AutomationUI?.updateStatus('Error', 'Connection lost or polling failed.', 100);
                 this.stopPolling(sessionId);
             }
         }, 3000); // Poll every 3 seconds
@@ -138,7 +139,7 @@ class BrowserAutomationManager {
         } else if (status === 'filling_forms') {
             window.AutomationUI?.updateStatus('Active', `Filling forms (${filled_fields?.length || 0} fields)...`, progress);
         } else if (status === 'completed') {
-            window.AutomationUI?.updateStatus('Success', 'Application ready! Please review and submit.', 100);
+            window.AutomationUI?.updateStatus('Success', 'Application Submitted', 100);
             this.stopPolling(sessionId);
         } else if (status === 'failed' || status === 'error') {
             window.AutomationUI?.updateStatus('Error', `Automation Error: ${error || 'Unknown error'}`, 100);

@@ -308,6 +308,10 @@ jobs:
             # Allow port 3001 for automation service
             sudo ufw allow 3001/tcp || true
             
+            # Cleanup any old processes on port 3000 (just in case)
+            sudo fuser -k 3000/tcp || true
+            sudo fuser -k 3001/tcp || true
+            
             # Cleanup tmp
             rm -rf /tmp/frontend
             
@@ -325,6 +329,13 @@ jobs:
             # Install dependencies and start with PM2
             cd $TARGET_DIR
             
+            # Ensure Node.js and NPM are installed
+            if ! command -v npm &> /dev/null; then
+                echo "Installing Node.js and NPM..."
+                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+                sudo apt-get install -y nodejs
+            fi
+
             # Ensure PM2 is installed
             if ! command -v pm2 &> /dev/null; then
                 echo "Installing pm2..."
@@ -337,7 +348,9 @@ jobs:
             echo "Starting/Restarting service..."
             # Using --update-env to pick up the token from the environment variable
             # We explicitly set PORT and BROWSER_AUTOMATION_TOKEN.
-            PORT=3001 BROWSER_AUTOMATION_TOKEN="${{ secrets.BROWSER_AUTOMATION_TOKEN }}" pm2 start src/index.js --name "visionai-automation" --update-env || PORT=3001 BROWSER_AUTOMATION_TOKEN="${{ secrets.BROWSER_AUTOMATION_TOKEN }}" pm2 restart "visionai-automation" --update-env
+            # We also ensure the old named process is deleted first for a clean start
+            pm2 delete "visionai-automation" || true
+            PORT=3001 HEADLESS=true BROWSER_AUTOMATION_TOKEN="${{ secrets.BROWSER_AUTOMATION_TOKEN }}" pm2 start src/index.js --name "visionai-automation" --update-env
             
             pm2 save
             
@@ -371,13 +384,14 @@ jobs:
                 return
               fi
               
-              # Check if secret exists
-              if ! docker secret inspect "$name" > /dev/null 2>&1; then
-                echo "Creating secret: $name"
-                echo -n "$value" | docker secret create "$name" -
-              else
-                echo "Secret $name already exists (skipping)"
+              # Check if secret exists and remove it to force update
+              if docker secret inspect "$name" > /dev/null 2>&1; then
+                echo "Removing existing secret to force update: $name"
+                docker secret rm "$name"
               fi
+              
+              echo "Creating secret: $name"
+              echo -n "$value" | docker secret create "$name" -
             }
 
             # Read .env.production and create secrets

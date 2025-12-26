@@ -11,6 +11,7 @@ class AutomationStatus {
         this.statusBadge = null;
         this.logContainer = null;
         this.isVisible = false;
+        this.hideTimer = null;
 
         this._injectStyles();
         this._createElements();
@@ -36,6 +37,7 @@ class AutomationStatus {
                     <span>Automation Assistant</span>
                 </div>
                 <div class="automation-status-badge status-active">Active</div>
+                <button class="automation-close-btn" aria-label="Close">&times;</button>
             </div>
             <div class="automation-message-container">
                 <p class="automation-message">Initializing automation engine...</p>
@@ -53,13 +55,16 @@ class AutomationStatus {
         this.messageEl = overlay.querySelector('.automation-message');
         this.statusBadge = overlay.querySelector('.automation-status-badge');
         this.logContainer = overlay.querySelector('.automation-logs');
+
+        // Close button handler
+        overlay.querySelector('.automation-close-btn').addEventListener('click', () => this.hide(0));
     }
 
     show() {
+        this.reset();
         if (this.isVisible) return;
         this.container.classList.add('active');
         this.isVisible = true;
-        this.reset();
     }
 
     hide(delay = 3000) {
@@ -74,6 +79,8 @@ class AutomationStatus {
     updateStatus(status, message, progress = null) {
         if (!this.isVisible) this.show();
 
+        const lowerStatus = status.toLowerCase();
+
         // Sanitize technical messages for the user
         let displayMessage = message;
         if (message.includes('host.docker.internal')) {
@@ -87,15 +94,15 @@ class AutomationStatus {
         this.container.classList.remove('error', 'completed');
         this.statusBadge.classList.remove('status-active', 'status-completed', 'status-error');
 
-        if (status === 'error' || status === 'failed') {
+        if (lowerStatus === 'error' || lowerStatus === 'failed') {
             this.container.classList.add('error');
             this.statusBadge.classList.add('status-error');
-            this.hide(8000); // Hide after 8 seconds on error
-        } else if (status === 'completed' || status === 'success') {
+            this.hide(6000); // Hide after 6 seconds on error
+        } else if (lowerStatus === 'completed' || lowerStatus === 'success') {
             this.container.classList.add('completed');
             this.statusBadge.classList.add('status-completed');
             this.setProgress(100);
-            this.hide(5000); // Hide after 5 seconds on success
+            this.hide(4000); // Hide after 4 seconds on success
         } else {
             this.statusBadge.classList.add('status-active');
             if (this.hideTimer) {
