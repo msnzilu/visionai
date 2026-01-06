@@ -27,12 +27,54 @@ class AutomationService:
     """
     
     @staticmethod
+    async def prepare_customized_documents(
+        user_id: str,
+        job_id: str,
+        cv_data: Dict[str, Any],
+        tone: str = "professional"
+    ) -> Dict[str, Any]:
+        """
+        Customize both CV and Cover Letter in parallel
+        
+        Returns:
+            Dict containing customized documents and match score
+        """
+        try:
+            db = await get_database()
+            job = await db.jobs.find_one({"_id": ObjectId(job_id)})
+            if not job:
+                raise ValueError("Job not found")
+                
+            from app.services.documents.cv_customization_service import cv_customization_service
+            from app.services.documents.cover_letter_service import cover_letter_service
+            import asyncio
+            
+            logger.info(f"Parallel Customization: CV and Cover Letter for user {user_id}")
+            
+            # Run customizations in parallel
+            cv_task = cv_customization_service.customize_cv_for_job(cv_data, job)
+            cl_task = cover_letter_service.generate_cover_letter(cv_data, job, tone=tone)
+            
+            cv_result, cl_result = await asyncio.gather(cv_task, cl_task)
+            
+            return {
+                "success": True,
+                "cv": cv_result,
+                "cover_letter": cl_result,
+                "match_score": cv_result.get("job_match_score", 0)
+            }
+        except Exception as e:
+            logger.error(f"Unified customization failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    @staticmethod
     async def auto_apply_to_job(
         user_id: str,
         application_id: str,
         job_id: str,
         cv_id: Optional[str] = None,
-        cover_letter_id: Optional[str] = None
+        cover_letter_id: Optional[str] = None,
+        usage_type: str = "auto_application"
     ) -> Dict[str, Any]:
         """
         Intelligently apply to job using the best available method
@@ -94,7 +136,8 @@ class AutomationService:
                     user_id=user_id,
                     application_id=application_id,
                     job_id=job_id,
-                    cv_id=cv_id
+                    cv_id=cv_id,
+                    usage_type=usage_type
                 )
                 
         except Exception as e:

@@ -350,6 +350,17 @@ try:
 except ImportError as e:
     logger.warning(f"Migration router not available: {e}")
 
+try:
+    from app.api.support import router as support_router
+    app.include_router(
+        support_router,
+        prefix=f"{settings.API_V1_STR}/support",
+        tags=["Support"]
+    )
+    logger.info("Support router loaded")
+except ImportError as e:
+    logger.warning(f"Support router not available: {e}")
+
 
 
 

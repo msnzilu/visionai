@@ -3,6 +3,7 @@
 const { GenericHandler } = require('./generic');
 const { IndeedHandler } = require('./indeed');
 const { LinkedInHandler } = require('./linkedin');
+const { RemoteOKHandler } = require('./remoteok');
 
 class SiteHandlerFactory {
     static getHandler(url, jobSource) {
@@ -17,6 +18,11 @@ class SiteHandlerFactory {
         if (hostname.includes('linkedin.com') || jobSource === 'linkedin') {
             console.log('Using LinkedIn handler');
             return new LinkedInHandler();
+        }
+
+        if (hostname.includes('remoteok.com') || hostname.includes('remoteok.io') || jobSource === 'remoteok') {
+            console.log('Using RemoteOK handler');
+            return new RemoteOKHandler();
         }
 
         // Add more site-specific handlers here

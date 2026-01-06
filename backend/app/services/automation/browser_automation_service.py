@@ -12,6 +12,7 @@ from bson import ObjectId
 
 from app.database import get_database
 from app.core.config import settings
+from app.services.core.subscription_service import SubscriptionService
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,8 @@ class BrowserAutomationService:
         user_id: str,
         application_id: str,
         job_id: str,
-        cv_id: Optional[str] = None
+        cv_id: Optional[str] = None,
+        usage_type: str = "auto_application"
     ) -> Dict[str, Any]:
         """
         Automate job application submission via Node.js browser automation service
@@ -94,6 +96,20 @@ class BrowserAutomationService:
                 }
             )
             
+            # Step 3.5: Check for existing portal credentials
+            credentials = None
+            try:
+                from urllib.parse import urlparse
+                domain = urlparse(application_url).netloc
+                if domain.startswith("www."):
+                    domain = domain[4:]
+                
+                credentials = await BrowserAutomationService._get_user_portal_credentials(user_id, domain)
+                if credentials:
+                    logger.info(f"Found existing credentials for {domain}")
+            except Exception as e:
+                logger.warning(f"Failed to lookup credentials: {e}")
+
             # Step 4: Call Node.js browser automation service
             automation_result = await BrowserAutomationService._call_browser_automation_service(
                 application_url=application_url,
@@ -108,38 +124,107 @@ class BrowserAutomationService:
                     "company": job.get("company_name"),
                     "location": job.get("location")
                 },
-                application_id=application_id
+                application_id=application_id,
+                credentials=credentials,
+                auto_create_account=True # Vision AI Extreme Mode instruction
             )
             
-            # Step 5: Update application with result
+            # Step 6: Update application with result
+            status_update = {}
             if automation_result.get("success"):
-                await db.applications.update_one(
-                    {"_id": ObjectId(application_id)},
-                    {
-                        "$set": {
-                            "status": "applied",
-                            "automation_status": "completed",
-                            "automation_completed_at": datetime.utcnow(),
-                            "applied_date": datetime.utcnow(),
-                            "automation_details": automation_result,
-                            "updated_at": datetime.utcnow()
+                result_status = automation_result.get("status")
+                
+                # Check for newly created credentials (auto-account creation)
+                new_credentials = automation_result.get("new_credentials")
+                if new_credentials:
+                    logger.info(f"Received new portal credentials for domain {new_credentials.get('domain')}")
+                    await BrowserAutomationService._store_portal_credentials(
+                        user_id=user_id,
+                        portal_name=new_credentials.get("portal_name"),
+                        domain=new_credentials.get("domain"),
+                        username=new_credentials.get("username"),
+                        password=new_credentials.get("password")
+                    )
+
+                if result_status == "needs_authentication" or result_status == "login_required" or result_status == "manual_action_required":
+                    platform = BrowserAutomationService.detect_application_platform(application_url)
+                    
+                    if platform == "remoteok":
+                        logger.warning(f"RemoteOK login wall detected for job {job_id}. Deleting application and job records.")
+                        
+                        # Delete application
+                        await db.applications.delete_one({"_id": ObjectId(application_id)})
+                        
+                        # Delete job
+                        await db.jobs.delete_one({"_id": ObjectId(job_id)})
+                        
+                        return {
+                            "success": False,
+                            "status": "deleted",
+                            "message": "RemoteOK job requires login. Record deleted from database.",
+                            "timestamp": datetime.utcnow().isoformat()
                         }
+                    
+                    # For other platforms, standard blocked status update
+                    if result_status == "needs_authentication" or result_status == "login_required":
+                        status_update = {
+                            "status": "needs_authentication",
+                            "automation_status": "blocked",
+                            "automation_error": "Login required for this portal"
+                        }
+                    else: # manual_action_required
+                        status_update = {
+                            "status": "manual_action_required",
+                            "automation_status": "blocked",
+                            "automation_error": "Captcha or manual login required"
+                        }
+                elif result_status == "pending_verification":
+                    status_update = {
+                        "status": "pending_verification",
+                        "automation_status": "blocked",
+                        "automation_error": "Waiting for email verification link",
+                        "verification_portal_domain": automation_result.get("verification_domain")
                     }
-                )
-                logger.info(f"Browser auto-apply successful for application {application_id}")
+                elif result_status == "started":
+                    status_update = {
+                        "status": "processing",
+                        "automation_status": "started",
+                        "automation_details": automation_result,
+                        "usage_type": usage_type # Store for later tracking on completion
+                    }
+                    logger.info(f"Browser auto-apply session {application_id} started successfully in background.")
+                else:
+                    status_update = {
+                        "status": "applied",
+                        "automation_status": "completed",
+                        "automation_completed_at": datetime.utcnow(),
+                        "applied_date": datetime.utcnow(),
+                        "automation_details": automation_result,
+                    }
+                    logger.info(f"Browser auto-apply successful for application {application_id}")
+                    
+                    
+                    # Immediately trigger monitoring to verify status and catch automation effects
+                    from app.workers.auto_apply import monitor_browser_application
+                    monitor_browser_application.delay(application_id)
+
+                    # Track usage on success (only if it returned SUCCESS immediately, which is rare for browser automation but possible for email fallback)
+                    subscription_service = SubscriptionService(db)
+                    await subscription_service.track_usage(user_id, usage_type)
+                    logger.info(f"Usage tracked for user {user_id} ({usage_type}) after IMMEDIATE successful application.")
             else:
-                await db.applications.update_one(
-                    {"_id": ObjectId(application_id)},
-                    {
-                        "$set": {
-                            "status": "pending",
-                            "automation_status": "failed",
-                            "automation_error": automation_result.get("error"),
-                            "updated_at": datetime.utcnow()
-                        }
-                    }
-                )
+                status_update = {
+                    "status": "pending",
+                    "automation_status": "failed",
+                    "automation_error": automation_result.get("error"),
+                }
                 logger.error(f"Browser auto-apply failed for application {application_id}: {automation_result.get('error')}")
+            
+            status_update["updated_at"] = datetime.utcnow()
+            await db.applications.update_one(
+                {"_id": ObjectId(application_id)},
+                {"$set": status_update}
+            )
             
             return automation_result
             
@@ -233,6 +318,84 @@ class BrowserAutomationService:
         except Exception as e:
             logger.error(f"Error getting CV data: {str(e)}")
             return None
+
+    @staticmethod
+    async def _get_user_portal_credentials(user_id: str, domain: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve existing portal credentials for a given user and domain.
+        """
+        try:
+            db = await get_database()
+            user = await db.users.find_one(
+                {"_id": ObjectId(user_id), "portal_credentials.domain": domain},
+                {"portal_credentials.$": 1} # Project only the matching credential
+            )
+            if user and user.get("portal_credentials"):
+                return user["portal_credentials"][0]
+            return None
+        except Exception as e:
+            logger.error(f"Error lookup credentials: {e}")
+            return None
+
+    @staticmethod
+    async def _store_portal_credentials(
+        user_id: str, 
+        portal_name: str, 
+        domain: str, 
+        username: str, 
+        password: str
+    ) -> bool:
+        """
+        Store newly created portal credentials to user profile
+        """
+        try:
+            db = await get_database()
+            
+            new_cred = {
+                "_id": ObjectId(),
+                "portal_name": portal_name,
+                "domain": domain,
+                "username": username,
+                "password_encrypted": password, # In a real system, we'd encrypt here
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            
+            await db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$push": {"portal_credentials": new_cred}}
+            )
+            
+            logger.info(f"Successfully stored new credentials for {domain} to user {user_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error storing credentials: {e}")
+            return False
+            
+    @staticmethod
+    async def get_node_automation_status(session_id: str) -> Dict[str, Any]:
+        """
+        Poll the Node.js automation service for the actual status of a session
+        """
+        try:
+            # Use authentication token from settings
+            headers = {
+                "Authorization": f"Bearer {settings.BROWSER_AUTOMATION_TOKEN}"
+            }
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    f"{BROWSER_AUTOMATION_URL}/api/automation/status/{session_id}",
+                    headers=headers
+                )
+                
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    return {"error": f"Node service error: {response.status_code}"}
+        except Exception as e:
+            logger.error(f"Error polling Node service status: {e}")
+            return {"error": str(e)}
     
     
     @staticmethod
@@ -240,7 +403,9 @@ class BrowserAutomationService:
         application_url: str,
         user_data: Dict[str, Any],
         job_data: Dict[str, Any],
-        application_id: str
+        application_id: str,
+        credentials: Optional[Dict[str, Any]] = None,
+        auto_create_account: bool = False
     ) -> Dict[str, Any]:
         """
         Call Node.js browser automation service
@@ -250,6 +415,8 @@ class BrowserAutomationService:
             user_data: User profile and CV information
             job_data: Job posting details
             application_id: Application ID for tracking
+            credentials: Optional existing portal credentials for login
+            auto_create_account: Flag to instruct the service to create an account if needed
             
         Returns:
             Dict with automation result from Node.js service
@@ -267,7 +434,9 @@ class BrowserAutomationService:
                     "education": user_data.get("education", []),
                     "skills": user_data.get("skills", {})
                 },
-                "job_source": BrowserAutomationService.detect_application_platform(application_url)
+                "job_source": BrowserAutomationService.detect_application_platform(application_url),
+                "credentials": credentials,
+                "auto_create_account": auto_create_account
             }
             
             # Use authentication token from settings
@@ -572,6 +741,8 @@ class BrowserAutomationService:
             return "workday"
         elif "icims.com" in url_lower:
             return "icims"
+        elif "remoteok.com" in url_lower or "remoteok.io" in url_lower:
+            return "remoteok"
         else:
             return "custom"
     

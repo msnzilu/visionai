@@ -10,6 +10,7 @@ let currentJobs = [];
 let selectedJobs = new Set();
 let batchModeActive = false;
 let currentJobIdForCustomize = null;
+let appliedJobIds = new Set();
 
 document.addEventListener('DOMContentLoaded', async () => {
     if (!CVision.Utils.isAuthenticated()) {
@@ -22,32 +23,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Parse and populate from URL parameters
     populateFromURLParams();
 
+    // Fetch applied jobs first to ensure filtering is immediate
+    await fetchAppliedStatus();
+
     // Load existing jobs from database on page load
     await loadJobsFromDB();
-
-    // Fetch applied jobs to update UI state and filter out applied jobs
-    try {
-        const appRes = await fetch(`${API_BASE_URL}/api/v1/applications/?page=1&size=1000`, {
-            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
-        });
-        if (appRes.ok) {
-            const appData = await appRes.json();
-            const appliedJobs = appData.applications || [];
-
-            if (window.JobActions) {
-                window.JobActions.setAppliedJobs(appliedJobs);
-            }
-
-            // Filter out jobs user has already applied to
-            const appliedJobIds = new Set(appliedJobs.map(app => app.job_id));
-            currentJobs = currentJobs.filter(job => !appliedJobIds.has(job._id || job.id));
-
-            // Re-render filtered job list
-            displayJobs(currentJobs);
-        }
-    } catch (e) {
-        console.error('Failed to load application status', e);
-    }
 
     // Check for job ID in URL after jobs are loaded
     const urlParams = new URLSearchParams(window.location.search);
@@ -221,7 +201,11 @@ function initializeJobSearch() {
     }
 }
 
-async function loadJobsFromDB() {
+/**
+ * Load jobs from DB with pagination support
+ * @param {number} page - Page number to fetch
+ */
+async function loadJobsFromDB(page = 1) {
     try {
         showLoading();
 
@@ -235,7 +219,7 @@ async function loadJobsFromDB() {
                 query: null,
                 location: null,
                 filters: null,
-                page: 1,
+                page: page,
                 size: 20,
                 sort_by: 'created_at',
                 sort_order: 'desc'
@@ -249,8 +233,24 @@ async function loadJobsFromDB() {
         }
 
         const data = await response.json();
-        currentJobs = data.jobs || [];
+        console.log('[loadJobsFromDB] API response:', { page: data.page, pages: data.pages, total: data.total, jobCount: (data.jobs || []).length });
+
+        let fetchedJobs = data.jobs || [];
+
+        // Update JobActions applied list
+        if (window.JobActions) {
+            window.JobActions.appliedJobIds = appliedJobIds;
+        }
+
+        // Filter out applied jobs immediately
+        currentJobs = fetchedJobs.filter(job => !appliedJobIds.has(String(job._id || job.id)));
         window.currentJobs = currentJobs;
+
+        // AUTO-FETCH FIX: If all jobs on this page were filtered out but more pages exist, fetch next page
+        if (currentJobs.length === 0 && fetchedJobs.length > 0 && data.page < data.pages) {
+            console.log(`All ${fetchedJobs.length} jobs on page ${data.page} already applied. Auto-fetching next page...`);
+            return loadJobsFromDB(data.page + 1);
+        }
 
         // Sync with JobCard component
         if (window.JobCard) window.JobCard.setJobs(currentJobs);
@@ -258,7 +258,7 @@ async function loadJobsFromDB() {
         document.getElementById('loadingState').classList.add('hidden');
 
         if (currentJobs.length === 0) {
-            document.getElementById('resultsCount').textContent = 'No jobs in database yet.';
+            document.getElementById('resultsCount').textContent = fetchedJobs.length > 0 ? 'No new jobs found (filtered).' : 'No jobs in database yet.';
             showEmptyStateWithSearchPrompt();
         } else {
             displayJobs(currentJobs);
@@ -401,13 +401,25 @@ async function performSearch(page = 1, sortBy = 'relevance') {
         }
 
         const data = await response.json();
-        currentJobs = data.jobs || [];
+        let fetchedJobs = data.jobs || [];
+
+        // Filter results immediately
+        currentJobs = fetchedJobs.filter(job => !appliedJobIds.has(String(job._id || job.id)));
+
+        // AUTO-FETCH FIX: If all jobs on this page were filtered out but more pages exist, fetch next page
+        if (currentJobs.length === 0 && fetchedJobs.length > 0 && data.page < data.pages) {
+            console.log(`All ${fetchedJobs.length} jobs on page ${data.page} already applied. Auto-fetching page ${data.page + 1}...`);
+            return performSearch(data.page + 1, sortBy);
+        }
 
         // Sync with JobCard component
         if (window.JobCard) window.JobCard.setJobs(currentJobs);
 
         if (currentJobs.length === 0) {
             showEmptyState();
+            if (fetchedJobs.length > 0) {
+                document.getElementById('resultsCount').textContent = 'All search results were jobs you already applied to.';
+            }
         } else {
             displayJobs(currentJobs);
             updateResultsCount(data.total, currentJobs.length);
@@ -619,6 +631,28 @@ function showEmptyState() {
     document.getElementById('emptyState').classList.remove('hidden');
     document.getElementById('jobsContainer').innerHTML = '';
     document.getElementById('loadingState').classList.add('hidden');
+}
+
+/**
+ * Fetch user's applied job IDs to enable immediate filtering
+ */
+async function fetchAppliedStatus() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/applications/?page=1&size=1000`, {
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            const applications = data.applications || [];
+            appliedJobIds = new Set(applications.map(app => String(app.job_id)));
+
+            if (window.JobActions) {
+                window.JobActions.appliedJobIds = appliedJobIds;
+            }
+        }
+    } catch (e) {
+        console.error('Failed to fetch application status:', e);
+    }
 }
 
 

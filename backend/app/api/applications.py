@@ -3,7 +3,7 @@ Job application management API routes with Phase 5 integration
 Complete implementation with all endpoints
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks, status
 from fastapi import status as fastapi_status
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -232,13 +232,14 @@ async def list_applications(
                 filters["follow_up_date"] = {"$gt": datetime.utcnow()}
         
         if has_response is not None:
+            # Response statuses are statuses that indicate the company has responded
+            response_statuses = [
+                "interview_scheduled", "interview_completed", "second_round", "final_round",
+                "offer_received", "offer_accepted", "offer_declined", 
+                "rejected"
+            ]
+            
             if has_response:
-                # Response statuses are statuses that indicate the company has responded
-                response_statuses = [
-                    "interview_scheduled", "interview_completed", "second_round", "final_round",
-                    "offer_received", "offer_accepted", "offer_declined", 
-                    "rejected"
-                ]
                 # Only include apps that have:
                 # 1. Status indicating a response (most reliable), OR
                 # 2. At least one received/inbound communication

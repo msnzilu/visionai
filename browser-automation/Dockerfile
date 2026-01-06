@@ -46,6 +46,6 @@ RUN npx playwright install chromium
 # Copy application code
 COPY --chown=appuser:appuser . .
 
-EXPOSE 3000
+EXPOSE 3001
 
 CMD ["node", "src/index.js"]

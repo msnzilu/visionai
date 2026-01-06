@@ -120,34 +120,33 @@ class CVCustomizationService:
         req_str = ', '.join(req_list[:10]) if req_list else 'Not specified'
 
         prompt = f"""
-Customize this CV for a {job_title} position at {company}.
+Customize this CV for a {job_title} position at {company} to maximize ATS (Applicant Tracking System) compatibility and impact.
 
-JOB DETAILS:
+JOB CONTEXT:
 Title: {job_title}
 Company: {company}
-Description: {description[:1000]}
+Description: {description[:1200]}
 Key Requirements: {req_str}
 
-CURRENT CV DATA:
+CANDIDATE DATA:
 {self._format_cv_for_prompt(cv_data)}
 
-CUSTOMIZATION REQUIREMENTS:
-1. Reorder and highlight experiences most relevant to this role
-2. Emphasize skills that match the job requirements
-3. Use keywords from the job description for ATS optimization
-4. Maintain truthfulness - only reframe, don't fabricate
-5. Keep the CV concise and impactful (1-2 pages)
-6. Tailor the professional summary to this specific role
+CUSTOMIZATION STRATEGY:
+1. **ATS Optimization**: Naturally integrate the identified `ats_keywords` into the professional summary and experience bullet points. Do not keyword-stuff; ensure the flow is professional.
+2. **Impact-First Bullet Points**: Rewrite experience highlights using strong action verbs (e.g., "Spearheaded", "Optimized", "Architected", "Engineered"). 
+3. **Quantification**: Look for any numbers, percentages, or dollar amounts in the original data and transform them into high-impact accomplishments (e.g., "Increased efficiency by 20%" instead of "Made things faster").
+4. **Thematic Tailoring**: Reframe the `professional_summary` to directly address the primary challenges mentioned in the job description.
+5. **Conciseness**: Filter out experiences that are completely irrelevant to this role to maintain a high "signal-to-noise" ratio.
 
-Please provide a customized CV in the following JSON structure:
+Please provide the customized CV in the following JSON structure:
 {{
-    "professional_summary": "Tailored summary...",
+    "professional_summary": "A high-impact, tailored summary (3-4 sentences) connecting candidate strengths to job needs.",
     "experience": [
         {{
             "title": "Job Title",
             "company": "Company Name",
             "duration": "Start - End",
-            "highlights": ["Achievement 1", "Achievement 2"],
+            "highlights": ["Key achievement with metrics", "Specific project outcome using matching skills"],
             "relevance_score": 0-10
         }}
     ],
@@ -157,7 +156,7 @@ Please provide a customized CV in the following JSON structure:
     }},
     "education": [...],
     "certifications": [...],
-    "ats_keywords": ["keyword1", "keyword2"]
+    "ats_keywords": ["Extracted keywords used in this version"]
 }}
 """
         return prompt
@@ -266,14 +265,83 @@ Please provide a customized CV in the following JSON structure:
         cv_data: Dict[str, Any],
         job_data: Dict[str, Any]
     ) -> float:
-        """Calculate how well the CV matches the job"""
+        """Calculate how well the CV matches the job using AI semantic matching"""
         try:
-            # Simple skill-based matching (since we have raw dicts, not models)
+            # Try AI-powered semantic matching first
+            ai_score = await self._calculate_semantic_match_score(cv_data, job_data)
+            if ai_score is not None:
+                logger.debug(f"AI Semantic Match Score: {ai_score}")
+                return ai_score
+                
+            # Fallback to keyword-based matching
+            return await self._calculate_keyword_match_score(cv_data, job_data)
+            
+        except Exception as e:
+            logger.warning(f"Match score calculation failed: {e}. Returning default score.")
+            return 0.75  # Default 75% match
+
+    async def _calculate_semantic_match_score(
+        self,
+        cv_data: Dict[str, Any],
+        job_data: Dict[str, Any]
+    ) -> Optional[float]:
+        """Use AI to semantically compare CV and Job for a match score"""
+        try:
+            job_title = job_data.get("title", "")
+            description = job_data.get("description", "")
+            requirements = job_data.get("requirements", [])
+            
+            prompt = f"""
+            Analyze the match between this CV and the Job Posting.
+            
+            JOB:
+            Title: {job_title}
+            Description: {description[:1000]}
+            Requirements: {str(requirements)[:500]}
+            
+            CV SUMMARY:
+            {self._format_cv_for_prompt(cv_data)}
+            
+            INSTRUCTIONS:
+            1. Evaluate the semantic match between the candidate's experience/skills and the job requirements.
+            2. Provide a score from 0.0 to 1.0, where 1.0 is a perfect match and 0.0 is no match.
+            3. Consider both technical skills and the level of responsibility.
+            4. Respond ONLY with the numerical score as a float.
+            
+            Score:
+            """
+            
+            response = await openai_client.chat_completion(
+                messages=[
+                    {"role": "system", "content": "You are an expert technical recruiter providing accurate candidate-job match assessments."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=10
+            )
+            
+            if response:
+                import re
+                match = re.search(r"(\d+\.\d+)", response)
+                if match:
+                    score = float(match.group(1))
+                    return max(0.0, min(1.0, score))
+            return None
+        except Exception as e:
+            logger.error(f"Semantic match scoring failed: {e}")
+            return None
+
+    async def _calculate_keyword_match_score(
+        self,
+        cv_data: Dict[str, Any],
+        job_data: Dict[str, Any]
+    ) -> float:
+        """Fallback keyword-based matching logic (Jaccard similarity)"""
+        try:
             cv_skills = set()
             if cv_data.get("skills"):
                 skills = cv_data["skills"]
                 if isinstance(skills, dict):
-                    # Flatten categorized skills
                     for skill_list in skills.values():
                         if isinstance(skill_list, list):
                             cv_skills.update(s.lower() for s in skill_list)
@@ -284,7 +352,6 @@ Please provide a customized CV in the following JSON structure:
             if job_data.get("skills_required"):
                 job_skills = set(s.lower() for s in job_data["skills_required"])
             elif job_data.get("requirements"):
-                # Extract skills from requirements if available
                 reqs = job_data["requirements"][:10]
                 extracted_reqs = []
                 for r in reqs:
@@ -294,9 +361,8 @@ Please provide a customized CV in the following JSON structure:
                          extracted_reqs.append(str(r))
                 job_skills = set(s.lower() for s in extracted_reqs)
             
-            # Calculate Jaccard similarity
             if not job_skills:
-                return 0.75  # Default score if no job skills
+                return 0.75
             
             if not cv_skills:
                 return 0.5
@@ -305,16 +371,12 @@ Please provide a customized CV in the following JSON structure:
             union = len(cv_skills | job_skills)
             
             score = intersection / union if union > 0 else 0.5
-            
-            # Boost score slightly for having any matches
             if intersection > 0:
                 score = min(1.0, score + 0.2)
             
             return round(score, 2)
-            
-        except Exception as e:
-            logger.warning(f"Match score calculation failed: {e}. Returning default score.")
-            return 0.75  # Default 75% match
+        except Exception:
+            return 0.75
     
     async def generate_multiple_versions(
         self,

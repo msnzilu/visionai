@@ -6,23 +6,45 @@ class GenericHandler {
     }
 
     /**
+     * Prepare the page before form detection (optional override)
+     * Useful for clicking "Apply" buttons to reveal forms/modals
+     */
+    async preparePage(page) {
+        // Default implementation does nothing
+    }
+
+    /**
      * Extract and flatten autofill data from nested structure
      */
     extractAutofillData(autofillData) {
-        // Handle nested structure
-        const user = autofillData.user || {};
+        // Handle the ACTUAL structure from backend:
+        // { personal_info: {...}, experience: [...], education: [...], skills: {...} }
+        const personalInfo = autofillData.personal_info || {};
+        const user = autofillData.user || {}; // Fallback for old structure
         const cvData = autofillData.cv_data || {};
         const job = autofillData.job || {};
 
-        return {
-            // Personal Information
-            firstName: user.first_name || cvData.first_name || '',
-            lastName: user.last_name || cvData.last_name || '',
-            fullName: user.full_name || cvData.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-            email: user.email || cvData.email || '',
-            phone: user.phone || cvData.phone || '',
+        // Parse name into first/last if only full name provided
+        let firstName = '';
+        let lastName = '';
+        let fullName = personalInfo.name || user.full_name || cvData.full_name || '';
 
-            // Location
+        if (fullName && !firstName) {
+            const parts = fullName.split(' ');
+            firstName = parts[0] || '';
+            lastName = parts.slice(1).join(' ') || '';
+        }
+
+        const result = {
+            // Personal Information
+            firstName: user.first_name || cvData.first_name || firstName,
+            lastName: user.last_name || cvData.last_name || lastName,
+            fullName: fullName,
+            email: personalInfo.email || user.email || cvData.email || '',
+            phone: personalInfo.phone || user.phone || cvData.phone || '',
+
+            // Location - parse from personal_info.location if available
+            location: personalInfo.location || '',
             address: user.address || cvData.address || '',
             city: user.city || cvData.city || '',
             state: user.state || cvData.state || '',
@@ -30,9 +52,9 @@ class GenericHandler {
             country: user.country || cvData.country || '',
 
             // Professional
-            linkedin: cvData.linkedin || user.linkedin || '',
-            github: cvData.github || user.github || '',
-            portfolio: cvData.portfolio || user.portfolio || '',
+            linkedin: personalInfo.linkedin || cvData.linkedin || user.linkedin || '',
+            github: personalInfo.github || cvData.github || user.github || '',
+            portfolio: personalInfo.portfolio || cvData.portfolio || user.portfolio || '',
 
             // Resume/Cover Letter
             resume: cvData.resume_path || '',
@@ -42,6 +64,9 @@ class GenericHandler {
             jobTitle: job.title || '',
             company: job.company || '',
         };
+
+        console.log('Flattened data:', JSON.stringify(result, null, 2));
+        return result;
     }
 
     getFieldMapping() {
@@ -76,11 +101,29 @@ class GenericHandler {
         };
     }
 
-    matchField(fieldName, fieldType, flattenedData) {
+    matchField(fieldName, fieldType, flattenedData, fieldObj = null) {
         const mapping = this.getFieldMapping();
-        const normalizedName = fieldName.toLowerCase().replace(/[_\s-]/g, '');
 
-        console.log(`Trying to match field: ${fieldName} (normalized: ${normalizedName})`);
+        // Build a combined identifier from all available attributes
+        let identifiers = [fieldName];
+        if (fieldObj) {
+            if (fieldObj.label) identifiers.push(fieldObj.label);
+            if (fieldObj.autocomplete) identifiers.push(fieldObj.autocomplete);
+            if (fieldObj.placeholder) identifiers.push(fieldObj.placeholder);
+            if (fieldObj.id) identifiers.push(fieldObj.id);
+            if (fieldObj.name) identifiers.push(fieldObj.name);
+        }
+
+        const combinedIdentifier = identifiers.filter(Boolean).join(' ');
+        const normalizedName = combinedIdentifier.toLowerCase().replace(/[_\s-]/g, '');
+
+        console.log(`Trying to match field: "${fieldName}" (combined: "${combinedIdentifier}", normalized: "${normalizedName}")`);
+
+        // Skip if we have nothing to match on
+        if (!normalizedName || normalizedName.length === 0) {
+            console.log(`✗ No identifiable attributes for this field`);
+            return null;
+        }
 
         // Try to find a match
         for (const [dataKey, patterns] of Object.entries(mapping)) {
@@ -89,14 +132,14 @@ class GenericHandler {
                 if (normalizedName.includes(normalizedPattern)) {
                     const value = flattenedData[dataKey];
                     if (value) {
-                        console.log(`✓ Matched ${fieldName} to ${dataKey} = ${value}`);
+                        console.log(`✓ Matched "${fieldName}" to ${dataKey} = ${value}`);
                         return value;
                     }
                 }
             }
         }
 
-        console.log(`✗ No match found for ${fieldName}`);
+        console.log(`✗ No match found for "${fieldName}"`);
         return null;
     }
 
@@ -116,25 +159,26 @@ class GenericHandler {
 
         for (const field of form.fields) {
             try {
-                const fieldIdentifier = field.name || field.id || field.placeholder || '';
-                console.log(`Processing field: ${fieldIdentifier} (type: ${field.type})`);
+                const fieldIdentifier = field.name || field.id || field.placeholder || field.label || '';
+                console.log(`Processing field: "${fieldIdentifier}" (type: ${field.type}, label: "${field.label || ''}", autocomplete: "${field.autocomplete || ''}")`);
 
                 const value = this.matchField(
                     fieldIdentifier,
                     field.type,
-                    flattenedData
+                    flattenedData,
+                    field  // Pass the full field object for comprehensive matching
                 );
 
                 if (value) {
                     await this.fillField(page, field, value);
                     filledFields.push({
-                        field: fieldIdentifier,
+                        field: fieldIdentifier || field.label || 'unknown',
                         value: value,
                         type: field.type
                     });
-                    console.log(`✓ Filled field: ${fieldIdentifier} with value: ${value}`);
+                    console.log(`✓ Filled field: "${fieldIdentifier}" with value: ${value}`);
                 } else {
-                    console.log(`✗ No value to fill for field: ${fieldIdentifier}`);
+                    console.log(`✗ No value to fill for field: "${fieldIdentifier}"`);
                 }
             } catch (error) {
                 console.error(`Error filling field ${field.name || field.id}:`, error.message);

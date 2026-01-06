@@ -126,6 +126,7 @@ class BrowserAutomationManager {
             'navigating': 30,
             'detecting_forms': 50,
             'filling_forms': 75,
+            'login_required': 90,
             'completed': 100,
             'failed': 100,
             'error': 100
@@ -138,6 +139,9 @@ class BrowserAutomationManager {
             window.AutomationUI?.updateStatus('Active', 'Navigating to job page...', progress);
         } else if (status === 'filling_forms') {
             window.AutomationUI?.updateStatus('Active', `Filling forms (${filled_fields?.length || 0} fields)...`, progress);
+        } else if (status === 'login_required') {
+            window.AutomationUI?.updateStatus('Active', 'Manual login required on job board. Closing browser...', progress);
+            // We keep polling here - index.js will eventually set status to 'error' after closing browser
         } else if (status === 'completed') {
             window.AutomationUI?.updateStatus('Success', 'Application Submitted', 100);
             this.stopPolling(sessionId);

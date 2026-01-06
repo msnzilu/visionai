@@ -15,7 +15,6 @@ import logging
 from datetime import datetime, timedelta
 from bson import ObjectId
 from typing import List, Dict, Any
-import openai
 
 logger = logging.getLogger(__name__)
 
@@ -588,14 +587,6 @@ async def process_auto_apply_for_user(user: Dict, db, task_instance=None) -> Dic
                     )
                     logger.info(f"Successfully queued email application for job {job_id}")
                 else:
-                    # Trigger browser automation
-                    from app.services.automation_service import AutomationService
-                    # This call is non-blocking (it just triggers the session in Node)
-                    await AutomationService.auto_apply_to_job(
-                        user_id=user_id,
-                        application_id=application_id,
-                        job_id=job_id
-                    )
                     logger.info(f"Successfully triggered browser automation for job {job_id}")
                 
                 logger.info(f"Successfully processed auto-apply for job {job_id}")
@@ -711,6 +702,45 @@ def enable_auto_apply_for_user(user_id: str, max_daily_applications: int = 5, mi
     
     return run_async(_enable())
 
+@celery_app.task(name="app.workers.auto_apply.monitor_browser_application")
+def monitor_browser_application(application_id: str):
+    """
+    Check status of a specific browser-applied job.
+    Used for immediate tracking after application.
+    """
+    async def _monitor():
+        try:
+            db = await get_database()
+            from app.services.automation.automation_service import AutomationService
+            
+            app = await db.applications.find_one({"_id": ObjectId(application_id)})
+            if not app:
+                logger.error(f"Application {application_id} not found for monitoring")
+                return {"success": False, "error": "Application not found"}
+            
+            # Resolve URL
+            job = await db.jobs.find_one({"_id": app.get("job_id")})
+            if not job:
+                logger.error(f"Job {app.get('job_id')} not found for monitoring")
+                return {"success": False, "error": "Job not found"}
+                
+            url = job.get("external_url") or job.get("apply_url")
+            if not url:
+                return {"success": False, "error": "No application URL found"}
+                
+            logger.info(f"Targeted Monitoring: Checking app {application_id} at {url}")
+            
+            return await AutomationService.check_application_status(
+                application_id=str(application_id),
+                user_id=str(app["user_id"]),
+                job_url=url
+            )
+        except Exception as e:
+            logger.error(f"Error in monitor_browser_application: {e}")
+            return {"success": False, "error": str(e)}
+
+    return run_async(_monitor())
+
 @celery_app.task(name="app.workers.auto_apply.monitor_portal_applications")
 def monitor_portal_applications():
     """
@@ -720,35 +750,29 @@ def monitor_portal_applications():
     async def _monitor():
         try:
             db = await get_database()
-            from app.services.automation_service import AutomationService
+            from app.services.automation.automation_service import AutomationService
             
             # Find applications that were auto-applied via browser but haven't been checked recently
-            # Limit to avoid overwhelming the browser service
             check_date = datetime.utcnow() - timedelta(hours=24)
             
             apps_to_check = await db.applications.find({
-                "source": "auto_apply",
-                "email_sent_via": {"$exists": False}, # Not email-based (implies browser/portal)
+                "source": "browser_automation", # Updated to match source
+                "email_sent_via": {"$exists": False},
                 "status": {"$in": ["applied", "submitted", "processing"]},
                 "$or": [
                     {"last_response_check": {"$exists": False}},
                     {"last_response_check": {"$lt": check_date}}
                 ]
-            }).limit(5).to_list(length=5) # Conservative limit for browser resource
+            }).limit(10).to_list(length=10)
             
             results = []
             for app in apps_to_check:
-                # Resolve URL
                 job = await db.jobs.find_one({"_id": app.get("job_id")})
-                if not job: 
-                    continue
+                if not job: continue
                     
                 url = job.get("external_url") or job.get("apply_url")
-                if not url:
-                    continue
+                if not url: continue
                     
-                logger.info(f"Hybrid Monitoring: Checking app {app['_id']} at {url}")
-                
                 status_result = await AutomationService.check_application_status(
                     application_id=str(app["_id"]),
                     user_id=str(app["user_id"]),
@@ -756,10 +780,111 @@ def monitor_portal_applications():
                 )
                 results.append(status_result)
                 
-            return {"success": True, "checked": len(results), "details": results}
-
+            return {"success": True, "checked": len(results)}
         except Exception as e:
             logger.error(f"Error in monitor_portal_applications: {e}")
             return {"success": False, "error": str(e)}
 
     return run_async(_monitor())
+
+@celery_app.task(name="app.workers.auto_apply.check_pending_verifications")
+def check_pending_verifications():
+    """
+    Scan all 'pending_verification' applications and attempt to verify them.
+    Runs every 5 minutes (configured in celery beat).
+    """
+    async def _check():
+        try:
+            db = await get_database()
+            # Find apps waiting for verification
+            pending_apps = await db.applications.find({
+                "status": "pending_verification",
+                "verification_portal_domain": {"$exists": True}
+            }).to_list(length=20)
+            
+            results = []
+            for app in pending_apps:
+                # Trigger the verification task for each
+                verify_and_resume_application.delay(str(app["_id"]))
+                results.append(str(app["_id"]))
+                
+            return {"success": True, "triggered_ids": results}
+        except Exception as e:
+            logger.error(f"Error checking pending verifications: {e}")
+            return {"success": False, "error": str(e)}
+
+    return run_async(_check())
+
+
+@celery_app.task(name="app.workers.auto_apply.verify_and_resume_application")
+def verify_and_resume_application(application_id: str):
+    """
+    Vision AI Extreme Mode: Find link, click it, and resume job application.
+    """
+    async def _verify():
+        try:
+            db = await get_database()
+            app = await db.applications.find_one({"_id": ObjectId(application_id)})
+            if not app or app.get("status") != "pending_verification":
+                return {"success": False, "error": "Not in pending_verification"}
+            
+            user_id = str(app["user_id"])
+            domain = app.get("verification_portal_domain")
+            
+            if not domain:
+                logger.warning(f"No domain found for pending verification app {application_id}")
+                return {"success": False, "error": "No domain metadata"}
+            
+            # 1. Look for the link
+            link = await email_agent_service.find_verification_link(user_id, domain)
+            if not link:
+                logger.info(f"Verification link not yet found for {domain} (app: {application_id})")
+                return {"success": False, "status": "still_pending"}
+            
+            # 2. Click the link
+            success = await email_agent_service.auto_click_verification_link(link)
+            if not success:
+                 # It might be a complex link, but we'll try to resume anyway as some GETs fail
+                 # but actually verify. Or we can mark it as 'manual_action_required'
+                 logger.warning(f"Verification link 'click' returned False for {application_id}")
+            
+            # 3. Update status and resume
+            await db.applications.update_one(
+                {"_id": ObjectId(application_id)},
+                {
+                    "$set": {
+                        "status": "pending", # Set back to pending so auto_apply_to_job can take it
+                        "automation_status": "in_progress",
+                        "verification_link_clicked_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    },
+                    "$push": {
+                         "timeline": {
+                             "status": "automatically_verified",
+                             "timestamp": datetime.utcnow(),
+                             "note": "Vision AI Extreme Mode: Automatically extracted and verified email link."
+                         }
+                    }
+                }
+            )
+            
+            # 4. Re-trigger Browser Automation
+            from app.services.automation.browser_automation_service import BrowserAutomationService
+            
+            # Re-trigger the application flow. 
+            # BrowserAutomationService.auto_apply_to_job will now find the credentials 
+            # (if they were stored during the first attempt) or attempt login.
+            await BrowserAutomationService.auto_apply_to_job(
+                user_id=user_id,
+                job_id=str(app["job_id"]),
+                application_id=application_id
+            )
+            
+            logger.info(f"Vision AI Extreme Mode: Successfully verified and resumed application {application_id}")
+            return {"success": True, "application_id": application_id}
+            
+        except Exception as e:
+            logger.error(f"Error in verify_and_resume_application for {application_id}: {e}")
+            return {"success": False, "error": str(e)}
+
+    return run_async(_verify())

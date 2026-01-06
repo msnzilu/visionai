@@ -55,6 +55,7 @@ class EmailService:
         attachments: Optional[list[Any]] = None,
         template_name: Optional[str] = None,
         template_body: Optional[dict] = None,
+        reply_to: Optional[str] = None,
     ) -> bool:
         """
         Send an email with optional Jinja2 template support.
@@ -67,6 +68,7 @@ class EmailService:
             attachments (list): List of attachments (optional).
             template_name (str): Jinja2 template filename (optional).
             template_body (dict): Context for the template (optional).
+            reply_to (str): Optional reply-to email address.
 
         Returns:
             bool: True if email was sent successfully, False otherwise.
@@ -86,6 +88,7 @@ class EmailService:
                 subtype=subtype,
                 attachments=attachments or [],
                 template_body=template_body,
+                reply_to=[reply_to] if reply_to else [],
             )
 
             if template_name:

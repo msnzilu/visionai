@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 from bson import ObjectId
 from app.core.config import settings
-import openai
+from app.integrations.openai_client import openai_client
 
 logger = logging.getLogger(__name__)
 
@@ -54,56 +54,20 @@ class MatchingService:
                 })
                 seen_roles.add(title.lower())
         
-        # 3. Suggest roles based on skills
-        skill_based_roles = self._suggest_roles_from_skills(all_skills)
-        for role in skill_based_roles:
-            if role["title"].lower() not in seen_roles:
-                suggested_roles.append(role)
-                seen_roles.add(role["title"].lower())
+        # 3. Add AI-recommended roles if they exist
+        ai_recommended = user_cv.get("recommended_roles", [])
+        if isinstance(ai_recommended, list):
+            for role in ai_recommended:
+                if isinstance(role, str) and role.lower() not in seen_roles:
+                    suggested_roles.append({
+                        "title": role,
+                        "reason": "Based on your skills and experience",
+                        "match_type": "ai_recommended"
+                    })
+                    seen_roles.add(role.lower())
         
         return suggested_roles[:limit]
 
-    def _suggest_roles_from_skills(self, skills: list) -> list:
-        """
-        Map skills to suggested job roles
-        """
-        skills_lower = [s.lower() for s in skills if isinstance(s, str)]
-        suggested = []
-        
-        # Role mappings based on skill combinations
-        role_mappings = {
-            "Full Stack Developer": ["javascript", "python", "react", "node", "sql", "html", "css"],
-            "Frontend Developer": ["react", "vue", "angular", "javascript", "typescript", "css", "html"],
-            "Backend Developer": ["python", "java", "node", "sql", "api", "django", "flask", "spring"],
-            "Data Scientist": ["python", "machine learning", "pandas", "numpy", "tensorflow", "data analysis"],
-            "Data Engineer": ["python", "sql", "spark", "etl", "airflow", "data pipeline"],
-            "DevOps Engineer": ["docker", "kubernetes", "aws", "azure", "ci/cd", "terraform", "jenkins"],
-            "Cloud Engineer": ["aws", "azure", "gcp", "cloud", "terraform", "kubernetes"],
-            "Mobile Developer": ["android", "ios", "react native", "flutter", "swift", "kotlin"],
-            "Product Manager": ["product management", "agile", "scrum", "roadmap", "stakeholder"],
-            "Project Manager": ["project management", "agile", "scrum", "jira", "planning"],
-            "UI/UX Designer": ["figma", "sketch", "user experience", "user interface", "wireframe"],
-            "QA Engineer": ["testing", "selenium", "qa", "automation", "quality assurance"],
-            "Machine Learning Engineer": ["machine learning", "tensorflow", "pytorch", "deep learning", "nlp"],
-            "Security Engineer": ["security", "penetration", "cybersecurity", "vulnerability", "compliance"],
-            "Software Engineer": ["programming", "software development", "coding", "algorithms"]
-        }
-        
-        for role, required_skills in role_mappings.items():
-            matching_skills = [s for s in required_skills if any(s in skill for skill in skills_lower)]
-            match_ratio = len(matching_skills) / len(required_skills) if required_skills else 0
-            
-            if match_ratio >= 0.3:  # At least 30% skill match
-                suggested.append({
-                    "title": role,
-                    "reason": f"Matches {len(matching_skills)} of your skills",
-                    "match_type": "skills",
-                    "match_score": round(match_ratio * 100)
-                })
-        
-        # Sort by match score
-        suggested.sort(key=lambda x: x.get("match_score", 0), reverse=True)
-        return suggested[:5]
 
     async def calculate_match_score(self, user_cv: Dict, job: Dict, use_ai: bool = True) -> float:
         """
@@ -119,9 +83,6 @@ class MatchingService:
         Use OpenAI to calculate match score
         """
         try:
-            openai.api_key = settings.OPENAI_API_KEY
-            
-            # Extract key info
             cv_skills = user_cv.get("skills", [])
             if isinstance(cv_skills, dict):
                 cv_skills = cv_skills.get("technical", []) + cv_skills.get("soft", [])
@@ -145,14 +106,14 @@ class MatchingService:
             Match Score (0.0-1.0):
             """
             
-            response = await openai.ChatCompletion.acreate(
-                model=settings.OPENAI_MODEL,
+            # Use shared async client with rate limiting
+            response_content = await openai_client.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=10,
                 temperature=0.3
             )
             
-            score_text = response.choices[0].message.content.strip()
+            score_text = response_content.strip()
             # Clean up response to ensure float
             import re
             match = re.search(r"0\.\d+|1\.0|0|1", score_text)

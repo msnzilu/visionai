@@ -432,6 +432,7 @@ jobs:
             create_secret_from_env "DATABASE_NAME" "${DATABASE_NAME}"
             create_secret_from_env "BROWSER_AUTOMATION_TOKEN" "${BROWSER_AUTOMATION_TOKEN}"
             create_secret_from_env "BROWSER_AUTOMATION_URL" "${BROWSER_AUTOMATION_URL}"
+            create_secret_from_env "HEADLESS" "${HEADLESS}"
             
             # Check disk space before deploy
             echo "=== Disk Space ==="

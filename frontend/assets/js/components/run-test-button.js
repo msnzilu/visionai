@@ -242,6 +242,33 @@ class RunTestButton {
         // Tier Check
         if (!this.checkTierLimit()) return;
 
+        // CV Validation: Ensure user has uploaded a CV or has parsed data
+        const user = window.CVision ? window.CVision.getUser() : null;
+        if (user) {
+            let hasCV = user.cv_data;
+
+            // If no parsed data, check raw documents list
+            if (!hasCV) {
+                try {
+                    const docResponse = await window.CVision.API.getDocuments();
+                    if (docResponse && docResponse.documents) {
+                        hasCV = docResponse.documents.some(doc => doc.document_type === 'cv');
+                    }
+                } catch (e) {
+                    console.error('Failed to verify CV existence:', e);
+                }
+            }
+
+            if (!hasCV) {
+                if (window.CVision.Utils) {
+                    window.CVision.Utils.showAlert('Please upload your CV first to start the simulation!', 'error');
+                } else {
+                    alert('Please upload your CV first to start the simulation!');
+                }
+                return;
+            }
+        }
+
         this.showModal();
 
         try {

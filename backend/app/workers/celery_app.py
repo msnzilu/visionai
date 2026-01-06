@@ -68,4 +68,10 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(hour='*/6'),  # Every 6 hours
         'args': ()
     },
+    # Hybrid Monitoring - Check status of non-email applications
+    'monitor-portal-applications': {
+        'task': 'app.workers.auto_apply.monitor_portal_applications',
+        'schedule': crontab(hour='*/6'),  # Every 6 hours
+        'args': ()
+    },
 }

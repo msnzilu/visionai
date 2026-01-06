@@ -76,7 +76,7 @@ class JobApplyComponent {
                             Cancel
                         </button>
                         <button onclick="JobApply.handleNextStep()" class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all shadow-md">
-                            Next: Application Details
+                            Proceed 
                         </button>
                     </div>
                 </div>
@@ -116,7 +116,7 @@ class JobApplyComponent {
         console.log('JobApply: Resolved job object:', job);
         this.currentJob = job;
 
-        const modal = document.getElementById('applyModal');
+        let modal = document.getElementById('applyModal');
         const titleEl = document.getElementById('applyModalJobTitle');
         const companyEl = document.getElementById('applyModalCompanyName');
         const cvSelect = document.getElementById('applyModalCvSelect');
@@ -322,18 +322,32 @@ class JobApplyComponent {
     /**
      * Handle "Next" button click - transition to Quick Apply Form
      */
-    handleNextStep() {
+    async handleNextStep() {
         const cvId = document.getElementById('applyModalCvSelect')?.value;
         const coverLetterId = document.getElementById('applyModalCoverLetterSelect')?.value;
 
         if (!cvId) {
-            // Use standard alert if Utils not available, otherwise usage utils
+            // Check if user has no CVs at all (dropdown would usually have "Select a CV..." or "No CVs found")
+            const cvSelect = document.getElementById('applyModalCvSelect');
+            const hasNoDocs = cvSelect && cvSelect.options.length <= 1;
+
+            const helpMsg = hasNoDocs
+                ? 'You haven\'t uploaded any CVs yet. Please go to the Documents page and upload your resume first!'
+                : 'Please select a CV to proceed with the application.';
+
             if (window.CVision && window.CVision.Utils) {
-                CVision.Utils.showAlert('Please select a CV', 'warning');
+                CVision.Utils.showAlert(helpMsg, 'warning');
             } else {
-                alert('Please select a CV');
+                alert(helpMsg);
             }
             return;
+        }
+
+        // --- SUBSCRIPTION LIMIT CHECK ---
+        // Check if user is allowed to proceed with this application
+        if (window.PremiumGuard) {
+            const canProceed = await window.PremiumGuard.enforceLimit('MANUAL_APPLICATION');
+            if (!canProceed) return; // Blocked by guard (modal shown)
         }
 
         this.closeApplyModal();

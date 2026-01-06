@@ -124,37 +124,33 @@ class CoverLetterService:
         key_skills = self._extract_key_skills(cv_data, job_data)
         
         prompt = f"""
-Write a compelling cover letter for {name} applying for the {job_title} position at {company}.
+Write a highly personalized, compelling cover letter for {name} applying for the {job_title} position at {company}. 
 
-JOB DETAILS:
+JOB CONTEXT:
 Company: {company}
 Position: {job_title}
-Description: {description[:1000]}
+Description: {description[:1200]}
 
-CANDIDATE BACKGROUND:
+CANDIDATE STORY:
 {self._format_candidate_summary(cv_data)}
 
-KEY RELEVANT EXPERIENCE:
+RELEVANT ACHIEVEMENTS:
 {relevant_exp}
 
-KEY MATCHING SKILLS:
+MATCHING STRENGTHS:
 {key_skills}
 
-WRITING REQUIREMENTS:
-1. Tone: {tone_description}
-2. Length: 300-400 words (3-4 paragraphs)
-3. Structure:
-   - Opening: Hook with enthusiasm and specific role mention
-   - Body: 1-2 paragraphs highlighting relevant achievements and skills
-   - Closing: Call to action and availability
-4. Use specific examples and quantifiable achievements
-5. Show genuine interest in the company and role
-6. Avoid clichés and generic statements
-7. Make it personal and authentic
+COMPOSITION GUIDELINES:
+1. **Thematic Hook**: Start with a personalized opening that connects the candidate's passion or background to {company}'s specific mission or recent challenges mentioned in the description. Avoid "I am writing to apply..."
+2. **Narrative Flow**: Instead of listing skills, weave the candidate's achievements into a narrative that demonstrates *how* they solve the problems {company} is facing. Use a "Show, Don't Tell" approach.
+3. **Problem-Solver Persona**: Position {name} as a strategic partner who can hit the ground running and add immediate value.
+4. **Tone**: {tone_description}. Make it sound authentic and human, not like an AI template.
+5. **Length**: 250-350 words. Focus on quality of connection over quantity of text.
+6. **Closing**: A confident call to action that focuses on how the candidate can help the company achieve its goals.
 
-{f"ADDITIONAL CONTEXT: {user_context}" if user_context else ""}
+{f"USER FEEDBACK/CONTEXT: {user_context}" if user_context else ""}
 
-Write a professional cover letter that will make the hiring manager want to interview this candidate.
+Write a cover letter that doesn't just list qualifications, but tells a story of why this candidate is the undeniable best fit for {company}.
 """
         return prompt
     

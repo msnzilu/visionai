@@ -101,25 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // Open live chat (placeholder)
 
 
-// Contact form submission
-document.addEventListener('DOMContentLoaded', function () {
-    const contactForm = document.getElementById('contactForm');
-
-    if (contactForm) {
-        contactForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-
-            // Show success message
-            const formData = new FormData(contactForm);
-
-            // In a real implementation, you would send this to your backend
-            alert('Thank you for your message! Our support team will get back to you within 24 hours.');
-
-            // Reset form
-            contactForm.reset();
-        });
-    }
-});
+// Help functionality ends here
 
 // Smooth scrolling for anchor links
 document.addEventListener('DOMContentLoaded', function () {

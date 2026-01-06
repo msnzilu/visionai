@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional, Union
 from openai import AsyncOpenAI
 import logging
 from app.core.config import settings
+from app.core.rate_limiter import LLMRateLimiter
 from fastapi import HTTPException
 
 
@@ -31,6 +32,15 @@ class OpenAIClient:
         self.model = settings.OPENAI_MODEL
         self.max_tokens = settings.OPENAI_MAX_TOKENS
         self.temperature = settings.OPENAI_TEMPERATURE
+
+        # Initialize rate limiters
+        # Default limits: 50 requests per minute
+        # In a real scenario, these could come from settings
+        self.rate_limiter = LLMRateLimiter(
+            resource_name="openai_api",
+            limit=settings.RATE_LIMIT_REQUESTS,
+            period=settings.RATE_LIMIT_PERIOD
+        )
 
     async def parse_cv(self, cv_text: str) -> Dict[str, Any]:
         """
@@ -124,15 +134,17 @@ class OpenAIClient:
         """
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Parse this CV:\n\n{cv_text}"}
-                ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
-            )
+            # Use rate limiter
+            async with self.rate_limiter:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Parse this CV:\n\n{cv_text}"}
+                    ],
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature
+                )
 
             content = response.choices[0].message.content.strip()
             
@@ -177,15 +189,17 @@ class OpenAIClient:
         """
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"CV Data: {json.dumps(cv_data)}\n\nJob Description: {job_description}"}
-                ],
-                max_tokens=self.max_tokens,
-                temperature=0.3  # Lower temperature for consistency
-            )
+            # Use rate limiter
+            async with self.rate_limiter:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"CV Data: {json.dumps(cv_data)}\n\nJob Description: {job_description}"}
+                    ],
+                    max_tokens=self.max_tokens,
+                    temperature=0.3  # Lower temperature for consistency
+                )
 
             content = response.choices[0].message.content.strip()
             
@@ -237,15 +251,17 @@ class OpenAIClient:
         }
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"CV Summary: {json.dumps(cv_summary)}\n\nJob Description: {job_description}\n\nCompany: {company_name}"}
-                ],
-                max_tokens=800,
-                temperature=0.7
-            )
+            # Use rate limiter
+            async with self.rate_limiter:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"CV Summary: {json.dumps(cv_summary)}\n\nJob Description: {job_description}\n\nCompany: {company_name}"}
+                    ],
+                    max_tokens=800,
+                    temperature=0.7
+                )
 
             cover_letter = response.choices[0].message.content.strip()
             return cover_letter
@@ -262,15 +278,17 @@ class OpenAIClient:
             return "{\"error\": \"OpenAI client not configured\"}"
 
         try:
-            response = await self.client.chat.completions.create(
-                model=model or self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
-            )
+            # Use rate limiter
+            async with self.rate_limiter:
+                response = await self.client.chat.completions.create(
+                    model=model or self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature
+                )
 
             return response.choices[0].message.content.strip()
 
@@ -288,12 +306,14 @@ class OpenAIClient:
             return "Mock response - OpenAI not configured"
         
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
+            # Use rate limiter
+            async with self.rate_limiter:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
             
             return response.choices[0].message.content
             

@@ -143,90 +143,8 @@
                 <!-- Contact Form -->
                 <div class="lg:col-span-2">
                     <div class="bg-white rounded-xl p-8 border border-gray-200 shadow-sm">
-                        <h2 class="text-2xl font-bold text-gray-900 mb-6">Send us a Message</h2>
-
-                        <form id="contactForm" class="space-y-6">
-                            <div class="grid md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Name
-                                        *</label>
-                                    <input type="text" id="name" name="name" required
-                                        class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                                        placeholder="John Doe">
-                                </div>
-                                <div>
-                                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email
-                                        *</label>
-                                    <input type="email" id="email" name="email" required
-                                        class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                                        placeholder="john@example.com">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label for="subject" class="block text-sm font-medium text-gray-700 mb-2">Subject
-                                    *</label>
-                                <input type="text" id="subject" name="subject" required
-                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                                    placeholder="How can we help?">
-                            </div>
-
-                            <div>
-                                <label for="category"
-                                    class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                                <select id="category" name="category"
-                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all cursor-pointer">
-                                    <option value="">Select a category</option>
-                                    <option value="general">General Inquiry</option>
-                                    <option value="technical">Technical Support</option>
-                                    <option value="billing">Billing & Subscriptions</option>
-                                    <option value="feature">Feature Request</option>
-                                    <option value="bug">Bug Report</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label for="message" class="block text-sm font-medium text-gray-700 mb-2">Message
-                                    *</label>
-                                <textarea id="message" name="message" rows="6" required
-                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-none"
-                                    placeholder="Tell us more about your inquiry..."></textarea>
-                            </div>
-
-                            <div class="flex items-start">
-                                <input type="checkbox" id="newsletter" name="newsletter"
-                                    class="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
-                                <label for="newsletter" class="ml-2 text-sm text-gray-600">
-                                    I'd like to receive updates and tips about CVision
-                                </label>
-                            </div>
-
-                            <button type="submit"
-                                class="w-full btn-gradient text-white py-4 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all">
-                                Send Message
-                            </button>
-
-                            <p class="text-xs text-gray-500 text-center">
-                                By sending this message, you agree to our <a href="/info/legal/terms"
-                                    class="text-primary-500 hover:underline">Terms of Service</a> and <a
-                                    href="/info/legal/privacy" class="text-primary-500 hover:underline">Privacy
-                                    Policy</a>
-                            </p>
-                        </form>
-
-                        <!-- Success Message (hidden by default) -->
-                        <div id="successMessage" class="hidden mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                <p class="text-green-800 font-medium">Thank you! Your message has been sent
-                                    successfully. We'll get back to you within 24 hours.</p>
-                            </div>
-                        </div>
+                        <!-- Reusable Contact Form Component -->
+                        <div data-contact-component id="main-contact-form"></div>
                     </div>
                 </div>
             </div>
@@ -239,7 +157,13 @@
     <!-- Scripts -->
     <script src="/assets/js/components/PublicNavbar.js"></script>
     <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/components/ui/toast.js"></script>
     <script src="/assets/js/help.js"></script>
+
+    <!-- Reusable Contact Components -->
+    <script src="/assets/js/components/ContactForm.js"></script>
+    <script src="/assets/js/contact-service.js"></script>
+    <script src="/assets/js/contact-form.js"></script>
 
     <!-- Chatbot -->
     <link rel="stylesheet" href="/assets/css/chatbot.css">

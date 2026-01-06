@@ -14,6 +14,7 @@ from bson import ObjectId
 from app.database import get_database
 from app.api.deps import get_current_user, get_current_active_user
 from app.services.emails.email_agent_service import email_agent_service
+from app.services.core.subscription_service import SubscriptionService
 from app.schemas.quick_apply import (
     QuickApplyPrefillResponse,
     QuickApplySubmission,
@@ -164,6 +165,15 @@ async def submit_quick_apply(
                 detail="Gmail not connected. Please connect your Gmail account to send applications."
             )
         
+        # Check subscription usage limits
+        subscription_service = SubscriptionService(db)
+        can_apply = await subscription_service.check_usage_limit(user_id, "manual_application")
+        if not can_apply:
+            raise HTTPException(
+                status_code=403,
+                detail="Manual application limit reached. Please upgrade your plan to apply to more jobs."
+            )
+        
         # Get job details
         job = await db.jobs.find_one({"_id": ObjectId(submission.job_id)})
         if not job:
@@ -218,6 +228,9 @@ async def submit_quick_apply(
             )
             
             if send_result.get("success"):
+                # Track usage after successful submission
+                await subscription_service.track_usage(user_id, "manual_application")
+                
                 return QuickApplySubmissionResponse(
                     success=True,
                     application_id=application_id,
@@ -325,6 +338,15 @@ async def legacy_autofill_start(
                 detail=f"Job not found: {request.job_id}"
             )
         
+        # Check subscription usage limits
+        subscription_service = SubscriptionService(db)
+        can_apply = await subscription_service.check_usage_limit(user_id, "manual_application")
+        if not can_apply:
+            raise HTTPException(
+                status_code=403,
+                detail="Manual application limit reached. Please upgrade your plan to use auto-apply."
+            )
+        
         # Check if application already exists
         application = await db.applications.find_one({
             "user_id": user_id,
@@ -358,7 +380,8 @@ async def legacy_autofill_start(
             user_id=user_id,
             application_id=application_id,
             job_id=request.job_id,
-            cv_id=request.cv_id
+            cv_id=request.cv_id,
+            usage_type="manual_application" # Tracked on success
         )
         
         return AutofillStartResponse(
@@ -402,18 +425,73 @@ async def get_autofill_status(
                 detail="Automation session not found"
             )
         
-        # Determine status
-        # Priority: automation_status -> status
-        status = application.get("automation_status") or application.get("status", "unknown")
+        # 1. Poll actual Node service if it's still in a transient state
+        current_status = application.get("automation_status") or application.get("status")
+        transient_states = ["initializing", "navigating", "detecting_forms", "filling_forms", "started", "pending", "processing"]
         
-        # Extract filled fields from automation details if available
-        details = application.get("automation_details", {})
-        filled_fields = details.get("filled_fields", [])
-        
+        node_status_data = None
+        if current_status in transient_states:
+            from app.services.automation.browser_automation_service import BrowserAutomationService
+            node_status_data = await BrowserAutomationService.get_node_automation_status(session_id)
+            
+            if node_status_data and "status" in node_status_data:
+                node_status = node_status_data["status"]
+                
+                # If status changed, update DB
+                if node_status != current_status:
+                    update_doc = {
+                        "automation_status": node_status,
+                        "updated_at": datetime.utcnow()
+                    }
+                    
+                    if node_status == "completed":
+                        update_doc["status"] = "applied"
+                        update_doc["automation_completed_at"] = datetime.utcnow()
+                        update_doc["applied_date"] = datetime.utcnow()
+                        # Track usage only on REAL completion
+                        usage_type = application.get("usage_type", "manual_application")
+                        from app.services.core.subscription_service import SubscriptionService
+                        subscription_service = SubscriptionService(db)
+                        await subscription_service.track_usage(user_id, usage_type)
+                        logger.info(f"Usage tracked for user {user_id} after REAL completion polled.")
+                    elif node_status == "error" or node_status == "failed":
+                        node_errors = node_status_data.get("errors")
+                        if node_errors and len(node_errors) > 0:
+                            update_doc["automation_error"] = node_errors[0].get("message")
+                        else:
+                            update_doc["automation_error"] = "Unknown automation error"
+                    
+                    if node_status_data.get("filled_fields"):
+                        update_doc["automation_details.filled_fields"] = node_status_data["filled_fields"]
+                        
+                    await db.applications.update_one(
+                        {"_id": ObjectId(session_id)},
+                        {"$set": update_doc}
+                    )
+                    # Use updated status for response
+                    status = node_status
+                    filled_fields = node_status_data.get("filled_fields", [])
+                else:
+                    status = current_status
+                    filled_fields = application.get("automation_details", {}).get("filled_fields", [])
+            else:
+                status = current_status
+                filled_fields = application.get("automation_details", {}).get("filled_fields", [])
+        else:
+            status = current_status
+            filled_fields = application.get("automation_details", {}).get("filled_fields", [])
+
+        # Safer error extraction
+        node_error_msg = None
+        if node_status_data:
+            node_errors = node_status_data.get("errors")
+            if node_errors and len(node_errors) > 0:
+                node_error_msg = node_errors[0].get("message")
+
         return AutofillStatusResponse(
             status=status,
             filled_fields=filled_fields,
-            error=application.get("automation_error"),
+            error=application.get("automation_error") or node_error_msg,
             message=application.get("message")
         )
         

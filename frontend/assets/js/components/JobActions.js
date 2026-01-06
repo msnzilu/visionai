@@ -299,7 +299,14 @@ class JobActionComponent {
 
         const cvId = document.getElementById('cvSelect').value;
         if (!cvId) {
-            CVision.Utils.showAlert('Please select a CV', 'error');
+            const cvSelect = document.getElementById('cvSelect');
+            const hasNoDocs = cvSelect && cvSelect.options.length <= 1;
+
+            const helpMsg = hasNoDocs
+                ? 'No CV found. Please upload your Resume/CV to the Documents page first so we can customize it for this job!'
+                : 'Please select a CV to customize.';
+
+            CVision.Utils.showAlert(helpMsg, 'error');
             return;
         }
 

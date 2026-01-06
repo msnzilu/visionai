@@ -5,11 +5,14 @@ Handles form prefilling, email composition, and application tracking via Gmail
 """
 
 import logging
-from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
+from typing import Optional, Dict, Any, List
 from bson import ObjectId
+import re
+import httpx
 
 from app.database import get_database
+from app.integrations.openai_client import openai_client
 from .gmail_service import gmail_service
 from .email_response_analyzer import email_response_analyzer
 from app.models.user import GmailAuth
@@ -250,54 +253,33 @@ class EmailAgentService:
             # Build email subject
             subject = f"Application for {job_title} at {company_name}"
             
-            # Build email body
-            full_name = f"{form_data.get('first_name', '')} {form_data.get('last_name', '')}".strip()
-            
-            # Professional email template
-            body_parts = []
-            
-            # Greeting
-            body_parts.append(f"Dear Hiring Manager,\n")
-            
-            # Opening paragraph
-            body_parts.append(
-                f"I am writing to express my strong interest in the {job_title} position at {company_name}. "
-                f"I believe my skills and experience make me an excellent candidate for this role.\n"
-            )
-            
-            # Cover letter or experience summary
-            if cover_letter:
-                body_parts.append(f"\n{cover_letter}\n")
+            # Use provided cover letter if substantial, otherwise generate with AI
+            if cover_letter and len(cover_letter) > 150:
+                logger.info(f"Using provided cover letter from CoverLetterService for {job_title}")
+                body = cover_letter
             else:
-                # Auto-generate brief summary
-                if form_data.get("years_of_experience"):
-                    body_parts.append(
-                        f"\nWith {form_data.get('years_of_experience')} years of professional experience"
+                # Try to compose a mini-cover letter with AI
+                logger.info(f"No full cover letter provided. Composing mini-cover letter with AI for {job_title}")
+                ai_body = await EmailAgentService._compose_email_with_ai(
+                    job=job,
+                    user=user,
+                    message_context=cover_letter
+                )
+                
+                if ai_body:
+                    body = ai_body
+                else:
+                    # Fallback to professional template if AI fails
+                    logger.info(f"AI composition failed. Using template fallback for {job_title}")
+                    body = EmailAgentService._compose_email_with_template(
+                        job_title=job_title,
+                        company_name=company_name,
+                        form_data=form_data,
+                        cover_letter=cover_letter
                     )
-                    if form_data.get("current_position"):
-                        body_parts.append(f" as a {form_data.get('current_position')}")
-                    body_parts.append(", I am confident in my ability to contribute to your team.\n")
             
-            # Contact information
-            body_parts.append("\nContact Information:")
-            body_parts.append(f"Email: {form_data.get('email', '')}")
-            if form_data.get("phone"):
-                body_parts.append(f"Phone: {form_data.get('phone')}")
-            if form_data.get("linkedin_url"):
-                body_parts.append(f"LinkedIn: {form_data.get('linkedin_url')}")
-            if form_data.get("portfolio_url"):
-                body_parts.append(f"Portfolio: {form_data.get('portfolio_url')}")
-            
-            # Closing
-            body_parts.append(
-                f"\n\nI have attached my resume for your review. "
-                f"I would welcome the opportunity to discuss how my background and skills "
-                f"would be a great fit for {company_name}.\n"
-            )
-            body_parts.append(f"\nThank you for your consideration.\n")
-            body_parts.append(f"\nBest regards,\n{full_name}")
-            
-            body = "\n".join(body_parts)
+            # Metadata and info
+            full_name = f"{form_data.get('first_name', '')} {form_data.get('last_name', '')}".strip()
             
             return {
                 "subject": subject,
@@ -309,6 +291,98 @@ class EmailAgentService:
         except Exception as e:
             logger.error(f"Error composing email: {str(e)}")
             raise
+
+    @staticmethod
+    async def _compose_email_with_ai(
+        job: Dict[str, Any],
+        user: Dict[str, Any],
+        message_context: Optional[str] = None
+    ) -> Optional[str]:
+        """Compose a high-impact 'mini-cover letter' as the email body using AI"""
+        try:
+            job_title = job.get("title", "Position")
+            company = job.get("company_name", "your company")
+            description = job.get("description", "")
+            
+            prompt = f"""
+            Write a professional, impactful application email body for:
+            Position: {job_title}
+            Company: {company}
+            Job Description (Excerpt): {description[:600]}
+            
+            CANDIDATE:
+            Name: {user.get('full_name', 'Applicant')}
+            {f"ADDITIONAL MESSAGE/CONTEXT: {message_context}" if message_context else ""}
+            
+            GOAL:
+            The email serves as a 'mini-cover letter'. It should be short (2 paragraphs max), enthusiastic, and clearly explain why the candidate's core strengths match this specific role.
+            
+            INSTRUCTIONS:
+            1. Write ONLY the body text.
+            2. Do NOT include a subject line, formal contact blocks, or 'Dear Hiring Manager' (those are handled by the sender).
+            3. Start directly with the professional opening message.
+            4. Focus on 'Show, Don't Tell' with matching highlights.
+            5. Ensure the tone is confident and professional.
+            """
+            
+            response = await openai_client.chat_completion(
+                messages=[
+                    {"role": "system", "content": "You are an expert recruiter writing high-conversion job application emails."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=500
+            )
+            
+            return response.strip() if response else None
+            
+        except Exception as e:
+            logger.error(f"AI email composition failed: {e}")
+            return None
+
+    @staticmethod
+    def _compose_email_with_template(
+        job_title: str,
+        company_name: str,
+        form_data: Dict[str, Any],
+        cover_letter: Optional[str] = None
+    ) -> str:
+        """Fallback method for template-based email composition"""
+        full_name = f"{form_data.get('first_name', '')} {form_data.get('last_name', '')}".strip()
+        body_parts = []
+        body_parts.append(f"Dear Hiring Manager,\n")
+        body_parts.append(
+            f"I am writing to express my strong interest in the {job_title} position at {company_name}. "
+            f"I believe my skills and experience make me an excellent candidate for this role.\n"
+        )
+        
+        if cover_letter:
+            body_parts.append(f"\n{cover_letter}\n")
+        else:
+            if form_data.get("years_of_experience"):
+                body_parts.append(f"\nWith {form_data.get('years_of_experience')} years of professional experience")
+                if form_data.get("current_position"):
+                    body_parts.append(f" as a {form_data.get('current_position')}")
+                body_parts.append(", I am confident in my ability to contribute to your team.\n")
+        
+        body_parts.append("\nContact Information:")
+        body_parts.append(f"Email: {form_data.get('email', '')}")
+        if form_data.get("phone"):
+            body_parts.append(f"Phone: {form_data.get('phone')}")
+        if form_data.get("linkedin_url"):
+            body_parts.append(f"LinkedIn: {form_data.get('linkedin_url')}")
+        if form_data.get("portfolio_url"):
+            body_parts.append(f"Portfolio: {form_data.get('portfolio_url')}")
+        
+        body_parts.append(
+            f"\n\nI have attached my resume for your review. "
+            f"I would welcome the opportunity to discuss how my background and skills "
+            f"would be a great fit for {company_name}.\n"
+        )
+        body_parts.append(f"\nThank you for your consideration.\n")
+        body_parts.append(f"\nBest regards,\n{full_name}")
+        
+        return "\n".join(body_parts)
     
     
     @staticmethod
@@ -361,12 +435,23 @@ class EmailAgentService:
             if not job:
                 raise ValueError(f"Job {job_id} not found")
             
+            # Get cover letter text if provided
+            cl_text = additional_message
+            if cover_letter_document_id:
+                cl_doc = await db.documents.find_one({"_id": ObjectId(cover_letter_document_id)})
+                if not cl_doc:
+                    cl_doc = await db.generated_documents.find_one({"_id": ObjectId(cover_letter_document_id)})
+                
+                if cl_doc:
+                    # Prefer full_text or content field
+                    cl_text = cl_doc.get("full_text") or cl_doc.get("content") or cl_doc.get("text") or cl_text
+            
             # Compose email
             email_data = await EmailAgentService.compose_application_email(
                 job=job,
                 user=user,
                 form_data=form_data,
-                cover_letter=additional_message
+                cover_letter=cl_text
             )
             
             # Get CV document path (check both uploaded and generated documents)
@@ -397,16 +482,8 @@ class EmailAgentService:
             else:
                 logger.warning(f"CV document {cv_document_id} not found in documents or generated_documents")
             
-            # Get cover letter document if provided (though mostly text now)
-            if cover_letter_document_id:
-                cl_doc = await db.documents.find_one({"_id": ObjectId(cover_letter_document_id)})
-                if not cl_doc:
-                     cl_doc = await db.generated_documents.find_one({"_id": ObjectId(cover_letter_document_id)})
-                
-                if cl_doc:
-                     file_path = cl_doc.get("file_path") or cl_doc.get("pdf_path")
-                     if file_path:
-                        attachments.append(file_path)
+            # 3. Only attach the CV (user request: only cv should be attached to email)
+            # The email body itself now serves as the personalized cover letter message.
             
             # Send email via Gmail
             logger.info(f"Sending application email to {recipient_email}")
@@ -730,10 +807,74 @@ class EmailAgentService:
             
             logger.info(f"Monitored {len(applications)} applications, found {len(responses)} with responses")
             return responses
-            
         except Exception as e:
-            logger.error(f"Error monitoring responses: {str(e)}", exc_info=True)
+            logger.error(f"Error monitoring responses: {str(e)}")
             return []
+
+    @staticmethod
+    async def find_verification_link(user_id: str, domain: str) -> Optional[str]:
+        """
+        Scan Gmail for verification/activation links from a specific domain
+        """
+        try:
+            db = await get_database()
+            user = await db.users.find_one({"_id": ObjectId(user_id)})
+            if not user or not user.get("gmail_auth"):
+                return None
+            
+            gmail_auth = GmailAuth(**user.get("gmail_auth"))
+            
+            # Search query: messages from domain with verification keywords
+            # We look for messages in the last 15 minutes to be efficient
+            search_query = f"from:{domain} (verify OR activate OR confirm OR registration)"
+            messages = gmail_service.list_messages(gmail_auth, query=search_query, max_results=5)
+            
+            if not messages:
+                logger.info(f"No verification emails found for domain {domain}")
+                return None
+            
+            for msg_info in messages:
+                msg = gmail_service.get_message(gmail_auth, msg_info['id'])
+                body = msg.get('body', '')
+                
+                # Look for URLs
+                # Regex for common verification links
+                url_pattern = r'https?://[^\s<>"]+/(?:verify|activate|confirm|auth|registration)[^\s<>"]*'
+                links = re.findall(url_pattern, body)
+                
+                if not links:
+                    # Fallback: find any link from that domain that isn't a tracking pixel
+                    generic_pattern = rf'https?://[^\s<>"]*{re.escape(domain)}[^\s<>"]*'
+                    links = [l for l in re.findall(generic_pattern, body) if len(l) > 20]
+                
+                if links:
+                    # Return the first matching link (usually the primary button link)
+                    logger.info(f"Found potential verification link for {domain}: {links[0]}")
+                    return links[0]
+            
+            return None
+        except Exception as e:
+            logger.error(f"Error finding verification link for {domain}: {e}")
+            return None
+
+    @staticmethod
+    async def auto_click_verification_link(url: str) -> bool:
+        """
+        Headlessly 'clicks' a verification link via GET request
+        """
+        try:
+            logger.info(f"Attempting to headlessly verify link: {url}")
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                response = await client.get(url)
+                if response.status_code in [200, 201]:
+                    logger.info(f"Verification link clicked successfully (Status: {response.status_code})")
+                    return True
+                else:
+                    logger.warning(f"Verification link returned non-success status: {response.status_code}")
+                    return False
+        except Exception as e:
+            logger.error(f"Error auto-clicking verification link: {e}")
+            return False
 
 
 # Singleton instance

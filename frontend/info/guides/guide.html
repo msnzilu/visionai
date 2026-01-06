@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed Guide - Synovae</title>
+
+    <!-- SEO Injection -->
+    <script src="/assets/js/seo.js"></script>
+
+    <!-- Global Styles -->
+    <link rel="stylesheet" href="/assets/css/global.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation -->
+    <div id="public-navbar-container"></div>
+
+    <div class="pt-24 pb-20">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Breadcrumbs -->
+            <nav class="flex mb-8 text-sm text-gray-500" aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-2">
+                    <li><a href="/" class="hover:text-primary-600">Home</a></li>
+                    <li>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </li>
+                    <li><a href="/info/guides/guides.html" class="hover:text-primary-600">Guides</a></li>
+                    <li>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </li>
+                    <li class="text-gray-900 font-medium whitespace-nowrap overflow-hidden text-ellipsis">Detailed Guide
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Guide Content -->
+            <article
+                class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-12 prose prose-blue max-w-none">
+                <h1 class="text-3xl font-bold text-gray-900 mb-6">Detailed Guide Title</h1>
+                <p class="text-lg text-gray-600 mb-8 leading-relaxed">
+                    This is a detailed guide template. Replace this content with your actual instructions and tips.
+                </p>
+
+                <h2 class="text-xl font-bold text-gray-900 mt-10 mb-4">Step 1: Introduction</h2>
+                <p class="text-gray-600 mb-6">
+                    Explain the first steps of the process here. Use clear language and provide context.
+                </p>
+
+                <div class="bg-primary-50 border-l-4 border-primary-500 p-6 my-8 rounded-r-xl">
+                    <p class="text-primary-800 font-medium">Pro Tip:</p>
+                    <p class="text-primary-700 italic">Add helpful hints or common pitfalls to avoid here.</p>
+                </div>
+
+                <h2 class="text-xl font-bold text-gray-900 mt-10 mb-4">Step 2: Technical Setup</h2>
+                <p class="text-gray-600 mb-6">
+                    If there are technical requirements or configurations, list them clearly.
+                </p>
+
+                <h2 class="text-xl font-bold text-gray-900 mt-10 mb-4">Conclusion</h2>
+                <p class="text-gray-600 mb-8">
+                    Summarize what the user has learned and provide links to related resources.
+                </p>
+
+                <!-- Feedback Section -->
+                <div
+                    class="mt-16 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <p class="text-gray-500 text-sm">Was this guide helpful?</p>
+                    <div class="flex gap-4">
+                        <button
+                            class="px-6 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">Yes,
+                            thanks!</button>
+                        <button
+                            class="px-6 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">Not
+                            really</button>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Back to Guides -->
+            <div class="mt-12 text-center">
+                <a href="/info/guides/guides.html"
+                    class="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Back to all guides
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div id="footer-container"></div>
+
+    <!-- Scripts -->
+    <script src="/assets/js/components/PublicNavbar.js"></script>
+    <script src="/assets/js/main.js"></script>
+    <link rel="stylesheet" href="/assets/css/chatbot.css">
+    <script src="/assets/js/chatbot.js"></script>
+
+    <script>
+        // Feedback Button Interactivity
+        document.addEventListener('DOMContentLoaded', () => {
+            const feedbackButtons = document.querySelectorAll('button');
+            feedbackButtons.forEach(button => {
+                const btnText = button.textContent.toLowerCase();
+                if (btnText.includes('yes, thanks') || btnText.includes('not really')) {
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const container = button.closest('div.flex.gap-4');
+                        const wrapper = container.parentElement;
+                        const question = wrapper.querySelector('p');
+
+                        container.innerHTML = `
+                            <div class="flex items-center gap-2 text-primary-600 font-medium animate-pulse">
+                                <span>✨</span> Thank you for your feedback!
+                            </div>
+                        `;
+                        if (question) question.style.display = 'none';
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,4 +1,24 @@
 services:
+  automation:
+    build:
+      context: ./browser-automation
+      dockerfile: Dockerfile
+    container_name: vision_ai_automation
+    hostname: automation
+    environment:
+      - PORT=3001
+      - BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN:-dev-automation-token}
+      - HEADLESS=${HEADLESS:-true}
+    volumes:
+      - ./browser-automation:/app
+      - /app/node_modules
+      - /dev/shm:/dev/shm
+    networks:
+      - vision_ai_network
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+
   # Backend API Service
   backend:
     image: ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG:-latest}
@@ -10,7 +30,7 @@ services:
       # Core Settings
       - DEBUG=false
       - ENVIRONMENT=production
-      - BROWSER_AUTOMATION_URL=${BROWSER_AUTOMATION_URL}
+      - BROWSER_AUTOMATION_URL=${BROWSER_AUTOMATION_URL:-http://automation:3001}
       - BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN}
       
       # Database Configuration (REQUIRED)
@@ -101,6 +121,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - FRONTEND_URL=https://synovae.io
+      - BROWSER_AUTOMATION_URL=${BROWSER_AUTOMATION_URL:-http://automation:3001}
+      - BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     secrets:

@@ -28,6 +28,10 @@ class ApplicationStatus(str, Enum):
     WITHDRAWN = "withdrawn"
     ON_HOLD = "on_hold"
     ARCHIVED = "archived"
+    NEEDS_AUTHENTICATION = "needs_authentication"
+    MANUAL_ACTION_REQUIRED = "manual_action_required"
+    PENDING_VERIFICATION = "pending_verification"
+    PROCESSING = "processing"
 
 
 class ApplicationSource(str, Enum):

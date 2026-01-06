@@ -75,8 +75,18 @@ app.post('/api/automation/start', authenticate, async (req, res) => {
         console.log(`Job source: ${job_source}`);
 
         // Launch browser with Playwright
+        const headlessEnv = process.env.HEADLESS ? process.env.HEADLESS.toLowerCase().trim() : 'true';
+        const isHeadless = headlessEnv !== 'false';
+
+        console.log(`[Browser Config] HEADLESS env: "${process.env.HEADLESS}" -> Mode: ${isHeadless ? 'Headless (Background)' : 'Headful (Visible UI)'}`);
+
+        // Force disable Playwright Inspector in ALL modes to prevent "Assistant" window
+        delete process.env.PWDEBUG;
+        process.env.DEBUG = '0';
+
         const browser = await chromium.launch({
-            headless: process.env.HEADLESS !== 'false',
+            headless: isHeadless,
+            devtools: false,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -205,13 +215,116 @@ async function performAutofill(session_id, url, autofillData, jobSource, page) {
 
         const handler = SiteHandlerFactory.getHandler(url, jobSource);
 
-        const formDetector = new FormDetector(page);
+        // Prepare page (e.g. click "Apply" buttons) - this may open a new tab
+        let activePage = page;
+        if (handler && typeof handler.preparePage === 'function') {
+            try {
+                const newPage = await handler.preparePage(page);
+                if (newPage && newPage !== page) {
+                    console.log('[Autofill] Handler returned new page (new tab detected). Switching context...');
+                    activePage = newPage;
+
+                    // Update session reference
+                    if (session) session.page = activePage;
+
+                    // Wait for the new page to stabilize
+                    await activePage.waitForLoadState('domcontentloaded').catch(() => { });
+                    await activePage.waitForTimeout(2000);
+
+                    console.log(`[Autofill] New tab URL: ${activePage.url()}`);
+                    console.log(`[Autofill] New tab title: ${await activePage.title()}`);
+                }
+            } catch (prepareError) {
+                // Check if original page is still valid
+                if (page.isClosed()) {
+                    console.log('[Autofill] Original page closed. Checking for new tabs in context...');
+                    // Try to find any open page in the context
+                    const pages = session.context.pages();
+                    const validPage = pages.find(p => !p.isClosed() && p.url() !== 'about:blank');
+                    if (validPage) {
+                        console.log(`[Autofill] Found valid page: ${validPage.url()}`);
+                        activePage = validPage;
+                        if (session) session.page = activePage;
+                        await activePage.waitForLoadState('domcontentloaded').catch(() => { });
+                    } else {
+                        throw new Error('All pages in context are closed or invalid');
+                    }
+                } else {
+                    console.warn('[Autofill] preparePage error but original page still valid:', prepareError.message);
+                }
+            }
+        }
+
+        // Ensure we have a valid page before continuing
+        if (activePage.isClosed()) {
+            throw new Error('[Autofill] Active page is closed. New tab might have closed prematurely.');
+        }
+
+        const formDetector = new FormDetector(activePage);
         const forms = await formDetector.detectForms();
 
-        console.log(`Detected ${forms.length} forms on page`);
+        console.log(`[Autofill V2.1] Detected ${forms.length} total forms on ${activePage.url()}`);
+        console.log(`Current page URL: ${activePage.url()}`);
+
+        // Filter out non-application forms (search bars, filters, etc.)
+        const excludePatterns = ['search', 'filter', 'subscribe', 'newsletter', 'login', 'signin'];
+        const applicationForms = forms.filter(form => {
+            const fieldNames = form.fields?.map(f =>
+                (f.name || f.id || f.placeholder || f.label || '').toLowerCase()
+            ).join(' ');
+
+            // Skip if it looks like a search/nav form
+            const isSearchForm = excludePatterns.some(p => fieldNames.includes(p));
+
+            // Prefer forms with typical application fields
+            const hasAppFields = form.fields?.some(f => {
+                const combined = `${f.name} ${f.id} ${f.placeholder} ${f.label}`.toLowerCase();
+                return combined.includes('email') ||
+                    combined.includes('name') ||
+                    combined.includes('phone') ||
+                    combined.includes('resume') ||
+                    combined.includes('cv') ||
+                    combined.includes('cover');
+            });
+
+            if (isSearchForm && !hasAppFields) {
+                console.log(`Skipping non-application form: ${fieldNames.substring(0, 50)}...`);
+                return false;
+            }
+            return true;
+        });
+
+        console.log(`Filtered to ${applicationForms.length} application forms`);
+
+        // Throw error if no application forms found
+        if (applicationForms.length === 0) {
+            throw new Error('No application form detected. This job might require manual application on the company\'s website or a search for an "Apply" button failed.');
+        }
+
+        // DIAGNOSTIC: If no forms found, dump page info
+        if (applicationForms.length === 0) {
+            console.warn('⚠️ DIAGNOSTIC: Zero application forms detected. Dumping page info...');
+            const title = await activePage.title();
+            const bodyText = await activePage.evaluate(() => document.body.innerText.substring(0, 500));
+            console.log(`Page Title: ${title}`);
+            console.log(`Body snippet: ${bodyText.substring(0, 300)}...`);
+
+            // Check for common ATS indicators
+            const hasFileInput = await activePage.$('input[type="file"]');
+            const hasEmailInput = await activePage.$('input[type="email"]');
+            console.log(`Has file input: ${!!hasFileInput}, Has email input: ${!!hasEmailInput}`);
+
+            // Check if we're on a login page
+            const currentUrl = activePage.url().toLowerCase();
+            const pageTitle = title.toLowerCase();
+            if (currentUrl.includes('login') || currentUrl.includes('signin') ||
+                pageTitle.includes('login') || pageTitle.includes('sign in')) {
+                console.warn('⚠️ LOGIN PAGE DETECTED - User may need to authenticate manually');
+            }
+        }
 
         // Log form details
-        forms.forEach((form, index) => {
+        applicationForms.forEach((form, index) => {
             console.log(`Form ${index + 1}:`, {
                 fields: form.fields?.length || 0,
                 fieldNames: form.fields?.map(f => f.name || f.id || f.placeholder).filter(Boolean)
@@ -220,8 +333,13 @@ async function performAutofill(session_id, url, autofillData, jobSource, page) {
 
         updateSessionStatus(session_id, 'filling_forms');
 
-        const autofillEngine = new AutofillEngine(page, handler);
-        const filledFields = await autofillEngine.fillForms(forms, autofillData);
+        const autofillEngine = new AutofillEngine(activePage, handler);
+        const filledFields = await autofillEngine.fillForms(applicationForms, autofillData);
+
+        // Throw error if no fields were actually filled
+        if (filledFields.length === 0) {
+            throw new Error('Found an application form, but could not identify any fields to autofill using your profile data.');
+        }
 
         session.filled_fields = filledFields;
         updateSessionStatus(session_id, 'completed', null, filledFields);
@@ -233,19 +351,38 @@ async function performAutofill(session_id, url, autofillData, jobSource, page) {
             console.log('Filled fields:', filledFields);
         }
 
-        await page.screenshot({ path: `/tmp/completed-${session_id}.png` }).catch(() => { });
+        await activePage.screenshot({ path: `/tmp/completed-${session_id}.png` }).catch(() => { });
 
     } catch (error) {
         console.error(`Autofill failed for session ${session_id}:`, error);
 
+        if (error.message === 'LOGIN_REQUIRED') {
+            updateSessionStatus(session_id, 'login_required', 'This job requires manual login or account creation on the job board.');
+
+            // Allow some time for frontend to poll the status
+            await page.waitForTimeout(5000).catch(() => { });
+
+            // Close session specifically because of login wall
+            try {
+                if (session && session.browser) {
+                    await session.browser.close();
+                    console.log(`Browser closed for session ${session_id} due to login wall.`);
+                }
+            } catch (closeError) {
+                console.error('Error closing browser after login wall:', closeError);
+            }
+        }
+
         try {
-            await page.screenshot({ path: `/tmp/error-${session_id}.png` });
-            console.log(`Error screenshot saved: /tmp/error-${session_id}.png`);
+            if (activePage && !activePage.isClosed()) {
+                await activePage.screenshot({ path: `/tmp/error-${session_id}.png` }).catch(() => { });
+                console.log(`Error screenshot saved: /tmp/error-${session_id}.png`);
+            }
         } catch (screenshotError) {
             console.error('Could not take error screenshot');
         }
 
-        updateSessionStatus(session_id, 'error', error.message);
+        updateSessionStatus(session_id, 'error', error.message === 'LOGIN_REQUIRED' ? 'Manual login required' : error.message);
     }
 }
 

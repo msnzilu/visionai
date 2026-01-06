@@ -100,6 +100,10 @@ def send_application_email(
             
             logger.info(f"Application email sent successfully for job {job_id}")
             
+            # Immediately trigger monitoring to catch "Application Received" emails
+            from app.workers.email_monitor import scan_user_inbox
+            scan_user_inbox.delay(user_id)
+            
             return {
                 "success": True,
                 "application_id": application_id,
