@@ -105,9 +105,10 @@
             } catch (e) { /* ignore cache errors */ }
 
             // Try multiple providers with fallbacks
+            // Note: ip-api.com free tier requires HTTP (not HTTPS)
             const providers = [
                 {
-                    url: 'https://ip-api.com/json/?fields=status,country,countryCode,city,regionName,timezone',
+                    url: 'http://ip-api.com/json/?fields=status,country,countryCode,city,regionName,timezone',
                     parse: (data) => data.status === 'success' ? {
                         countryCode: data.countryCode,
                         countryName: data.country,
@@ -115,8 +116,13 @@
                         region: data.regionName,
                         timezone: data.timezone
                     } : null
-                },
-                {
+                }
+            ];
+
+            // Only add HTTPS providers if we're on HTTPS (they may have CORS issues)
+            if (window.location.protocol === 'https:') {
+                // These are backup options but often rate-limited
+                providers.push({
                     url: 'https://ipapi.co/json/',
                     parse: (data) => !data.error ? {
                         countryCode: data.country_code,
@@ -126,18 +132,8 @@
                         timezone: data.timezone,
                         ip: data.ip
                     } : null
-                },
-                {
-                    url: 'https://ipinfo.io/json',
-                    parse: (data) => data.country ? {
-                        countryCode: data.country,
-                        countryName: data.country,
-                        city: data.city,
-                        region: data.region,
-                        timezone: data.timezone
-                    } : null
-                }
-            ];
+                });
+            }
 
             for (const provider of providers) {
                 try {
@@ -176,6 +172,36 @@
                     // Continue to next provider
                 }
             }
+
+            // Final fallback: detect country from browser timezone
+            try {
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const tzCountryMap = {
+                    'Africa/Nairobi': 'KE', 'Africa/Lagos': 'NG', 'Africa/Johannesburg': 'ZA',
+                    'Africa/Cairo': 'EG', 'Africa/Accra': 'GH', 'Africa/Kampala': 'UG',
+                    'America/New_York': 'US', 'America/Los_Angeles': 'US', 'America/Chicago': 'US',
+                    'America/Toronto': 'CA', 'America/Vancouver': 'CA', 'America/Mexico_City': 'MX',
+                    'Europe/London': 'GB', 'Europe/Paris': 'FR', 'Europe/Berlin': 'DE',
+                    'Europe/Amsterdam': 'NL', 'Europe/Rome': 'IT', 'Europe/Madrid': 'ES',
+                    'Asia/Dubai': 'AE', 'Asia/Kolkata': 'IN', 'Asia/Tokyo': 'JP',
+                    'Asia/Singapore': 'SG', 'Asia/Shanghai': 'CN', 'Asia/Seoul': 'KR',
+                    'Australia/Sydney': 'AU', 'Pacific/Auckland': 'NZ'
+                };
+
+                const detectedCode = tzCountryMap[timezone];
+                if (detectedCode && COUNTRY_CURRENCY_MAP[detectedCode]) {
+                    locationData = {
+                        detected: true,
+                        countryCode: detectedCode,
+                        countryName: detectedCode,
+                        city: null,
+                        region: null,
+                        currency: COUNTRY_CURRENCY_MAP[detectedCode],
+                        timezone: timezone,
+                        ip: null
+                    };
+                }
+            } catch (e) { /* ignore timezone detection errors */ }
 
             return locationData;
         },
