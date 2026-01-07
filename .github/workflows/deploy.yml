@@ -28,7 +28,7 @@ jobs:
 
     strategy:
       matrix:
-        service: [backend]
+        service: [backend, automation]
 
     steps:
       - name: Checkout code
@@ -134,7 +134,7 @@ jobs:
           PORT=8000
           DEBUG=false
           ENVIRONMENT=production
-          BROWSER_AUTOMATION_URL=http://host.docker.internal:3001
+          BROWSER_AUTOMATION_URL=http://automation:3001
           BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN}
           HEADLESS=true
 
@@ -280,10 +280,6 @@ jobs:
             frontend \
             ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }}:/tmp/
             
-          # Copy automation files
-          scp -r -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
-            browser-automation \
-            ${{ env.SWARM_MANAGER_USER }}@${{ env.SWARM_MANAGER_HOST }}:/tmp/
 
           # Move frontend files to /var/www/visionai
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/swarm_key \
@@ -317,56 +313,6 @@ jobs:
             
             echo "Frontend deployed successfully."
             
-            # --- Deploy Browser Automation ---
-            echo "Deploying browser automation..."
-            # Using home directory instead of var/www to separate from frontend
-            TARGET_DIR="/home/ubuntu/visionai-automation"
-            mkdir -p $TARGET_DIR
-            
-            # Copy new files
-            cp -r /tmp/browser-automation/* $TARGET_DIR/
-            
-            # Install dependencies and start with PM2
-            cd $TARGET_DIR
-            
-            # Ensure Node.js and NPM are installed
-            if ! command -v npm &> /dev/null; then
-                echo "Installing Node.js and NPM..."
-                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-                sudo apt-get install -y nodejs
-            fi
-
-            # Ensure PM2 is installed
-            if ! command -v pm2 &> /dev/null; then
-                echo "Installing pm2..."
-                sudo npm install -g pm2
-            fi
-            
-            echo "Installing dependencies..."
-            npm install --production
-            
-            echo "Starting/Restarting service..."
-            # Using --update-env to pick up the token from the environment variable
-            # We explicitly set PORT and BROWSER_AUTOMATION_TOKEN.
-            # We also ensure the old named process is deleted first for a clean start
-            pm2 delete "visionai-automation" || true
-            PORT=3001 HEADLESS=true BROWSER_AUTOMATION_TOKEN="${{ secrets.BROWSER_AUTOMATION_TOKEN }}" pm2 start src/index.js --name "visionai-automation" --update-env
-            
-            pm2 save
-            
-            # Wait for service to start
-            sleep 5
-            
-            # Health Check
-            echo "Checking automation service health..."
-            curl -v http://localhost:3001/health || echo "⚠️ Warning: Automation service check failed locally"
-            
-            pm2 save
-            
-            # Cleanup tmp
-            rm -rf /tmp/browser-automation
-            
-            echo "Browser automation deployed successfully."
           ENDSSH
 
           # Deploy stack
@@ -453,6 +399,8 @@ jobs:
             # Pull backend image
             echo "Pulling backend image..."
             docker pull ${ECR_REGISTRY}/visionai-backend:${IMAGE_TAG}
+            echo "Pulling automation image..."
+            docker pull ${ECR_REGISTRY}/visionai-automation:${IMAGE_TAG}
             
             # Deploy stack with rolling update
             docker stack deploy \

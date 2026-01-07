@@ -1,0 +1,111 @@
+/* Landing Page Job Explorer Styles */
+
+#explore-jobs {
+    background: linear-gradient(to bottom, #ffffff, #f8faff);
+}
+
+.job-explorer-card {
+    background: white;
+    border: 1px solid #edf2f7;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.job-explorer-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    border-color: #667eea;
+}
+
+.skeleton-job-card {
+    background: white;
+    border: 1px solid #edf2f7;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    height: 250px;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-job-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0.5) 20%, rgba(255, 255, 255, 0.5) 60%, rgba(255, 255, 255, 0));
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.location-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    background: #ebf4ff;
+    color: #4c51bf;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.job-title-teaser {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.company-teaser {
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 1rem;
+}
+
+.job-details-teaser {
+    color: #718096;
+    font-size: 0.875rem;
+    line-clamp: 3;
+    -webkit-line-clamp: 3;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.btn-teaser {
+    margin-top: auto;
+    width: 100%;
+    padding: 0.75rem;
+    background: #f7fafc;
+    color: #4a5568;
+    border: 1px solid #edf2f7;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.job-explorer-card:hover .btn-teaser {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+
+/* Responsive card sizes handled by grid layout now */
+.job-explorer-card {
+    height: 100%;
+}

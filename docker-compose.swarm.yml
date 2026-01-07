@@ -1,23 +1,34 @@
 services:
   automation:
-    build:
-      context: ./browser-automation
-      dockerfile: Dockerfile
-    container_name: vision_ai_automation
+    image: ${ECR_REGISTRY}/visionai-automation:${IMAGE_TAG:-latest}
     hostname: automation
     environment:
       - PORT=3001
-      - BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN:-dev-automation-token}
+      - BROWSER_AUTOMATION_TOKEN=${BROWSER_AUTOMATION_TOKEN}
       - HEADLESS=${HEADLESS:-true}
     volumes:
-      - ./browser-automation:/app
-      - /app/node_modules
       - /dev/shm:/dev/shm
     networks:
-      - vision_ai_network
-    restart: unless-stopped
+      - app-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+      resources:
+        reservations:
+          memory: 512M
+        limits:
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     ports:
       - "3001:3001"
+
 
   # Backend API Service
   backend:

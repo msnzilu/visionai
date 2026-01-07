@@ -61,7 +61,7 @@ class JobService:
                 {"company_name": {"$regex": query, "$options": "i"}}
             ]
         
-        if location and filters and not filters.remote_only:
+        if location and (not filters or not filters.remote_only):
             mongo_query["location"] = {"$regex": location, "$options": "i"}
         
         if filters and filters.remote_only:

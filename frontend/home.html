@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>synovae - AI Job Application Platform</title>
+
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+
+    <!-- SEO Injection -->
+    <script src="/assets/js/seo.js"></script>
+
+    <!-- Global Styles -->
+    <link rel="stylesheet" href="/assets/css/global.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Global Tailwind config
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            500: '#667eea',
+                            600: '#5a67d8',
+                            700: '#4c51bf'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation -->
+    <div id="public-navbar-container"></div>
+
+    <!-- Hero Section with CV Upload -->
+    <section class="pt-10 pb-6 lg:pt-16 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <!-- Hero Content -->
+                <div class="text-left">
+                    <h1 class="text-4xl md:text-6xl font-bold mb-6 leading-tight text-gray-900">
+                        AI-Powered Job <br />
+                        <span
+                            class="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-800">Application
+                            Platform</span>
+                    </h1>
+                    <p class="text-xl md:text-2xl mb-8 text-gray-600 leading-relaxed">
+                        Automate your job search with intelligent CV customization, job matching, and one-click
+                        applications
+                    </p>
+
+                    <!-- Quick Stats -->
+                    <div id="stats-container" class="grid grid-cols-3 gap-8 mb-8 border-l-4 border-primary-500 pl-6">
+                        <!-- Stats driven by JS -->
+                    </div>
+
+                    <!-- CTA Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 mb-8">
+                        <a href="register.html"
+                            class="btn-gradient text-white px-8 py-4 rounded-lg font-semibold text-lg text-center shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all">
+                            Start Free Trial
+                        </a>
+                        <a href="#demo"
+                            class="px-8 py-4 bg-white text-gray-700 hover:text-primary-600 rounded-lg font-semibold text-lg text-center transition-all border border-gray-200 shadow-sm hover:shadow-md">
+                            Watch Demo
+                        </a>
+                    </div>
+                </div>
+
+                <!-- CV Upload & Preferences -->
+                <div class="bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary-500 to-primary-700">
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2 text-center">Get Started Free</h3>
+                    <p class="text-gray-500 text-center mb-6">No credit card required</p>
+
+                    <!-- CV Upload Zone -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-semibold mb-3">Upload Your CV</label>
+                        <div id="cv-upload-zone"
+                            class="file-upload-zone border-2 border-dashed border-primary-200 bg-primary-50/50 rounded-xl p-8 text-center cursor-pointer transition-all hover:border-primary-500 hover:bg-primary-50 group">
+                            <div class="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">📄</div>
+                            <div class="text-gray-900 font-semibold mb-2">Drop your CV or click to browse</div>
+                            <div class="text-gray-500 text-sm">PDF, DOCX, or TXT (max 10MB)</div>
+                        </div>
+                        <input type="file" id="cv-file-input" class="hidden" accept=".pdf,.docx,.doc,.txt">
+                    </div>
+
+                    <!-- Job Preferences -->
+                    <div id="preferences-container"
+                        class="space-y-4 mb-6 hidden opacity-0 transition-all duration-500 transform translate-y-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-semibold mb-2">Preferred Job Title</label>
+                            <input type="text" id="job-title" placeholder="e.g., Software Engineer"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:bg-white form-input-focus transition-all">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 text-sm font-semibold mb-2">Location</label>
+                            <input type="text" id="location" placeholder="e.g., Remote, New York"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:bg-white form-input-focus transition-all">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 text-sm font-semibold mb-2">Salary Range</label>
+                            <select id="salary-range"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:bg-white form-input-focus transition-all cursor-pointer">
+                                <option value="">Select range</option>
+                                <option value="40-60k">$40k - $60k</option>
+                                <option value="60-80k">$60k - $80k</option>
+                                <option value="80-100k">$80k - $100k</option>
+                                <option value="100-120k">$100k - $120k</option>
+                                <option value="120k+">$120k+</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Get Started Button -->
+                    <button id="get-started-btn"
+                        class="w-full btn-gradient text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                        disabled>
+                        <span class="button-text">Upload CV to Analysis</span>
+                        <div class="loading-spinner hidden">
+                            <div class="inline-block w-5 h-5 spinner"></div>
+                        </div>
+                    </button>
+
+                    <p class="text-gray-400 text-xs text-center mt-4">
+                        By uploading, you agree to our Terms of Service.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Features Section -->
+    <section id="features" class="py-10 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <span class="text-primary-600 font-semibold tracking-wider uppercase text-sm">Features</span>
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6 mt-2">Powerful AI Features</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Transform your job search with cutting-edge AI
+                    technology designed to get you hired.</p>
+            </div>
+
+            <div id="features-container" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Features driven by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-20 bg-gray-50 border-y border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">How It Works</h2>
+                <p class="text-xl text-gray-600">Get hired faster with our simple 4-step process</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="text-center group">
+                    <div
+                        class="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-primary-600 group-hover:-translate-y-2 transition-transform duration-300">
+                        1</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Upload CV</h3>
+                    <p class="text-gray-600 leading-relaxed">Upload your resume and our AI analyzes your skills,
+                        experience, and career goals instantly.</p>
+                </div>
+
+                <div class="text-center group">
+                    <div
+                        class="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-primary-600 group-hover:-translate-y-2 transition-transform duration-300 delay-100">
+                        2</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Find Jobs</h3>
+                    <p class="text-gray-600 leading-relaxed">Get matched with relevant job opportunities across the web
+                        based on your unique profile.</p>
+                </div>
+
+                <div class="text-center group">
+                    <div
+                        class="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-primary-600 group-hover:-translate-y-2 transition-transform duration-300 delay-200">
+                        3</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Customize</h3>
+                    <p class="text-gray-600 leading-relaxed">AI generates tailored CVs and persuasive cover letters for
+                        each specific application.</p>
+                </div>
+
+                <div class="text-center group">
+                    <div
+                        class="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-primary-600 group-hover:-translate-y-2 transition-transform duration-300 delay-300">
+                        4</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Apply</h3>
+                    <p class="text-gray-600 leading-relaxed">One-click application or fully automated submission to save
+                        you hours every week.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div id="pricing-plans-container">
+                <!-- Rendered by PricingPlans component -->
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24 bg-gradient-to-br from-primary-600 to-primary-800 text-white relative overflow-hidden">
+        <div
+            class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-20">
+        </div>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6">Ready to Transform Your Job Search?</h2>
+            <p class="text-xl text-primary-100 mb-10">Join thousands of professionals who have accelerated their careers
+                with synovae.</p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/register"
+                    class="bg-white text-primary-600 hover:bg-gray-50 px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform hover:-translate-y-1">
+                    Start Free Trial
+                </a>
+                <a href="/login"
+                    class="px-8 py-4 bg-primary-700/50 hover:bg-primary-700 text-white rounded-xl font-bold text-lg transition-all border border-white/20 backdrop-blur-sm">
+                    Already Have Account?
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <div id="footer-container"></div>
+
+    <!-- Global Scripts -->
+    <script src="/assets/js/utils/geolocation.js"></script>
+    <script src="/assets/js/utils/currency.js"></script>
+    <script src="/assets/js/components/PublicNavbar.js"></script>
+    <script src="/assets/js/components/PricingPlans.js"></script>
+    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/landing.js"></script>
+
+    <!-- Chatbot -->
+    <link rel="stylesheet" href="/assets/css/chatbot.css">
+    <script src="/assets/js/chatbot.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            // Initialize currency from geolocation
+            if (window.CVision && window.CVision.Currency) {
+                await CVision.Currency.initFromGeolocation();
+            }
+
+            // Initialize pricing component (with annual toggle)
+            if (window.PricingPlans) {
+                PricingPlans.init({
+                    mode: 'public',
+                    container: '#pricing-plans-container'
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

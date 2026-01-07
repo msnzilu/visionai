@@ -108,6 +108,9 @@ const Landing = {
         this.initMobileMenu();
         this.initUpload();
         this.initSmoothScroll();
+        this.initSmoothScroll();
+        this.initSearch();
+        this.loadJobs();
     },
 
     initSmoothScroll() {
@@ -131,9 +134,36 @@ const Landing = {
         const fileInput = document.getElementById('cv-file-input');
         const getStartedBtn = document.getElementById('get-started-btn');
         const preferencesContainer = document.getElementById('preferences-container');
+
+        // Modal Elements
+        const modal = document.getElementById('cv-upload-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+
         let uploadedFile = null;
 
         if (!uploadZone || !fileInput) return;
+
+        // --- Modal Logic ---
+        const openModal = () => {
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        const closeModal = () => {
+            if (modal) modal.classList.add('hidden');
+        };
+
+        // Delegate click for Navbar Upload Button (injected dynamically)
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('#nav-upload-btn');
+            if (btn) {
+                openModal();
+            }
+        });
+
+        // Close handlers
+        if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+        if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
 
         // File upload handlers
         uploadZone.addEventListener('click', () => fileInput.click());
@@ -297,7 +327,147 @@ const Landing = {
                 menu.classList.toggle('hidden');
             });
         }
+    },
+
+    initSearch() {
+        const searchBtn = document.getElementById('landing-search-btn');
+        const queryInput = document.getElementById('landing-search-query');
+        const locationInput = document.getElementById('landing-search-location');
+
+        if (!searchBtn) return;
+
+        const handleSearch = () => {
+            const query = queryInput.value.trim();
+            const location = locationInput.value.trim();
+            this.loadJobs(query, location);
+        };
+
+        searchBtn.addEventListener('click', handleSearch);
+
+        // Enter key support
+        [queryInput, locationInput].forEach(input => {
+            if (input) {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') handleSearch();
+                });
+            }
+        });
+
+        // "Jobs Near Me" Button Logic
+        const nearMeBtn = document.getElementById('btn-jobs-near-me');
+        if (nearMeBtn && window.CVision && window.CVision.Geolocation) {
+            nearMeBtn.addEventListener('click', async () => {
+                const originalHtml = nearMeBtn.innerHTML;
+                nearMeBtn.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Locating...
+                `;
+                nearMeBtn.disabled = true;
+
+                try {
+                    const data = await CVision.Geolocation.detect();
+                    if (data.detected) {
+                        const loc = data.city || data.countryName;
+                        if (locationInput) locationInput.value = loc;
+                        this.loadJobs(queryInput ? queryInput.value : '', loc);
+                    }
+                } catch (e) {
+                    console.error('Near Me failed', e);
+                } finally {
+                    nearMeBtn.innerHTML = originalHtml;
+                    nearMeBtn.disabled = false;
+                }
+            });
+        }
+    },
+
+    async loadJobs(searchQuery = '', searchLocation = '') {
+        const grid = document.getElementById('jobs-grid');
+        if (!grid) return;
+
+        // Visual feedback
+        grid.style.opacity = '0.5';
+
+        try {
+            let query = searchQuery || '';
+            let location = searchLocation || '';
+
+            // Default to Global (no location filter) unless specified
+
+
+            // Fetch jobs with search parameters
+            const response = await fetch(`${window.CONFIG.API_BASE_URL}${window.CONFIG.API_PREFIX}/jobs/search`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: query || null,
+                    location: location || null,
+                    size: 40
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to fetch jobs');
+            const data = await response.json();
+            const jobs = data.jobs || [];
+
+            grid.style.opacity = '1';
+
+            if (jobs.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <div class="text-4xl mb-4">🔍</div>
+                        <p class="text-gray-500 text-lg">No jobs found matching your criteria.</p>
+                        <button onclick="document.getElementById('landing-search-location').value=''; Landing.loadJobs('${query}', '')" class="text-primary-600 font-bold hover:underline mt-2">
+                            Try clearing location filter
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Render jobs - Simple grid
+            const jobCardHtml = job => `
+                <div class="job-explorer-card shadow-sm hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white rounded-xl border border-gray-100 p-5">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="location-badge inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md font-medium">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            ${job.location || 'Remote'}
+                        </span>
+                        ${job.salary_range ? `
+                            <span class="text-green-600 text-xs font-bold">
+                                ${job.salary_range.currency || '$'}${Math.round(job.salary_range.min_amount / 1000)}k+
+                            </span>
+                        ` : ''}
+                    </div>
+                    <h3 class="job-title-teaser font-bold text-gray-900 mb-1 line-clamp-1">${job.title}</h3>
+                    <p class="company-teaser text-primary-600 text-sm font-medium mb-3">${job.company_name}</p>
+                    <div class="job-details-teaser text-gray-500 text-xs leading-relaxed mb-4 flex-grow line-clamp-3">
+                        ${job.description ? job.description.replace(/<[^>]*>?/gm, '').substring(0, 150) + '...' : 'No description available'}
+                    </div>
+                    <a href="/login.html?job_id=${job._id || job.id}" class="block text-center py-2 px-4 rounded-lg bg-gray-50 text-gray-700 font-medium hover:bg-primary-50 hover:text-primary-600 transition-colors text-sm">
+                        View Details
+                    </a>
+                </div>
+            `;
+
+            grid.innerHTML = jobs.map(jobCardHtml).join('');
+
+        } catch (error) {
+            console.error('Job explorer error:', error);
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <p class="text-gray-500">Could not load jobs at this time. Please try refreshing.</p>
+                </div>
+            `;
+        }
     }
+
 };
 
 document.addEventListener('DOMContentLoaded', () => {
