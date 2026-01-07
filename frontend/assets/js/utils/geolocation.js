@@ -82,35 +82,99 @@
         ip: null
     };
 
+    // Cache key for sessionStorage
+    const CACHE_KEY = 'cvision_geolocation';
+    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
     const Geolocation = {
         /**
-         * Detect user's location using IP geolocation
+         * Detect user's location using IP geolocation with multiple fallbacks
          * @returns {Promise<Object>} Location data
          */
         async detect() {
+            // Check cache first
             try {
-                // Try ipapi.co first (free, no API key needed)
-                const response = await fetch('https://ipapi.co/json/', {
-                    signal: AbortSignal.timeout(5000)  // 5 second timeout
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-
-                    locationData = {
-                        detected: true,
-                        countryCode: data.country_code || 'KE',
-                        countryName: data.country_name || 'Kenya',
-                        city: data.city || null,
-                        region: data.region || null,
-                        currency: COUNTRY_CURRENCY_MAP[data.country_code] || data.currency || 'KES',
-                        timezone: data.timezone || 'Africa/Nairobi',
-                        ip: data.ip || null
-                    };
-
-                    return locationData;
+                const cached = sessionStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const { data, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < CACHE_DURATION) {
+                        locationData = data;
+                        return locationData;
+                    }
                 }
-            } catch (error) {
+            } catch (e) { /* ignore cache errors */ }
+
+            // Try multiple providers with fallbacks
+            const providers = [
+                {
+                    url: 'https://ip-api.com/json/?fields=status,country,countryCode,city,regionName,timezone',
+                    parse: (data) => data.status === 'success' ? {
+                        countryCode: data.countryCode,
+                        countryName: data.country,
+                        city: data.city,
+                        region: data.regionName,
+                        timezone: data.timezone
+                    } : null
+                },
+                {
+                    url: 'https://ipapi.co/json/',
+                    parse: (data) => !data.error ? {
+                        countryCode: data.country_code,
+                        countryName: data.country_name,
+                        city: data.city,
+                        region: data.region,
+                        timezone: data.timezone,
+                        ip: data.ip
+                    } : null
+                },
+                {
+                    url: 'https://ipinfo.io/json',
+                    parse: (data) => data.country ? {
+                        countryCode: data.country,
+                        countryName: data.country,
+                        city: data.city,
+                        region: data.region,
+                        timezone: data.timezone
+                    } : null
+                }
+            ];
+
+            for (const provider of providers) {
+                try {
+                    const response = await fetch(provider.url, {
+                        signal: AbortSignal.timeout(3000)
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const parsed = provider.parse(data);
+
+                        if (parsed) {
+                            locationData = {
+                                detected: true,
+                                countryCode: parsed.countryCode || 'KE',
+                                countryName: parsed.countryName || 'Kenya',
+                                city: parsed.city || null,
+                                region: parsed.region || null,
+                                currency: COUNTRY_CURRENCY_MAP[parsed.countryCode] || 'KES',
+                                timezone: parsed.timezone || 'Africa/Nairobi',
+                                ip: parsed.ip || null
+                            };
+
+                            // Cache successful result
+                            try {
+                                sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+                                    data: locationData,
+                                    timestamp: Date.now()
+                                }));
+                            } catch (e) { /* ignore cache errors */ }
+
+                            return locationData;
+                        }
+                    }
+                } catch (error) {
+                    // Continue to next provider
+                }
             }
 
             return locationData;
