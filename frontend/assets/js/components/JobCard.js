@@ -70,33 +70,63 @@ class JobCardComponent {
     }
 
     /**
+     * Formats date to relative "time ago" string
+     */
+    formatRelativeTime(date) {
+        if (!date) return 'Some time ago';
+        const now = new Date();
+        const posted = new Date(date);
+        const diffMs = now - posted;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHour = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHour / 24);
+        const diffWeek = Math.floor(diffDay / 7);
+        const diffMonth = Math.floor(diffDay / 30);
+
+        if (diffSec < 60) return 'Just now';
+        if (diffMin < 60) return `${diffMin}m ago`;
+        if (diffHour < 24) return `${diffHour}h ago`;
+        if (diffDay === 1) return 'Yesterday';
+        if (diffDay < 7) return `${diffDay} days ago`;
+        if (diffWeek === 1) return '1 week ago';
+        if (diffWeek < 4) return `${diffWeek} weeks ago`;
+        if (diffMonth === 1) return '1 month ago';
+        return posted.toLocaleDateString();
+    }
+
+    /**
      * Renders a single job card
      * @param {Object} job - The job data object
+     * @param {Boolean} isPublic - If true, renders a simplified version for the landing page
      * @returns {HTMLElement} The card element
      */
-    render(job) {
+    render(job, isPublic = false) {
         const card = document.createElement('div');
-        card.className = 'job-card bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 relative overflow-hidden group flex flex-col h-full';
+        const jobId = job._id || job.id;
 
-        // Match Score Gradient Border
-        const matchBorder = job.match_score
-            ? `<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-primary-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>`
+        // Base classes
+        card.className = `job-card bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 relative overflow-hidden group flex flex-col h-full ${isPublic ? 'cursor-pointer hover:-translate-y-1' : ''}`;
+
+        // Match Score Gradient Border (Dashboard only)
+        const matchBorder = (!isPublic && job.match_score)
+            ? `<div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary-400 to-indigo-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>`
             : '';
 
-        // Batch Selection Checkbox
-        const batchCheckboxHTML = this.batchModeActive ? `
-            <div class="absolute top-4 left-4 z-10">
+        // Batch Selection Checkbox (Dashboard only)
+        const batchCheckboxHTML = (!isPublic && this.batchModeActive) ? `
+            <div class="absolute top-5 left-5 z-10">
                 <input type="checkbox" 
-                       class="job-select-checkbox w-5 h-5 rounded text-primary-600 border-gray-300 focus:ring-primary-500" 
-                       ${this.selectedJobs.has(String(job._id || job.id)) ? 'checked' : ''}
-                       onchange="toggleJobSelection('${job._id || job.id}', this)">
+                       class="job-select-checkbox w-5 h-5 rounded-md text-primary-600 border-gray-300 focus:ring-primary-500 shadow-sm transition-all" 
+                       ${this.selectedJobs.has(String(jobId)) ? 'checked' : ''}
+                       onchange="toggleJobSelection('${jobId}', this)">
             </div>
         ` : '';
 
         // Badges
-        const matchBadge = job.match_score
-            ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-2">
-                 <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/></svg>
+        const matchBadge = (!isPublic && job.match_score)
+            ? `<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-700 border border-green-100 shadow-sm mr-2 mb-2 transition-all group-hover:bg-green-100">
+                 <svg class="w-3.5 h-3.5 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/></svg>
                  ${Math.round(job.match_score * 100)}% Match
                </span>`
             : '';
@@ -112,51 +142,66 @@ class JobCardComponent {
         );
 
         const autoApplyBadge = canAutoApply
-            ? '' // Keep it clean for auto-apply
-            : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200 shadow-sm">
-                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                 Manual Application Required
+            ? `<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-primary-50 text-primary-700 border border-primary-100 shadow-sm mr-2 mb-2 transition-all group-hover:bg-primary-100">
+                 <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                 Auto-Apply Ready
+               </span>`
+            : `<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100 shadow-sm mr-2 mb-2 transition-all group-hover:bg-amber-100">
+                 <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                 Manual Review
                </span>`;
 
-        const formatDate = window.CVision ? window.CVision.formatDate : (d) => new Date(d).toLocaleDateString();
+        const timeString = this.formatRelativeTime(job.posted_date || job.created_at);
+
+        const clickHandler = isPublic
+            ? `window.location.href='/login.html?job_id=${jobId}'`
+            : `showJobDetails('${jobId}')`;
+
+        if (isPublic) {
+            card.setAttribute('onclick', clickHandler);
+        }
 
         card.innerHTML = `
             ${matchBorder}
             ${batchCheckboxHTML}
             
-            <div class="p-6 flex-1 flex flex-col cursor-pointer" onclick="showJobDetails('${job._id || job.id}')">
-                <div class="flex justify-between items-start mb-4 ${this.batchModeActive ? 'ml-8' : ''}">
-                    <div class="flex-1 min-w-0 pr-4">
-                        <div class="flex items-center gap-2 mb-1">
+            <div class="p-6 flex-1 flex flex-col" ${!isPublic ? `onclick="${clickHandler}"` : ''}>
+                <div class="flex justify-between items-start mb-3 ${(!isPublic && this.batchModeActive) ? 'ml-10' : ''}">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-1 mb-2">
                             ${matchBadge}
                             ${autoApplyBadge}
-                            <span class="text-xs text-gray-500 flex items-center ml-2">
-                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                ${formatDate(job.posted_date || job.created_at)}
-                            </span>
                         </div>
-                        <h3 class="text-xl font-bold text-gray-900 leading-tight group-hover:text-primary-600 transition-colors line-clamp-2" title="${this.decodeHtmlEntities(job.title)}">
+                        <h3 class="text-lg font-bold text-gray-900 leading-tight group-hover:text-primary-600 transition-colors line-clamp-2 mb-1" title="${this.decodeHtmlEntities(job.title)}">
                             ${this.decodeHtmlEntities(job.title)}
                         </h3>
-                        <p class="text-base text-gray-600 font-medium mt-1 truncate">${this.decodeHtmlEntities(job.company_name)}</p>
+                        <div class="flex items-center text-sm font-semibold text-primary-600 mb-2">
+                             ${this.decodeHtmlEntities(job.company_name)}
+                        </div>
                     </div>
                     
-                    <button class="save-job-btn p-2 rounded-full hover:bg-gray-100 ${job.is_saved ? 'text-primary-600' : 'text-gray-400'} hover:text-primary-600 transition-colors flex-shrink-0" 
-                            onclick="event.stopPropagation(); window.saveJob('${job._id || job.id}')" title="${job.is_saved ? 'Saved' : 'Save Job'}">
-                        <svg class="w-6 h-6" fill="${job.is_saved ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24">
+                    ${!isPublic ? `
+                    <button class="save-job-btn p-2.5 rounded-xl bg-gray-50 hover:bg-primary-50 ${job.is_saved ? 'text-primary-600 shadow-inner' : 'text-gray-400'} hover:text-primary-600 transition-all duration-300 flex-shrink-0" 
+                            onclick="event.stopPropagation(); window.saveJob('${jobId}')" title="${job.is_saved ? 'Saved' : 'Save Job'}">
+                        <svg class="w-5 h-5" fill="${job.is_saved ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                         </svg>
                     </button>
+                    ` : ''}
                 </div>
 
-                <div class="flex flex-wrap items-center gap-y-2 gap-x-4 text-sm text-gray-500 mb-4 ${this.batchModeActive ? 'ml-8' : ''}">
+                <div class="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-medium text-gray-500 mb-4 ${(!isPublic && this.batchModeActive) ? 'ml-10' : ''}">
                     <div class="flex items-center">
                         <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         ${this.decodeHtmlEntities(job.location)}
                     </div>
-                    ${job.salary_range && (job.salary_range.min_amount || job.salary_range.max_amount) ? `
-                        <div class="flex items-center">
-                            <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div class="flex items-center">
+                         <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                         ${timeString}
+                    </div>
+                    ${!isPublic && job.salary_range && (job.salary_range.min_amount || job.salary_range.max_amount) ? `
+                        <div class="flex items-center text-green-600 font-bold">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             ${job.salary_range.min_amount ? `${job.salary_range.min_amount.toLocaleString()} ` : ''}
                             ${job.salary_range.min_amount && job.salary_range.max_amount ? '- ' : ''}
                             ${job.salary_range.max_amount ? `${job.salary_range.max_amount.toLocaleString()} ` : ''}
@@ -165,42 +210,49 @@ class JobCardComponent {
                     ` : ''}
                 </div>
 
-                <div class="flex flex-wrap gap-2 mb-4 ${this.batchModeActive ? 'ml-8' : ''}">
-                    ${job.employment_type ? `<span class="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-100">${this.formatEnumValue(job.employment_type)}</span>` : ''}
-                    ${job.work_arrangement ? `<span class="px-2.5 py-0.5 bg-purple-50 text-purple-700 rounded-md text-xs font-medium border border-purple-100">${this.formatEnumValue(job.work_arrangement)}</span>` : ''}
+                ${!isPublic ? `
+                <div class="flex flex-wrap gap-2 mb-4 ${this.batchModeActive ? 'ml-10' : ''}">
+                    ${job.employment_type ? `<span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-blue-100 shadow-sm">${this.formatEnumValue(job.employment_type)}</span>` : ''}
+                    ${job.work_arrangement ? `<span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-indigo-100 shadow-sm">${this.formatEnumValue(job.work_arrangement)}</span>` : ''}
                 </div>
 
-                <p class="text-gray-600 text-sm line-clamp-3 mb-4 leading-relaxed ${this.batchModeActive ? 'ml-8' : ''}">
+                <p class="text-gray-600 text-sm line-clamp-2 mb-4 leading-relaxed ${this.batchModeActive ? 'ml-10' : ''}">
                     ${job.description ? this.decodeHtmlEntities(job.description).replace(/<[^>]*>?/gm, '') : 'No description available'}
                 </p>
 
                 ${(() => {
-                // Handle skills_required as either array or comma-separated string
-                let skills = job.skills_required;
-                if (typeof skills === 'string') {
-                    skills = skills.split(',').map(s => s.trim()).filter(s => s);
-                }
-                if (skills && skills.length > 0) {
-                    return `
-                    <div class="mt-auto pt-4 border-t border-gray-50 ${this.batchModeActive ? 'ml-8' : ''}">
-                        <div class="flex flex-wrap gap-2">
-                            ${skills.slice(0, 3).map(skill =>
-                        `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">${this.decodeHtmlEntities(skill)}</span>`
-                    ).join('')}
-                            ${skills.length > 3 ? `
-                                <span class="px-2 py-1 text-gray-400 text-xs">+${skills.length - 3}</span>
-                            ` : ''}
+                    let skills = job.skills_required;
+                    if (typeof skills === 'string') {
+                        skills = skills.split(',').map(s => s.trim()).filter(s => s);
+                    }
+                    if (skills && skills.length > 0) {
+                        return `
+                        <div class="mt-auto pt-4 border-t border-gray-50 ${this.batchModeActive ? 'ml-10' : ''}">
+                            <div class="flex flex-wrap gap-1.5">
+                                ${skills.slice(0, 3).map(skill =>
+                            `<span class="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-md text-[10px] font-bold border border-gray-100">${this.decodeHtmlEntities(skill)}</span>`
+                        ).join('')}
+                                ${skills.length > 3 ? `
+                                    <span class="px-2 py-0.5 text-gray-400 text-[10px] font-bold">+${skills.length - 3}</span>
+                                ` : ''}
+                            </div>
                         </div>
-                    </div>
-                        `;
-                }
-                return '';
-            })()}
+                            `;
+                    }
+                    return '';
+                })()}
+                ` : ''}
             </div>
 
-            <div class="mt-4">
+            ${!isPublic ? `
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 mt-auto">
                 ${window.JobActions ? window.JobActions.getButtonsHTML(job) : ''}
             </div>
+            ` : `
+            <div class="px-6 py-4 bg-primary-50 text-primary-700 text-sm font-bold text-center border-t border-primary-100 transition-all group-hover:bg-primary-600 group-hover:text-white">
+                View Details
+            </div>
+            `}
         `;
 
         return card;
@@ -241,7 +293,8 @@ class JobCardComponent {
                         </span>
                     </div>
                 </div>
-            ` : ''}
+            ` : ''
+            }
 
             <div class="flex gap-3 flex-wrap mb-4">
                 ${job.employment_type ? `<span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">${this.formatEnumValue(job.employment_type)}</span>` : ''}
@@ -270,7 +323,8 @@ class JobCardComponent {
                         <span class="text-sm text-gray-500 ml-1">(${job.salary_range.period || 'yearly'})</span>
                     </p>
                 </div>
-            ` : ''}
+            ` : ''
+            }
 
             ${(() => {
                 // Handle skills_required as either array or comma-separated string
@@ -303,7 +357,8 @@ class JobCardComponent {
                     `;
                 }
                 return '';
-            })()}
+            })()
+            }
 
             ${job.benefits && job.benefits.length > 0 ? `
                 <div class="mt-6 pb-2">
@@ -316,12 +371,13 @@ class JobCardComponent {
             ).join('')}
                     </div>
                 </div>
-            ` : ''}
+            ` : ''
+            }
 
-            <div class="mt-6 pt-6 border-t border-gray-100">
-                <h4 class="font-semibold text-lg mb-3">Generated Documents</h4>
-                ${window.JobActions ? window.JobActions.getButtonsHTML(job, false) : ''}
-            </div>
+        <div class="mt-6 pt-6 border-t border-gray-100">
+            <h4 class="font-semibold text-lg mb-3">Generated Documents</h4>
+            ${window.JobActions ? window.JobActions.getButtonsHTML(job, false) : ''}
+        </div>
         `;
 
         // Wire up Modal Buttons (Save, Customize, Apply)

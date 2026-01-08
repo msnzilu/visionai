@@ -428,35 +428,36 @@ const Landing = {
                 return;
             }
 
-            // Render jobs - Simple grid
-            const jobCardHtml = job => `
-                <div class="job-explorer-card shadow-sm hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white rounded-xl border border-gray-100 p-5">
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="location-badge inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md font-medium">
-                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                            ${job.location || 'Remote'}
-                        </span>
-                        ${job.salary_range ? `
-                            <span class="text-green-600 text-xs font-bold">
-                                ${job.salary_range.currency || '$'}${Math.round(job.salary_range.min_amount / 1000)}k+
-                            </span>
-                        ` : ''}
-                    </div>
-                    <h3 class="job-title-teaser font-bold text-gray-900 mb-1 line-clamp-1">${job.title}</h3>
-                    <p class="company-teaser text-primary-600 text-sm font-medium mb-3">${job.company_name}</p>
-                    <div class="job-details-teaser text-gray-500 text-xs leading-relaxed mb-4 flex-grow line-clamp-3">
-                        ${job.description ? job.description.replace(/<[^>]*>?/gm, '').substring(0, 150) + '...' : 'No description available'}
-                    </div>
-                    <a href="/login.html?job_id=${job._id || job.id}" class="block text-center py-2 px-4 rounded-lg bg-gray-50 text-gray-700 font-medium hover:bg-primary-50 hover:text-primary-600 transition-colors text-sm">
-                        View Details
-                    </a>
-                </div>
-            `;
+            // Render jobs using JobCard component
+            grid.innerHTML = '';
 
-            grid.innerHTML = jobs.map(jobCardHtml).join('');
+            if (!window.JobCard) {
+                console.warn('JobCard component not found, falling back to simple template');
+                const jobCardHtml = job => `
+                    <div class="job-explorer-card shadow-sm hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white rounded-xl border border-gray-100 p-5">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="location-badge inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md font-medium">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                ${job.location || 'Remote'}
+                            </span>
+                        </div>
+                        <h3 class="job-title-teaser font-bold text-gray-900 mb-1 line-clamp-1">${job.title}</h3>
+                        <p class="company-teaser text-primary-600 text-sm font-medium mb-3">${job.company_name}</p>
+                        <a href="/login.html?job_id=${job._id || job.id}" class="block text-center py-2 px-4 rounded-lg bg-gray-50 text-gray-700 font-medium hover:bg-primary-50 hover:text-primary-600 transition-colors text-sm">
+                            View Details
+                        </a>
+                    </div>
+                `;
+                grid.innerHTML = jobs.map(jobCardHtml).join('');
+            } else {
+                jobs.forEach(job => {
+                    const card = window.JobCard.render(job, true);
+                    grid.appendChild(card);
+                });
+            }
 
         } catch (error) {
             console.error('Job explorer error:', error);

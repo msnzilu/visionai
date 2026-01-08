@@ -515,7 +515,7 @@ function displayJobs(jobs, retryCount = 0) {
     }
 
     jobs.forEach(job => {
-        const jobCard = window.JobCard.render(job);
+        const jobCard = window.JobCard.render(job, false);
         container.appendChild(jobCard);
     });
 }
