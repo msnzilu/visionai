@@ -144,6 +144,7 @@ services:
       - PAYSTACK_SECRET_KEY
       - MONGODB_URL
       - DATABASE_NAME
+      - LINKEDIN_REDIRECT_URI
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs
@@ -197,6 +198,7 @@ services:
       - PAYSTACK_SECRET_KEY
       - MONGODB_URL
       - DATABASE_NAME
+      - LINKEDIN_REDIRECT_URI
     deploy:
       replicas: 1
       restart_policy:
