@@ -18,9 +18,9 @@ services:
         max_attempts: 3
       resources:
         reservations:
-          memory: 512M
+          memory: 128M
         limits:
-          memory: 2G
+          memory: 1G
     # healthcheck:
     #   test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
     #   interval: 30s
@@ -88,9 +88,9 @@ services:
         max_attempts: 3
       resources:
         reservations:
-          memory: 256M
+          memory: 64M
         limits:
-          memory: 1G
+          memory: 512M
 
   # Redis Service
   redis:
@@ -161,9 +161,9 @@ services:
         max_attempts: 3
       resources:
         reservations:
-          memory: 256M
+          memory: 64M
         limits:
-          memory: 768M
+          memory: 384M
     # healthcheck:
     #   test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
     #   interval: 60s
@@ -207,9 +207,9 @@ services:
         max_attempts: 3
       resources:
         reservations:
-          memory: 128M
+          memory: 32M
         limits:
-          memory: 512M
+          memory: 256M
 
 networks:
   app-network:

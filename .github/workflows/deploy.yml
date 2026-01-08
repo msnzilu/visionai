@@ -263,6 +263,8 @@ jobs:
 
           # ECR (for deployment)
           ECR_PASSWORD=${{ steps.ecr-login.outputs.ECR_PASSWORD }}
+          IMAGE_TAG=${{ steps.set-tag.outputs.IMAGE_TAG }}
+          ECR_REGISTRY=234506497329.dkr.ecr.eu-north-1.amazonaws.com
           EOF
 
       - name: Deploy to Swarm
@@ -389,12 +391,13 @@ jobs:
             echo "=== Secrets Verification ==="
             docker secret ls
 
-            # Set environment variables for stack deploy
-            export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-            export IMAGE_TAG=${{ steps.set-tag.outputs.IMAGE_TAG }}
+            # ECR_REGISTRY, IMAGE_TAG, and ECR_PASSWORD come from .env.production
+            echo "=== ECR Login ==="
+            echo "Registry: ${ECR_REGISTRY}"
+            echo "Image Tag: ${IMAGE_TAG}"
             
-            # Login to ECR
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+            # Login to ECR using password from .env.production
+            echo "${ECR_PASSWORD}" | docker login --username AWS --password-stdin ${ECR_REGISTRY}
             
             # Pull backend image
             echo "Pulling backend image..."
