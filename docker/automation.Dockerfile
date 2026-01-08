@@ -5,6 +5,7 @@ WORKDIR /app
 # Install system dependencies required by Playwright
 RUN apt-get update && apt-get install -y \
     wget \
+    curl \
     ca-certificates \
     fonts-liberation \
     libappindicator3-1 \

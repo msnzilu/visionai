@@ -303,6 +303,7 @@ class Application(ApplicationBase, TimeStampedModel):
     
     # Tracking and metadata
     application_url: Optional[HttpUrl] = None
+    application_domain: Optional[str] = None  # Domain extracted from application URL for email monitoring
     confirmation_number: Optional[str] = None
     job_title: Optional[str] = None  # Cached from job
     company_name: Optional[str] = None  # Cached from job

@@ -194,14 +194,40 @@ class BrowserAutomationService:
                     }
                     logger.info(f"Browser auto-apply session {application_id} started successfully in background.")
                 else:
+                    # Extract domain for email monitoring
+                    from urllib.parse import urlparse
+                    app_domain = urlparse(application_url).netloc
+                    if app_domain.startswith("www."):
+                        app_domain = app_domain[4:]
+                    
+                    # Check if user qualifies for email monitoring:
+                    # 1. Has Gmail connected, OR
+                    # 2. Has active paid subscription
+                    enable_email_monitoring = False
+                    try:
+                        # Check Gmail connection
+                        gmail_connected = user.get("gmail_connected", False) or user.get("gmail_credentials") is not None
+                        
+                        # Check subscription status
+                        subscription_tier = user.get("subscription_tier", "free")
+                        has_paid_subscription = subscription_tier in ["basic", "premium", "enterprise"]
+                        
+                        enable_email_monitoring = gmail_connected or has_paid_subscription
+                        logger.info(f"Email monitoring eligibility - Gmail: {gmail_connected}, Paid: {has_paid_subscription}, Enabled: {enable_email_monitoring}")
+                    except Exception as e:
+                        logger.warning(f"Failed to check email monitoring eligibility: {e}")
+                    
                     status_update = {
                         "status": "applied",
                         "automation_status": "completed",
                         "automation_completed_at": datetime.utcnow(),
                         "applied_date": datetime.utcnow(),
                         "automation_details": automation_result,
+                        "application_url": application_url,
+                        "application_domain": app_domain,  # For email monitoring
+                        "email_monitoring_enabled": enable_email_monitoring,
                     }
-                    logger.info(f"Browser auto-apply successful for application {application_id}")
+                    logger.info(f"Browser auto-apply successful for application {application_id}, domain: {app_domain}, email_monitoring: {enable_email_monitoring}")
                     
                     
                     # Immediately trigger monitoring to verify status and catch automation effects

@@ -83,8 +83,20 @@ class AutomationStatus {
 
         // Sanitize technical messages for the user
         let displayMessage = message;
-        if (message.includes('host.docker.internal')) {
-            displayMessage = 'Cannot connect to the automation service. Please try again in a few moments.';
+
+        // Map technical errors to user-friendly messages
+        if (message.includes('No application form detected')) {
+            displayMessage = '⚠️ No application form found on this page. This job may require applying directly on the company website.';
+        } else if (message.includes('host.docker.internal') || message.includes('Cannot connect')) {
+            displayMessage = '🔌 Cannot connect to the automation service. Please try again in a few moments.';
+        } else if (message.includes('Target page, context or browser has been closed')) {
+            displayMessage = '🔄 The page was closed or navigated away. Please try applying again.';
+        } else if (message.includes('Timeout') || message.includes('timeout')) {
+            displayMessage = '⏱️ The page took too long to respond. Please try again.';
+        } else if (message.includes('rate limit') || message.includes('429')) {
+            displayMessage = '⏳ Too many requests. Please wait a moment and try again.';
+        } else if (message.includes('login') || message.includes('sign in') || message.includes('account required')) {
+            displayMessage = '🔐 This job requires creating an account. We\'re working on automating this!';
         }
 
         this.messageEl.textContent = displayMessage;
