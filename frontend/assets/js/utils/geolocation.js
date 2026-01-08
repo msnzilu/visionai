@@ -104,10 +104,12 @@
                 }
             } catch (e) { /* ignore cache errors */ }
 
-            // Try multiple providers with fallbacks
-            // Note: ip-api.com free tier requires HTTP (not HTTPS)
-            const providers = [
-                {
+            // Build providers list based on protocol
+            const providers = [];
+
+            // ip-api.com only works on HTTP (free tier doesn't support HTTPS)
+            if (window.location.protocol === 'http:') {
+                providers.push({
                     url: 'http://ip-api.com/json/?fields=status,country,countryCode,city,regionName,timezone',
                     parse: (data) => data.status === 'success' ? {
                         countryCode: data.countryCode,
@@ -116,24 +118,11 @@
                         region: data.regionName,
                         timezone: data.timezone
                     } : null
-                }
-            ];
-
-            // Only add HTTPS providers if we're on HTTPS (they may have CORS issues)
-            if (window.location.protocol === 'https:') {
-                // These are backup options but often rate-limited
-                providers.push({
-                    url: 'https://ipapi.co/json/',
-                    parse: (data) => !data.error ? {
-                        countryCode: data.country_code,
-                        countryName: data.country_name,
-                        city: data.city,
-                        region: data.region,
-                        timezone: data.timezone,
-                        ip: data.ip
-                    } : null
                 });
             }
+
+            // On HTTPS, we skip external APIs (they're all rate-limited or have CORS issues)
+            // and rely on the timezone fallback below
 
             for (const provider of providers) {
                 try {
