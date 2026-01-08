@@ -227,15 +227,15 @@ const Landing = {
         if (getStartedBtn) {
             getStartedBtn.addEventListener('click', function () {
                 if (uploadedFile) {
-                    // Store form data temporarily
-                    const jobTitle = document.getElementById('job-title').value;
-                    const location = document.getElementById('location').value;
-                    const salaryRange = document.getElementById('salary-range').value;
+                    // Store form data temporarily (with null checks)
+                    const jobTitleEl = document.getElementById('job-title');
+                    const locationEl = document.getElementById('location');
+                    const salaryRangeEl = document.getElementById('salary-range');
 
                     localStorage.setItem('landing_preferences', JSON.stringify({
-                        jobTitle,
-                        location,
-                        salaryRange,
+                        jobTitle: jobTitleEl ? jobTitleEl.value : '',
+                        location: locationEl ? locationEl.value : '',
+                        salaryRange: salaryRangeEl ? salaryRangeEl.value : '',
                         fileName: uploadedFile.name
                     }));
 
