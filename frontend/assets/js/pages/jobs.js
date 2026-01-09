@@ -202,101 +202,135 @@ function initializeJobSearch() {
 }
 
 /**
- * Load jobs from DB with pagination support
+ * Fetch jobs data from API
+ */
+async function fetchJobsData(page = 1) {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/search`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${CVision.Utils.getToken()}`
+        },
+        body: JSON.stringify({
+            query: null,
+            location: null,
+            filters: null,
+            page: page,
+            size: 20,
+            sort_by: 'created_at',
+            sort_order: 'desc'
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || 'Failed to fetch jobs');
+    }
+
+    return await response.json();
+}
+
+/**
+ * Handle rendered jobs data (from cache or fresh)
+ */
+async function handleJobsResponse(data, isCached = false) {
+    console.log(`[handleJobsResponse] data received (cached: ${isCached}):`, { page: data.page, jobCount: (data.jobs || []).length });
+
+    let fetchedJobs = data.jobs || [];
+
+    // Filter out applied jobs
+    currentJobs = fetchedJobs.filter(job => !appliedJobIds.has(String(job._id || job.id)));
+    window.currentJobs = currentJobs;
+
+    // AUTO-FETCH: If all jobs on this page were filtered out but more pages exist, fetch next page
+    // This now works for both cached and fresh data to ensure we skip applied jobs quickly
+    if (currentJobs.length === 0 && fetchedJobs.length > 0 && data.page < data.pages) {
+        console.log(`All ${fetchedJobs.length} jobs on page ${data.page} filtered. Auto-fetching next page...`);
+        return loadJobsFromDB(data.page + 1);
+    }
+
+    // Sync with JobCard component
+    if (window.JobCard) window.JobCard.setJobs(currentJobs);
+
+    if (currentJobs.length > 0) {
+        document.getElementById('loadingState').classList.add('hidden');
+        displayJobs(currentJobs);
+        updateResultsCount(data.total || currentJobs.length, currentJobs.length);
+        if (data.pages > 1) {
+            updatePagination(data.page || 1, data.pages);
+        }
+        await syncSavedJobStatus();
+    } else {
+        // Only show empty state if we are NOT using a cached result (i.e. this is fresh empty data)
+        // or if we have no cache at all. This prevents flashing "No jobs" during SWR revalidation.
+        if (!isCached) {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('resultsCount').textContent = fetchedJobs.length > 0 ? 'No new jobs found (filtered).' : 'No jobs in database yet.';
+            showEmptyStateWithSearchPrompt();
+        } else {
+            // If cached but empty, we just wait for revalidation to finish without hiding skeletons/showing empty state
+            console.log('Cached data is empty after filtering, waiting for revalidation...');
+        }
+    }
+}
+
+/**
+ * Sync saved job status for current jobs
+ */
+async function syncSavedJobStatus() {
+    try {
+        const savedResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/saved/me?size=100`, {
+            headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
+        });
+        if (savedResponse.ok) {
+            const savedData = await savedResponse.json();
+            const savedJobs = savedData.jobs || [];
+
+            let needsUpdate = false;
+            savedJobs.forEach(savedJob => {
+                const jobIndex = currentJobs.findIndex(j => (j._id || j.id) === (savedJob._id || savedJob.id));
+                if (jobIndex !== -1) {
+                    currentJobs[jobIndex].is_saved = true;
+                    needsUpdate = true;
+
+                    // Merge generated paths
+                    if (savedJob.generated_cv_path) currentJobs[jobIndex].generated_cv_path = savedJob.generated_cv_path;
+                    if (savedJob.generated_cover_letter_path) currentJobs[jobIndex].generated_cover_letter_path = savedJob.generated_cover_letter_path;
+                }
+            });
+
+            if (needsUpdate) {
+                if (window.JobCard) window.JobCard.setJobs(currentJobs);
+                displayJobs(currentJobs);
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to sync saved job status:', e);
+    }
+}
+
+/**
+ * Load jobs from DB with pagination support (using Cache)
  * @param {number} page - Page number to fetch
  */
 async function loadJobsFromDB(page = 1) {
     try {
-        showLoading();
+        const cacheKey = `jobs_p${page}`;
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/jobs/search`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            },
-            body: JSON.stringify({
-                query: null,
-                location: null,
-                filters: null,
-                page: page,
-                size: 20,
-                sort_by: 'created_at',
-                sort_order: 'desc'
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            console.error('Search error:', errorData);
-            throw new Error(errorData?.detail || 'Failed to load jobs');
+        if (!CVision.Cache?.get(cacheKey)) {
+            showLoading();
         }
 
-        const data = await response.json();
-        console.log('[loadJobsFromDB] API response:', { page: data.page, pages: data.pages, total: data.total, jobCount: (data.jobs || []).length });
-
-        let fetchedJobs = data.jobs || [];
-
-        // Update JobActions applied list
-        if (window.JobActions) {
-            window.JobActions.appliedJobIds = appliedJobIds;
-        }
-
-        // Filter out applied jobs immediately
-        currentJobs = fetchedJobs.filter(job => !appliedJobIds.has(String(job._id || job.id)));
-        window.currentJobs = currentJobs;
-
-        // AUTO-FETCH FIX: If all jobs on this page were filtered out but more pages exist, fetch next page
-        if (currentJobs.length === 0 && fetchedJobs.length > 0 && data.page < data.pages) {
-            console.log(`All ${fetchedJobs.length} jobs on page ${data.page} already applied. Auto-fetching next page...`);
-            return loadJobsFromDB(data.page + 1);
-        }
-
-        // Sync with JobCard component
-        if (window.JobCard) window.JobCard.setJobs(currentJobs);
-
-        document.getElementById('loadingState').classList.add('hidden');
-
-        if (currentJobs.length === 0) {
-            document.getElementById('resultsCount').textContent = fetchedJobs.length > 0 ? 'No new jobs found (filtered).' : 'No jobs in database yet.';
-            showEmptyStateWithSearchPrompt();
+        if (window.CVision?.Cache) {
+            await CVision.Cache.swr(
+                cacheKey,
+                () => fetchJobsData(page),
+                (data, isCached) => handleJobsResponse(data, isCached),
+                300000 // 5 min TTL
+            );
         } else {
-            displayJobs(currentJobs);
-            updateResultsCount(data.total || currentJobs.length, currentJobs.length);
-            if (data.pages > 1) {
-                updatePagination(data.page || 1, data.pages);
-            }
-
-            // Sync saved status
-            try {
-                const savedResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/saved/me?size=100`, {
-                    headers: { 'Authorization': `Bearer ${CVision.Utils.getToken()}` }
-                });
-                if (savedResponse.ok) {
-                    const savedData = await savedResponse.json();
-                    const savedJobs = savedData.jobs || [];
-
-                    let needsUpdate = false;
-                    savedJobs.forEach(savedJob => {
-                        const jobIndex = currentJobs.findIndex(j => (j._id || j.id) === (savedJob._id || savedJob.id));
-                        if (jobIndex !== -1) {
-                            currentJobs[jobIndex].is_saved = true;
-                            needsUpdate = true;
-
-                            // Merge generated paths
-                            if (savedJob.generated_cv_path) currentJobs[jobIndex].generated_cv_path = savedJob.generated_cv_path;
-                            if (savedJob.generated_cover_letter_path) currentJobs[jobIndex].generated_cover_letter_path = savedJob.generated_cover_letter_path;
-                        }
-                    });
-
-                    if (needsUpdate) {
-                        if (window.JobCard) window.JobCard.setJobs(currentJobs);
-                        displayJobs(currentJobs);
-                    }
-                }
-            } catch (e) {
-                console.warn('Failed to sync saved job status:', e);
-            }
+            const data = await fetchJobsData(page);
+            await handleJobsResponse(data, false);
         }
     } catch (error) {
         console.error('Error loading jobs:', error);
@@ -361,6 +395,79 @@ async function loadUserJobHistory() {
     }
 }
 
+/**
+ * Fetch search results from API
+ */
+async function fetchSearchData(searchData) {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/search`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${CVision.Utils.getToken()}`
+        },
+        body: JSON.stringify(searchData)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || 'Search failed');
+    }
+
+    return await response.json();
+}
+
+/**
+ * Handle search results (from cache or fresh)
+ */
+async function handleSearchResponse(data, sortBy, isCached = false) {
+    console.log(`[handleSearchResponse] data received (cached: ${isCached}):`, { page: data.page, jobCount: (data.jobs || []).length });
+
+    let fetchedJobs = data.jobs || [];
+
+    // Filter results immediately
+    currentJobs = fetchedJobs.filter(job => !appliedJobIds.has(String(job._id || job.id)));
+    window.currentJobs = currentJobs;
+
+    // AUTO-FETCH: If all jobs on this page were filtered out but more pages exist, fetch next page
+    if (currentJobs.length === 0 && fetchedJobs.length > 0 && data.page < data.pages) {
+        console.log(`All ${fetchedJobs.length} jobs on search page ${data.page} filtered. Auto-fetching page ${data.page + 1}...`);
+        return performSearch(data.page + 1, sortBy);
+    }
+
+    // Sync with JobCard component
+    if (window.JobCard) window.JobCard.setJobs(currentJobs);
+
+    if (currentJobs.length > 0) {
+        document.getElementById('loadingState').classList.add('hidden');
+        displayJobs(currentJobs);
+        updateResultsCount(data.total || currentJobs.length, currentJobs.length);
+        if (data.pages > 1) {
+            updatePagination(data.page || 1, data.pages);
+        } else {
+            document.getElementById('pagination').classList.add('hidden');
+        }
+        await syncSavedJobStatus();
+    } else {
+        // Only show empty state if we are NOT using a cached result
+        if (!isCached) {
+            document.getElementById('loadingState').classList.add('hidden');
+            showEmptyState();
+            if (fetchedJobs.length > 0) {
+                document.getElementById('resultsCount').textContent = 'All search results were jobs you already applied to.';
+            } else {
+                document.getElementById('resultsCount').textContent = 'No jobs found matching your criteria.';
+            }
+        } else {
+            console.log('Cached search data is empty after filtering, waiting for revalidation...');
+        }
+    }
+}
+
+/**
+ * Perform job search (using Cache)
+ * @param {number} page 
+ * @param {string} sortBy 
+ */
 async function performSearch(page = 1, sortBy = 'relevance') {
     currentQuery = document.getElementById('searchQuery').value;
     currentLocation = document.getElementById('searchLocation').value;
@@ -371,11 +478,11 @@ async function performSearch(page = 1, sortBy = 'relevance') {
         return;
     }
 
-    // FIXED: Properly structure search data
+    const filters = buildFilters();
     const searchData = {
         query: currentQuery || null,
         location: currentLocation || null,
-        filters: buildFilters(),  // This returns a properly structured filters object
+        filters: filters,
         page: currentPage,
         size: 20,
         sort_by: sortBy,
@@ -383,52 +490,28 @@ async function performSearch(page = 1, sortBy = 'relevance') {
     };
 
     try {
-        showLoading();
+        // Create a unique cache key based on search parameters
+        const cacheKey = `search_${currentQuery}_${currentLocation}_${JSON.stringify(filters)}_p${currentPage}_${sortBy}`;
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/jobs/search`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${CVision.Utils.getToken()}`
-            },
-            body: JSON.stringify(searchData)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            console.error('Search error:', errorData);
-            throw new Error(errorData?.detail || 'Search failed');
+        if (!CVision.Cache?.get(cacheKey)) {
+            showLoading();
         }
 
-        const data = await response.json();
-        let fetchedJobs = data.jobs || [];
-
-        // Filter results immediately
-        currentJobs = fetchedJobs.filter(job => !appliedJobIds.has(String(job._id || job.id)));
-
-        // AUTO-FETCH FIX: If all jobs on this page were filtered out but more pages exist, fetch next page
-        if (currentJobs.length === 0 && fetchedJobs.length > 0 && data.page < data.pages) {
-            console.log(`All ${fetchedJobs.length} jobs on page ${data.page} already applied. Auto-fetching page ${data.page + 1}...`);
-            return performSearch(data.page + 1, sortBy);
-        }
-
-        // Sync with JobCard component
-        if (window.JobCard) window.JobCard.setJobs(currentJobs);
-
-        if (currentJobs.length === 0) {
-            showEmptyState();
-            if (fetchedJobs.length > 0) {
-                document.getElementById('resultsCount').textContent = 'All search results were jobs you already applied to.';
-            }
+        if (window.CVision?.Cache) {
+            await CVision.Cache.swr(
+                cacheKey,
+                () => fetchSearchData(searchData),
+                (data, isCached) => handleSearchResponse(data, sortBy, isCached),
+                300000 // 5 min TTL
+            );
         } else {
-            displayJobs(currentJobs);
-            updateResultsCount(data.total, currentJobs.length);
-            updatePagination(data.page, data.pages);
+            const data = await fetchSearchData(searchData);
+            await handleSearchResponse(data, sortBy, false);
         }
     } catch (error) {
         console.error('Search error:', error);
-        CVision.Utils.showAlert('Failed to search jobs. Please try again.', 'error');
-        showEmptyState();
+        document.getElementById('loadingState').classList.add('hidden');
+        CVision.Utils.showAlert(error.message, 'error');
     }
 }
 
@@ -521,7 +604,7 @@ function displayJobs(jobs, retryCount = 0) {
 }
 
 function closeJobModal() {
-    if (window.JobCard) window.JobCard.closeDetails();
+    if (window.JobModal) window.JobModal.hide();
 }
 
 async function saveJob(jobId, silent = false, extraData = null) {

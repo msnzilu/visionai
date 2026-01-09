@@ -164,6 +164,52 @@ const Utils = {
         if (!url) return url;
         // Remove .html extension
         return url.replace(/\.html$/, '');
+    },
+
+    // Global HTML entity decoder (handles multi-encoding & mojibake)
+    decodeHtmlEntities(text) {
+        if (!text) return '';
+        let cleaned = text
+            .replace(/â€™/g, "'")
+            .replace(/â€˜/g, "'")
+            .replace(/â€œ/g, '"')
+            .replace(/â€ /g, '"')
+            .replace(/â€“/g, "–")
+            .replace(/â€”/g, "—")
+            .replace(/â€¢/g, "•")
+            .replace(/â€¦/g, "...")
+            .replace(/Â/g, "")
+            .replace(/Ã©/g, "é")
+            .replace(/Ã/g, "à")
+            .replace(/Ã¢â‚¬â„¢/g, "'")
+            .replace(/Ã¢â‚¬Å“/g, '"')
+            .replace(/Ã¢â‚¬Â/g, '"')
+            .replace(/Ã¢â‚¬â€/g, "—")
+            .replace(/Ã¢â‚¬â€œ/g, "–")
+            .replace(/ÃÂ/g, "")
+            .replace(/&nbsp;/g, ' ')
+            .replace(/\r/g, '');
+
+        const textArea = document.createElement('textarea');
+        let decoded = cleaned;
+        let lastDecoded;
+        let passes = 0;
+        do {
+            lastDecoded = decoded;
+            textArea.innerHTML = decoded;
+            decoded = textArea.value;
+            passes++;
+        } while (decoded !== lastDecoded && passes < 3);
+
+        return decoded.trim();
+    },
+
+    // Format snake_case enums to Title Case
+    formatEnumValue(value) {
+        if (!value) return '';
+        return value.split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
     }
 };
 

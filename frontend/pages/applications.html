@@ -8,6 +8,7 @@
     <script src="/assets/js/auth-guard.js"></script>
     <link rel="stylesheet" href="/assets/css/global.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .spinner {
             border-radius: 50%;
@@ -203,61 +204,11 @@
     <script src="/assets/js/components/JobActions.js" defer></script>
     <script src="/assets/js/components/JobApply.js" defer></script>
     <script src="/assets/js/components/EmailAnalysis.js" defer></script>
+    <script src="/assets/js/components/JobModal.js" defer></script>
+    <script src="/assets/js/components/JobCard.js" defer></script>
     <script src="/assets/js/pages/applications.js?v=7" defer></script>
     <script src="/assets/js/components/navbar.js" defer></script>
 
-    <!-- Job Details Modal (Added for viewing saved jobs without redirect) -->
-    <div id="jobDetailsModal"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto m-4 flex flex-col">
-            <div
-                class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                <div>
-                    <h3 class="text-xl font-bold text-gray-900" id="jobModalTitle">Job Title</h3>
-                    <p class="text-sm text-gray-500" id="jobModalCompany">Company Name</p>
-                    <p class="text-sm text-gray-500" id="jobModalLocation">Location</p>
-                </div>
-                <button onclick="closeJobDetailsModal()"
-                    class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-
-            <div class="p-6 overflow-y-auto flex-1" id="jobModalContent">
-                <!-- Content injected via JS -->
-            </div>
-
-            <!-- Footer: Remove, Customize, Apply (Hardcoded) -->
-            <div
-                class="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3 bg-gray-50 rounded-b-xl sticky bottom-0">
-                <button id="jobModalUnsave"
-                    class="px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-medium transition-colors hidden">
-                    Remove from Saved
-                </button>
-
-                <button id="jobModalCustomize"
-                    class="flex-1 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg px-4 py-2 font-medium transition-all shadow-sm flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Customize
-                </button>
-
-                <button id="jobModalApply"
-                    class="flex-1 btn-gradient text-white rounded-lg px-4 py-2 font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    Apply Now
-                </button>
-            </div>
-        </div>
-    </div>
     <script defer>
         // Load navbar component with proper initialization
         fetch('/components/navbar.html')
