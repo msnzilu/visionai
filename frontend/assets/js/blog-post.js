@@ -45,20 +45,29 @@
 
     // Load post
     async function loadPost(slug) {
-        try {
+        const fetchFn = async () => {
             const response = await fetch(`${API_BASE}/blog/posts/${slug}`);
+            if (!response.ok) throw new Error('Post not found');
+            return await response.json();
+        };
 
-            if (!response.ok) {
-                throw new Error('Post not found');
+        const onUpdate = async (post, isFromCache) => {
+            currentPost = post;
+            displayPost(post);
+            // Visual feedback
+            articleContent.style.opacity = isFromCache ? '0.7' : '1';
+
+            // Re-load related posts if we have an ID
+            if (post && post.id) {
+                await loadRelatedPosts(post.id);
             }
+        };
 
-            currentPost = await response.json();
-            console.log('Post data loaded:', currentPost);
-            displayPost(currentPost);
-            await loadRelatedPosts(currentPost.id);
+        try {
+            await CVision.Cache.swr(`blog_post_${slug}`, fetchFn, onUpdate);
         } catch (error) {
             console.error('Error loading post:', error);
-            showError();
+            if (!currentPost) showError();
         }
     }
 
@@ -173,16 +182,20 @@
 
     // Load related posts
     async function loadRelatedPosts(postId) {
-        try {
+        const fetchFn = async () => {
             const response = await fetch(`${API_BASE}/blog/posts/${postId}/related?limit=3`);
+            if (!response.ok) return [];
+            return await response.json();
+        };
 
-            if (!response.ok) return;
-
-            const relatedPosts = await response.json();
-
-            if (relatedPosts.length > 0) {
+        const onUpdate = (relatedPosts) => {
+            if (relatedPosts && relatedPosts.length > 0) {
                 displayRelatedPosts(relatedPosts);
             }
+        };
+
+        try {
+            await CVision.Cache.swr(`blog_related_${postId}`, fetchFn, onUpdate);
         } catch (error) {
             console.error('Error loading related posts:', error);
         }

@@ -17,7 +17,6 @@
     const DEFAULT_BLOG_IMAGE = '/assets/images/defaults/blog-default.png';
     function getValidImageUrl(url) {
         if (!url) return DEFAULT_BLOG_IMAGE;
-        // Detect placeholder URLs
         const invalidPatterns = ['example.com', 'placeholder', 'via.placeholder', 'picsum.photos'];
         if (invalidPatterns.some(pattern => url.toLowerCase().includes(pattern))) {
             return DEFAULT_BLOG_IMAGE;
@@ -39,29 +38,21 @@
 
     // Initialize
     async function init() {
-        // Guard clause: Only run on blog listing page
         const blogContent = document.getElementById('blog-content');
-        if (!blogContent) {
-            console.log('Not on blog listing page, skipping blog.js initialization');
-            return;
-        }
+        if (!blogContent) return;
 
         try {
-            await loadCategories();
-            await loadTags();
-
-            // Parallel loads
             await Promise.all([
+                loadCategories(),
+                loadTags(),
                 loadFeaturedPost(),
                 loadRecentPosts(),
                 loadTopPosts()
             ]);
 
-            // Show content after all loads attempt to finish
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('blog-content').classList.remove('hidden');
 
-            // If main js didn't load footer for some reason, try again
             if (typeof loadFooter === 'function' && document.getElementById('footer-container').innerHTML === '') {
                 loadFooter();
             }
@@ -76,42 +67,37 @@
         loadFromURL();
     }
 
-    // Load Featured Post (Latest 1)
+    // Load Featured Post
     async function loadFeaturedPost() {
-        try {
-            console.log('Loading featured post...');
+        const fetchFn = async () => {
             const response = await fetch(`${API_BASE}/blog/posts?size=1&page=1&status=published`);
-            if (!response.ok) {
-                console.error('Featured post fetch failed:', response.status);
-                return;
-            }
+            if (!response.ok) return null;
             const data = await response.json();
-            console.log('Featured post data:', data);
+            return (data.posts && data.posts.length > 0) ? data.posts[0] : null;
+        };
 
-            if (data.posts && data.posts.length > 0) {
-                console.log('Rendering featured post:', data.posts[0].title);
-                renderFeaturedPost(data.posts[0]);
-                // Ensure container is visible
+        const onUpdate = (post) => {
+            if (post) {
+                renderFeaturedPost(post);
                 document.getElementById('featured-post-container').classList.remove('hidden');
             } else {
-                console.warn('No featured posts found');
                 document.getElementById('featured-post-container').classList.add('hidden');
             }
+        };
+
+        try {
+            await CVision.Cache.swr('blog_featured_post', fetchFn, onUpdate);
         } catch (error) {
             console.error('Error loading featured post:', error);
             document.getElementById('featured-post-container').classList.add('hidden');
         }
     }
 
-    // Render Featured Post
     function renderFeaturedPost(post) {
         const container = document.getElementById('featured-post-container');
         if (!container) return;
 
-        // Use reliable local placeholder if no image or placeholder URL
         const imageUrl = getValidImageUrl(post.featured_image);
-        console.log(`Featured Post [${post.title}] image:`, imageUrl);
-
         const authorName = post.author ? post.author.name : 'Synovae Team';
         const authorInitial = authorName.charAt(0);
 
@@ -147,29 +133,29 @@
         `;
     }
 
-    // Load recent posts (List View)
+    // Load recent posts
     async function loadRecentPosts() {
         const container = document.getElementById('recent-posts-container');
-        // If sorting or filtering is active, we treat "Recent" as the main results area
-        // We might want to skip the first one if it's the same as featured, but for now simplistic is okay
-        // Or strictly page 1, size 10 to start
+        const params = new URLSearchParams({
+            page: currentPage,
+            size: 7,
+            status: 'published'
+        });
 
-        try {
-            const params = new URLSearchParams({
-                page: currentPage,
-                size: 7, // Getting 7 for the list
-                status: 'published'
-            });
+        if (currentFilters.search) params.append('search', currentFilters.search);
+        if (currentFilters.category) params.append('categories', currentFilters.category);
+        if (currentFilters.tag) params.append('tags', currentFilters.tag);
 
-            if (currentFilters.search) params.append('search', currentFilters.search);
-            if (currentFilters.category) params.append('categories', currentFilters.category);
-            if (currentFilters.tag) params.append('tags', currentFilters.tag);
+        const cacheKey = `blog_recent_${currentPage}_${currentFilters.search}_${currentFilters.category}_${currentFilters.tag}`;
 
-            // If filtering, we just use the main recent list validation
+        const fetchFn = async () => {
             const response = await fetch(`${API_BASE}/blog/posts?${params}`);
             if (!response.ok) throw new Error('Failed');
+            return await response.json();
+        };
 
-            const data = await response.json();
+        const onUpdate = (data, isFromCache) => {
+            if (!data || !data.posts) return;
 
             if (data.posts.length === 0 && currentPage === 1) {
                 container.innerHTML = '<p class="text-gray-500 text-center py-8">No matching posts found.</p>';
@@ -178,7 +164,11 @@
 
             renderRecentPosts(data.posts);
             displayPagination(data);
+            container.style.opacity = isFromCache ? '0.7' : '1';
+        };
 
+        try {
+            await CVision.Cache.swr(cacheKey, fetchFn, onUpdate);
         } catch (error) {
             console.error('Error loading recent posts:', error);
         }
@@ -186,32 +176,32 @@
 
     function renderRecentPosts(posts) {
         const container = document.getElementById('recent-posts-container');
+        if (!container) return;
         container.innerHTML = '';
-
         posts.forEach(post => {
-            const card = createPostCard(post); // Uses existing list-view style logic
-            container.appendChild(card);
+            container.appendChild(createPostCard(post));
         });
     }
 
-    // Load Top Posts (Sidebar)
+    // Load Top Posts
     async function loadTopPosts() {
         const container = document.getElementById('top-posts-container');
-        try {
+        if (!container) return;
+
+        const fetchFn = async () => {
             const response = await fetch(`${API_BASE}/blog/posts?size=5&sort_by=views&status=published`);
-            if (!response.ok) return;
-            const data = await response.json();
+            if (!response.ok) return null;
+            return await response.json();
+        };
 
+        const onUpdate = (data) => {
+            if (!data || !data.posts) return;
             container.innerHTML = '';
-
             if (data.posts.length === 0) {
                 container.innerHTML = '<p class="text-gray-500 text-sm">No top posts yet.</p>';
                 return;
             }
-
             data.posts.forEach((post, index) => {
-                const imageUrl = getValidImageUrl(post.featured_image);
-                console.log(`Top Post [${post.title}] image:`, imageUrl);
                 const el = document.createElement('a');
                 el.href = `/info/blog-post?slug=${post.slug}`;
                 el.className = 'top-post-card group block hover:bg-gray-50 transition p-2 rounded-lg';
@@ -224,7 +214,10 @@
                 `;
                 container.appendChild(el);
             });
+        };
 
+        try {
+            await CVision.Cache.swr('blog_top_posts', fetchFn, onUpdate);
         } catch (error) {
             console.error('Error loading top posts:', error);
         }
@@ -232,18 +225,26 @@
 
     // Load categories
     async function loadCategories() {
-        try {
+        const fetchFn = async () => {
             const response = await fetch(`${API_BASE}/blog/categories`);
-            if (!response.ok) return;
+            if (!response.ok) return [];
+            return await response.json();
+        };
 
-            const categories = await response.json();
-
+        const onUpdate = (categories) => {
+            if (!categories) return;
+            while (categoryFilter.options.length > 1) categoryFilter.remove(1);
             categories.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.name;
                 option.textContent = `${cat.name} (${cat.count})`;
                 categoryFilter.appendChild(option);
             });
+            if (currentFilters.category) categoryFilter.value = currentFilters.category;
+        };
+
+        try {
+            await CVision.Cache.swr('blog_categories', fetchFn, onUpdate);
         } catch (error) {
             console.error('Error loading categories:', error);
         }
@@ -251,44 +252,42 @@
 
     // Load tags
     async function loadTags() {
-        try {
+        const fetchFn = async () => {
             const response = await fetch(`${API_BASE}/blog/tags`);
-            if (!response.ok) return;
+            if (!response.ok) return [];
+            return await response.json();
+        };
 
-            const tags = await response.json();
-
+        const onUpdate = (tags) => {
+            if (!tags) return;
+            while (tagFilter.options.length > 1) tagFilter.remove(1);
             tags.forEach(tag => {
                 const option = document.createElement('option');
                 option.value = tag.name;
                 option.textContent = `${tag.name} (${tag.count})`;
                 tagFilter.appendChild(option);
             });
+            if (currentFilters.tag) tagFilter.value = currentFilters.tag;
+        };
+
+        try {
+            await CVision.Cache.swr('blog_tags', fetchFn, onUpdate);
         } catch (error) {
             console.error('Error loading tags:', error);
         }
     }
 
-    // Legacy loadPosts redirect
-    async function loadPosts() {
-        return loadRecentPosts();
-    }
-
-    // Create post card (List View style matches CSS)
     function createPostCard(post) {
         const card = document.createElement('div');
         card.className = 'blog-card group cursor-pointer';
         card.onclick = () => window.location.href = `/info/blog-post?slug=${post.slug}`;
 
         const imageUrl = getValidImageUrl(post.featured_image);
-
-        let publishDate = 'Draft';
-        if (post.status === 'published') {
-            publishDate = post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            }) : 'Recently';
-        }
+        let publishDate = post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        }) : 'Recently';
 
         card.innerHTML = `
             <img src="${imageUrl}" alt="${post.title}" class="blog-card-image" loading="lazy">
@@ -308,35 +307,24 @@
                 </div>
             </div>
         `;
-
         return card;
     }
 
-    // Display pagination
     function displayPagination(data) {
-        const paginationContainer = document.getElementById('pagination');
         if (data.pages <= 1) {
-            paginationContainer.classList.add('hidden');
+            pagination.classList.add('hidden');
             return;
         }
-
-        paginationContainer.classList.remove('hidden');
-
-        // Update buttons
+        pagination.classList.remove('hidden');
         prevPageBtn.disabled = currentPage === 1;
         nextPageBtn.disabled = currentPage === data.pages;
-
-        // Generate page numbers
         pageNumbers.innerHTML = '';
-
         const maxPages = 5;
         let startPage = Math.max(1, currentPage - Math.floor(maxPages / 2));
         let endPage = Math.min(data.pages, startPage + maxPages - 1);
-
         if (endPage - startPage < maxPages - 1) {
             startPage = Math.max(1, endPage - maxPages + 1);
         }
-
         for (let i = startPage; i <= endPage; i++) {
             const btn = document.createElement('button');
             btn.textContent = i;
@@ -346,7 +334,6 @@
         }
     }
 
-    // Go to page
     function goToPage(page) {
         currentPage = page;
         loadRecentPosts();
@@ -354,9 +341,7 @@
         updateURL();
     }
 
-    // Setup event listeners
     function setupEventListeners() {
-        // Search with debounce
         let searchTimeout;
         searchInput.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
@@ -368,7 +353,6 @@
             }, 500);
         });
 
-        // Category filter
         categoryFilter.addEventListener('change', (e) => {
             currentFilters.category = e.target.value;
             currentPage = 1;
@@ -376,7 +360,6 @@
             updateURL();
         });
 
-        // Tag filter
         tagFilter.addEventListener('change', (e) => {
             currentFilters.tag = e.target.value;
             currentPage = 1;
@@ -384,56 +367,40 @@
             updateURL();
         });
 
-        // Pagination
         prevPageBtn.addEventListener('click', () => {
-            if (currentPage > 1) {
-                goToPage(currentPage - 1);
-            }
+            if (currentPage > 1) goToPage(currentPage - 1);
         });
 
-        nextPageBtn.addEventListener('click', () => {
-            goToPage(currentPage + 1);
-        });
+        nextPageBtn.addEventListener('click', () => goToPage(currentPage + 1));
     }
 
-    // Load from URL parameters
     function loadFromURL() {
         const params = new URLSearchParams(window.location.search);
-
         if (params.has('search')) {
             currentFilters.search = params.get('search');
             searchInput.value = currentFilters.search;
         }
-
         if (params.has('category')) {
             currentFilters.category = params.get('category');
             categoryFilter.value = currentFilters.category;
         }
-
         if (params.has('tag')) {
             currentFilters.tag = params.get('tag');
             tagFilter.value = currentFilters.tag;
         }
-
-        if (params.has('page')) {
-            currentPage = parseInt(params.get('page')) || 1;
-        }
+        if (params.has('page')) currentPage = parseInt(params.get('page')) || 1;
     }
 
-    // Update URL
     function updateURL() {
         const params = new URLSearchParams();
-
         if (currentFilters.search) params.set('search', currentFilters.search);
         if (currentFilters.category) params.set('category', currentFilters.category);
         if (currentFilters.tag) params.set('tag', currentFilters.tag);
         if (currentPage > 1) params.set('page', currentPage);
-
         const newURL = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
         window.history.replaceState({}, '', newURL);
     }
 
-    // Start when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {

@@ -108,9 +108,22 @@ const Landing = {
         this.initMobileMenu();
         this.initUpload();
         this.initSmoothScroll();
-        this.initSmoothScroll();
         this.initSearch();
         this.loadJobs();
+    },
+
+    /**
+     * Calculates how many jobs to show based on 5 rows for current screen size
+     */
+    getDisplayLimit() {
+        const width = window.innerWidth;
+        let cols = 1;
+        if (width >= 1536) cols = 5;      // 2xl
+        else if (width >= 1280) cols = 4; // xl
+        else if (width >= 1024) cols = 3; // lg
+        else if (width >= 768) cols = 2; // md
+
+        return cols * 5;
     },
 
     initSmoothScroll() {
@@ -388,17 +401,11 @@ const Landing = {
         const grid = document.getElementById('jobs-grid');
         if (!grid) return;
 
-        // Visual feedback
-        grid.style.opacity = '0.5';
+        const query = searchQuery || '';
+        const location = searchLocation || '';
+        const cacheKey = `landing_jobs_${query}_${location}`;
 
-        try {
-            let query = searchQuery || '';
-            let location = searchLocation || '';
-
-            // Default to Global (no location filter) unless specified
-
-
-            // Fetch jobs with search parameters
+        const fetchFreshJobs = async () => {
             const response = await fetch(`${window.CONFIG.API_BASE_URL}${window.CONFIG.API_PREFIX}/jobs/search`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -411,11 +418,14 @@ const Landing = {
 
             if (!response.ok) throw new Error('Failed to fetch jobs');
             const data = await response.json();
-            const jobs = data.jobs || [];
+            return data.jobs || [];
+        };
 
-            grid.style.opacity = '1';
-
-            if (jobs.length === 0) {
+        const onUpdate = async (jobs, isFromCache) => {
+            if (jobs && jobs.length > 0) {
+                await this.displayJobsGrid(jobs);
+                grid.style.opacity = '1';
+            } else if (!isFromCache) {
                 grid.innerHTML = `
                     <div class="col-span-full text-center py-12">
                         <div class="text-4xl mb-4">🔍</div>
@@ -425,15 +435,57 @@ const Landing = {
                         </button>
                     </div>
                 `;
-                return;
+                grid.style.opacity = '1';
             }
+        };
 
-            // Render jobs using JobCard component
-            grid.innerHTML = '';
+        // 1. Set loading state if no cached data exists
+        if (!CVision.Cache.get(cacheKey)) {
+            grid.style.opacity = '0.5';
+        }
 
-            if (!window.JobCard) {
-                console.warn('JobCard component not found, falling back to simple template');
-                const jobCardHtml = job => `
+        // 2. Use centralized SWR caching
+        try {
+            await CVision.Cache.swr(cacheKey, fetchFreshJobs, onUpdate);
+        } catch (error) {
+            console.error('Job explorer error:', error);
+            if (grid.children.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        <p class="text-gray-500">Could not load jobs at this time. Please try refreshing.</p>
+                    </div>
+                `;
+                grid.style.opacity = '1';
+            }
+        }
+    },
+
+    /**
+     * Renders job cards into the grid with current display limits
+     */
+    async displayJobsGrid(jobs) {
+        const grid = document.getElementById('jobs-grid');
+        if (!grid || !jobs) return;
+
+        grid.innerHTML = '';
+        const limit = this.getDisplayLimit();
+        const jobsToShow = jobs.slice(0, limit);
+
+        console.log(`Landing: Found ${jobs.length} jobs, rendering top ${jobsToShow.length} (Limit for 5 rows: ${limit})`);
+
+        // Check if JobCard is ready
+        if (!window.JobCard && document.querySelector('script[src*="JobCard.js"]')) {
+            for (let i = 0; i < 10; i++) {
+                if (window.JobCard) break;
+                await new Promise(r => setTimeout(r, 50));
+            }
+        }
+
+        if (!window.JobCard) {
+            console.warn('JobCard component not found, falling back to simple template');
+            const jobCardHtml = job => {
+                const id = job._id || job.id;
+                return `
                     <div class="job-explorer-card shadow-sm hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white rounded-xl border border-gray-100 p-5">
                         <div class="flex justify-between items-start mb-4">
                             <span class="location-badge inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md font-medium">
@@ -446,26 +498,22 @@ const Landing = {
                         </div>
                         <h3 class="job-title-teaser font-bold text-gray-900 mb-1 line-clamp-1">${job.title}</h3>
                         <p class="company-teaser text-primary-600 text-sm font-medium mb-3">${job.company_name}</p>
-                        <a href="/login.html?job_id=${job._id || job.id}" class="block text-center py-2 px-4 rounded-lg bg-gray-50 text-gray-700 font-medium hover:bg-primary-50 hover:text-primary-600 transition-colors text-sm">
+                        <a href="/login.html?job_id=${id}" class="block text-center py-2 px-4 rounded-lg bg-gray-50 text-gray-700 font-medium hover:bg-primary-50 hover:text-primary-600 transition-colors text-sm">
                             View Details
                         </a>
                     </div>
                 `;
-                grid.innerHTML = jobs.map(jobCardHtml).join('');
-            } else {
-                jobs.forEach(job => {
+            };
+            grid.innerHTML = jobsToShow.map(jobCardHtml).join('');
+        } else {
+            jobsToShow.forEach(job => {
+                try {
                     const card = window.JobCard.render(job, true);
                     grid.appendChild(card);
-                });
-            }
-
-        } catch (error) {
-            console.error('Job explorer error:', error);
-            grid.innerHTML = `
-                <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                    <p class="text-gray-500">Could not load jobs at this time. Please try refreshing.</p>
-                </div>
-            `;
+                } catch (renderError) {
+                    console.error('Error rendering job card:', renderError, job);
+                }
+            });
         }
     }
 
